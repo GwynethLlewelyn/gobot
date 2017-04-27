@@ -1,0 +1,6 @@
+[gobot]
+RootURL = "http://bot.betatechnologies.info"
+
+# SQLite Database filename
+SQLiteDBFilename = "/var/www/bot.betatechnologies.info/web/database/botmover.db"
+PDO_Prefix = "sqlite3"
