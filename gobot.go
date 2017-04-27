@@ -16,6 +16,7 @@ var (
 	RootURL string
 	SQLiteDBFilename string
 	PDO_Prefix string
+	ServerPort string
 )
 
 func main() {
@@ -34,6 +35,8 @@ func main() {
 	RootURL = viper.GetString("gobot.RootURL")
 	SQLiteDBFilename = viper.GetString("gobot.SQLiteDBFilename")
 	PDO_Prefix = viper.GetString("gobot.PDO_Prefix")
+	viper.SetDefault("gobot.ServerPort", ":3000")
+	ServerPort = viper.GetString("gobot.ServerPort")
 	
 	db, err := sql.Open(PDO_Prefix, SQLiteDBFilename) // presumes sqlite3 for now
 	checkErr(err)
@@ -77,7 +80,7 @@ func main() {
 	
 	// Configure routers for our many inworld scripts
 	http.HandleFunc("/update-inventory/", updateInventory) 
-    err = http.ListenAndServe(":3000", nil) // set listen port
+    err = http.ListenAndServe(ServerPort, nil) // set listen port
     checkErr(err)	
 }
 
