@@ -6,17 +6,13 @@ import (
  /*   "time" */
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/spf13/viper" // to read config files
-	// "inworld"
 	"net/http"
 	"log"
 )
 
 var (
 	// Default configurations, hopefully exported to other packages
-	RootURL string
-	SQLiteDBFilename string
-	PDO_Prefix string
-	ServerPort string
+	RootURL, SQLiteDBFilename, URLPathPrefix, PDO_Prefix, ServerPort string
 )
 
 func main() {
@@ -33,6 +29,7 @@ func main() {
 	
 	// Without these set, we cannot do anything
 	RootURL = viper.GetString("gobot.RootURL")
+	URLPathPrefix = viper.GetString("gobot.URLPathPrefix")
 	SQLiteDBFilename = viper.GetString("gobot.SQLiteDBFilename")
 	PDO_Prefix = viper.GetString("gobot.PDO_Prefix")
 	viper.SetDefault("gobot.ServerPort", ":3000")
@@ -78,8 +75,12 @@ func main() {
 	
 	// this was just to make tests, now start the web server
 	
-	// Configure routers for our many inworld scripts
-	http.HandleFunc("/update-inventory/", updateInventory) 
+	// Configure routers for our many inworld scripts; note that the nginx server will serve the rest of the files as usual
+	http.HandleFunc(URLPathPrefix + "/update-inventory/", updateInventory) 
+	http.HandleFunc(URLPathPrefix + "/update-sensor/", updateSensor) 
+	http.HandleFunc(URLPathPrefix + "/register-position/", registerPosition) 
+	http.HandleFunc(URLPathPrefix + "/register-agent/", registerAgent) 
+	http.HandleFunc(URLPathPrefix + "/configure-cube/", configureCube) 
     err = http.ListenAndServe(ServerPort, nil) // set listen port
     checkErr(err)	
 }
