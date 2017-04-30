@@ -89,8 +89,8 @@ func main() {
 	
 	// Static files. This should be handled directly by nginx, but we include it here
 	//  for a standalone version...
-	http.HandleFunc(URLPathPrefix + "/lib/",				http.FileServer(http.Dir(PathToStaticFiles + "/lib"))
-	http.HandleFunc(URLPathPrefix + "/templates/",			http.FileServer(http.Dir(PathToStaticFiles + "/templates"))
+	http.Handle(URLPathPrefix + "/lib/",					http.FileServer(http.Dir(PathToStaticFiles + "/lib")))
+	http.Handle(URLPathPrefix + "/templates/",				http.FileServer(http.Dir(PathToStaticFiles + "/templates"))) // not sure if this is needed
 	
 	// Deal with templated output for the admin back office
 	//  If this works I'll buy someone lunch! (GwynethLlewelyn 20170430)
