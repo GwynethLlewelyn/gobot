@@ -7,10 +7,10 @@ import (
 	"fmt"
 	_ "github.com/mattn/go-sqlite3"
 	"net/http"
-    "strings"
-    "crypto/md5"
-    "encoding/hex"
-    //"log"
+	"strings"
+	"crypto/md5"
+	"encoding/hex"
+//	"log"
 )
 
 // GetMD5Hash takes a string which is to be encoded using MD5 and returns a string with the hex-encoded MD5 sum.

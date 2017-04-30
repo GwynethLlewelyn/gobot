@@ -1,7 +1,9 @@
 [gobot]
 RootURL = "http://bot.betatechnologies.info"
 URLPathPrefix = "/go" # leave empty if you serve from the root URL above; no slash at end
+PathToStaticFiles = "../src/gobot" # where the lib/ and template/ dirs are; change as needed, no slash at end
 
 # SQLite Database filename
 SQLiteDBFilename = "/var/www/bot.betatechnologies.info/web/database/botmover.db"
 PDO_Prefix = "sqlite3"
+
