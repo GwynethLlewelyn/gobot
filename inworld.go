@@ -1,5 +1,5 @@
 // This deals with calls coming from Second Life or OpenSimulator
-// it"s essentially a RESTful thingy
+// it's essentially a RESTful thingy
 package main
 
 import (
