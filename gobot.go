@@ -4,11 +4,13 @@ package main
 import (
 	"database/sql"
 	"fmt"
- /*   "time" */
+	"time"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/spf13/viper" // to read config files
 	"net/http"
 	"log"
+	"os/user"
+	"path/filepath"
 )
 
 var (
@@ -17,6 +19,7 @@ var (
 )
 
 func main() {
+	fmt.Print("Reading Gobot configuration...")
 	// Open our config file and extract relevant data from there
 	viper.SetConfigName("config")
 	viper.SetConfigType("toml") // just to make sure; it's the same format as OpenSimulator (or MySQL) config files
@@ -29,14 +32,18 @@ func main() {
 	}
 	
 	// Without these set, we cannot do anything
-	RootURL = viper.GetString("gobot.RootURL")
-	URLPathPrefix = viper.GetString("gobot.URLPathPrefix")
-	SQLiteDBFilename = viper.GetString("gobot.SQLiteDBFilename")
-	PDO_Prefix = viper.GetString("gobot.PDO_Prefix")
-	viper.SetDefault("go.PathToStaticFiles", "../src/gobot")
-	PathToStaticFiles = viper.GetString("go.PathToStaticFiles")
+	RootURL = viper.GetString("gobot.RootURL"); fmt.Print(".")
+	URLPathPrefix = viper.GetString("gobot.URLPathPrefix"); fmt.Print(".")
+	SQLiteDBFilename = viper.GetString("gobot.SQLiteDBFilename"); fmt.Print(".")
+	PDO_Prefix = viper.GetString("gobot.PDO_Prefix"); fmt.Print(".")
+	viper.SetDefault("go.PathToStaticFiles", "~/go/src/gobot")
+	path, err := expandPath(viper.GetString("gobot.PathToStaticFiles")); fmt.Print(".")
+	checkErr(err)
+	PathToStaticFiles = path
 	viper.SetDefault("gobot.ServerPort", ":3000")
-	ServerPort = viper.GetString("gobot.ServerPort")
+	ServerPort = viper.GetString("gobot.ServerPort"); fmt.Print(".")
+	
+	fmt.Println("\nGobot configuration read, now testing opening database connection at ", SQLiteDBFilename, "\nPath to static files is:", PathToStaticFiles)
 	
 	db, err := sql.Open(PDO_Prefix, SQLiteDBFilename) // presumes sqlite3 for now
 	checkErr(err)
@@ -76,6 +83,8 @@ func main() {
 	
 	db.Close()
 	
+	fmt.Println("\n\nStarting Gobot application at port", ServerPort, "\nfor URL:", URLPathPrefix)
+	
 	// this was just to make tests, now start the web server
 	
 	// Configure routers for our many inworld scripts
@@ -88,21 +97,52 @@ func main() {
 	http.HandleFunc(URLPathPrefix + "/configure-cube/",		configureCube)
 	
 	// Static files. This should be handled directly by nginx, but we include it here
-	//  for a standalone version...
-	http.Handle(URLPathPrefix + "/lib/",					http.FileServer(http.Dir(PathToStaticFiles + "/lib")))
-	http.Handle(URLPathPrefix + "/templates/",				http.FileServer(http.Dir(PathToStaticFiles + "/templates"))) // not sure if this is needed
+	//  for a standalone version...	
+	fslib := http.FileServer(http.Dir(PathToStaticFiles + "/lib"))
+	http.Handle(URLPathPrefix + "/lib/", http.StripPrefix(URLPathPrefix + "/lib/", fslib))
+
+	templatelib := http.FileServer(http.Dir(PathToStaticFiles + "/templates"))
+	http.Handle(URLPathPrefix + "/templates/",
+		http.StripPrefix(URLPathPrefix + "/templates/", templatelib)) // not sure if this is needed
 	
 	// Deal with templated output for the admin back office
 	//  If this works I'll buy someone lunch! (GwynethLlewelyn 20170430)
 	http.HandleFunc(URLPathPrefix + "/admin/",				backoffice) // defined on backoffice.go
 	
+	go paralelate()
+	
     err = http.ListenAndServe(ServerPort, nil) // set listen port
-    checkErr(err)	
+    checkErr(err)
 }
 
+// checkErr logs a fatal error and panics
 func checkErr(err error) {
 	if err != nil {
 		log.Fatal("gobot: ", err)
 		panic(err)
 	}
+}
+
+// expandPath expands the tilde as the user's home directory
+//  found at http://stackoverflow.com/a/43578461/1035977
+func expandPath(path string) (string, error) {
+    if len(path) == 0 || path[0] != '~' {
+        return path, nil
+    }
+
+    usr, err := user.Current()
+    if err != nil {
+        return "", err
+    }
+    return filepath.Join(usr.HomeDir, path[1:]), nil
+}
+
+// paralelate is a first attempt at a goroutine
+func paralelate() {
+	fmt.Println("Testing parallelism...")
+    for x := 0;x < 100; x++ {
+	    fmt.Print(x)
+	    time.Sleep(1000 * time.Millisecond)
+    }
+    fmt.Println("Done! (But I'm hopefully still serving requests)")
 }

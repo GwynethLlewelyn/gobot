@@ -2,11 +2,11 @@ package main
 
 import (
 //	"database/sql"
-//	"fmt"
+	"fmt"
 //	_ "github.com/mattn/go-sqlite3"
 	"net/http"
 	"html/template"
-	"os"
+//	"os"
 //	"strings"
 //	"crypto/md5"
 //	"encoding/hex"
@@ -16,20 +16,16 @@ import (
 func backoffice(w http.ResponseWriter, r *http.Request) {
 	// let's load the main template for now, just to make sure this works
 	
+	fmt.Println("Entered backoffice main func for request", r.URL)
+	
 	mainT, err := template.ParseFiles(PathToStaticFiles + "/templates/main.tpl")
 	checkErr(err)
-	data := struct {
-		Title string
-		Items []string
-	}{
-		Title: "My page",
-		Items: []string{
-			"My photos",
-			"My blog",
-		},
+	tplVars := map[string]string {
+		"Title": "Gobot Administrator Panel",
+		"Content": "Hi there, " + r.URL.Path,
+		"URLPathPrefix": URLPathPrefix,
 	}
-	err = mainT.Execute(os.Stdout, data)
+	err = mainT.Execute(w, tplVars)
 	checkErr(err)
 	return
 }
-	
