@@ -18,6 +18,8 @@ var (
 	RootURL, SQLiteDBFilename, URLPathPrefix, PDO_Prefix, PathToStaticFiles, ServerPort string
 )
 
+type templateParameters map[string]string;
+
 func main() {
 	fmt.Print("Reading Gobot configuration...")
 	// Open our config file and extract relevant data from there
@@ -105,9 +107,12 @@ func main() {
 	http.Handle(URLPathPrefix + "/templates/",
 		http.StripPrefix(URLPathPrefix + "/templates/", templatelib)) // not sure if this is needed
 	
-	// Deal with templated output for the admin back office
-	//  If this works I'll buy someone lunch! (GwynethLlewelyn 20170430)
-	http.HandleFunc(URLPathPrefix + "/admin/",				backoffice) // defined on backoffice.go
+	// Deal with templated output for the admin back office, defined on backoffice.go
+	// For now this is crude, each page is really very similar, but there are not many so each will get its own handler function for now
+	
+	http.HandleFunc(URLPathPrefix + "/admin/agents/",		backofficeAgents)
+	http.HandleFunc(URLPathPrefix + "/admin/objects/",		backofficeObjects)
+	http.HandleFunc(URLPathPrefix + "/admin/",				backofficeMain)
 	
 	go paralelate()
 	
