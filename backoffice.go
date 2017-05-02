@@ -1,3 +1,4 @@
+// Functions to deal with the backoffice
 package main
 
 import (
@@ -13,31 +14,39 @@ import (
 //	"log"
 )
 
+// gobotRenderer assembles the correct templates together and executes them
+//  this is mostly to deal with code duplication 
+func gobotRenderer(w http.ResponseWriter, tplParams templateParameters, tplFiles ...string) error {
+	templates, err := template.ParseGlob(PathToStaticFiles + "/templates/*.tpl")
+	if (err != nil) { return err }
+	var s = template.New("")
+	for _, tplFile := range tplFiles {
+		fmt.Println("Looking up ", tplFile, "...")
+		s = templates.Lookup(tplFile)
+		if (s == nil) { 
+			fmt.Println("Glup...", tplFile, "gives error when looking up!")
+			continue
+		}
+	    err = s.ExecuteTemplate(w, tplFile, tplParams)
+	    if (err != nil) { return err }
+	}
+    err = s.Execute(w, tplParams)
+	if (err != nil) { return err }
+	
+	return nil
+}
+
 // backofficeMain is the main page, probably will have some statistics and such
 func backofficeMain(w http.ResponseWriter, r *http.Request) {
 	// let's load the main template for now, just to make sure this works
 	fmt.Println("Entered backoffice main func for URL:", r.URL)
 	
-	templates, err := template.ParseFiles(PathToStaticFiles + "/templates/header.tpl", PathToStaticFiles + "/templates/footer.tpl", PathToStaticFiles + "/templates/main.tpl") // menu will come here too
-	checkErr(err)
-	
-	tplParam := templateParameters{ "Title": "Gobot Administrator Panel - main",
+	tplParams := templateParameters{ "Title": "Gobot Administrator Panel - main",
 			"Content": "Hi there, this is the main template",
 			"URLPathPrefix": URLPathPrefix,
-		}
-	
-	s1 := templates.Lookup("header.tpl")
-    err = s1.ExecuteTemplate(w, "header", tplParam)
-    checkErr(err)
-    s2 := templates.Lookup("main.tpl")
-    err = s2.ExecuteTemplate(w, "main", tplParam)
-    checkErr(err)
-    s3 := templates.Lookup("footer.tpl")
-    err = s3.ExecuteTemplate(w, "footer", tplParam)
-    checkErr(err)
-    err = s3.Execute(w, tplParam)
+	}
+	err := gobotRenderer(w, tplParams, "header", "main", "navigation", "top-menu", "sidebar-left-menu", "footer")
 	checkErr(err)
-	
 	return
 }
 
@@ -45,26 +54,24 @@ func backofficeMain(w http.ResponseWriter, r *http.Request) {
 func backofficeAgents(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("Entered backoffice agents func for URL:", r.URL)
 	
-	mainT, err := template.ParseFiles(PathToStaticFiles + "/templates/agents.tpl")
-	checkErr(err)
-	err = mainT.Execute(w, templateParameters{ "Title": "Gobot Administrator Panel - agents",
+	tplParams := templateParameters{ "Title": "Gobot Administrator Panel - agents",
 			"Content": "Hi there, this is the agents template",
 			"URLPathPrefix": URLPathPrefix,
-		})
+	}
+	err := gobotRenderer(w, tplParams, "header", "agents", "navigation", "top-menu", "sidebar-left-menu", "footer")
 	checkErr(err)
 	return
 }
 
-// backofficeObjects lists objects
+// backofficeObjects lists objects seen as ibstacles
 func backofficeObjects(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("Entered backoffice objects func for URL:", r.URL)
 	
-	mainT, err := template.ParseFiles(PathToStaticFiles + "/templates/objects.tpl")
-	checkErr(err)
-	err = mainT.Execute(w, templateParameters{ "Title": "Gobot Administrator Panel - objects",
+	tplParams := templateParameters{ "Title": "Gobot Administrator Panel - objects",
 			"Content": "Hi there, this is the objects template",
 			"URLPathPrefix": URLPathPrefix,
-		})
+	}
+	err := gobotRenderer(w, tplParams, "header", "objects", "navigation", "top-menu", "sidebar-left-menu", "footer")
 	checkErr(err)
 	return
 }
