@@ -14,13 +14,17 @@ import (
 //	"log"
 )
 
+// GobotTemplatesType expands on template.Template
+//  need to expand it so I can add a few more methods here 
 type GobotTemplatesType struct{
 	template.Template
 }
 
+// GobotTemplates stores all parsed templates for the backoffice
 var GobotTemplates GobotTemplatesType
 
-//
+// init parses all templates and puts it inside a (global) var
+//  This is supposed to be called just once! (in func main())
 func (gt *GobotTemplatesType)init(globbedPath string) error {
 	temp, err := template.ParseGlob(globbedPath)
 	gt.Template = *temp;
@@ -30,16 +34,26 @@ func (gt *GobotTemplatesType)init(globbedPath string) error {
 // gobotRenderer assembles the correct templates together and executes them
 //  this is mostly to deal with code duplication 
 func (gt *GobotTemplatesType)gobotRenderer(w http.ResponseWriter, tplName string, tplParams templateParameters) error {
-    err := gt.ExecuteTemplate(w, tplName, tplParams)
-	if (err != nil) { return err }
-	
-	return nil
+	var err error
+//	err := gt.ExecuteTemplate(w, "header", tplParams)
+//	if (err != nil) { return err }
+//	err = gt.ExecuteTemplate(w, "navigation", tplParams)
+//	if (err != nil) { return err }
+//	err = gt.ExecuteTemplate(w, "top-menu", tplParams)
+//	if (err != nil) { return err }
+//	err = gt.ExecuteTemplate(w, "sidebar-left-menu", tplParams)
+//	if (err != nil) { return err }
+//	err = gt.ExecuteTemplate(w, "footer", tplParams)
+//	if (err != nil) { return err }
+
+    err = gt.ExecuteTemplate(w, tplName, tplParams)
+	return err
 }
 
 // backofficeMain is the main page, probably will have some statistics and such
 func backofficeMain(w http.ResponseWriter, r *http.Request) {
 	// let's load the main template for now, just to make sure this works
-	fmt.Println("Entered backoffice main func for URL:", r.URL)
+	fmt.Println("Entered backoffice main func for URL:", r.URL, "URLPathPrefix is:", URLPathPrefix)
 	
 	tplParams := templateParameters{ "Title": "Gobot Administrator Panel - main",
 			"Content": "Hi there, this is the main template",
