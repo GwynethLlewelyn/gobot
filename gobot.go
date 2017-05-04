@@ -89,6 +89,10 @@ func main() {
 	
 	// this was just to make tests, now start the web server
 	
+	// Load all templates
+	err = GobotTemplates.init(PathToStaticFiles + "/templates/*.tpl")
+	checkErr(err)
+	
 	// Configure routers for our many inworld scripts
 	// In my case, paths with /go will be served by gobot, the rest by nginx as before
 	// Exception is for static files
@@ -114,6 +118,7 @@ func main() {
 	http.HandleFunc(URLPathPrefix + "/admin/objects/",		backofficeObjects)
 	http.HandleFunc(URLPathPrefix + "/admin/",				backofficeMain)
 	
+
 	go paralelate()
 	
     err = http.ListenAndServe(ServerPort, nil) // set listen port

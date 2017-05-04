@@ -14,23 +14,23 @@ import (
 //	"log"
 )
 
+type GobotTemplatesType struct{
+	template.Template
+}
+
+var GobotTemplates GobotTemplatesType
+
+//
+func (gt *GobotTemplatesType)init(globbedPath string) error {
+	temp, err := template.ParseGlob(globbedPath)
+	gt.Template = *temp;
+	return err
+}
+
 // gobotRenderer assembles the correct templates together and executes them
 //  this is mostly to deal with code duplication 
-func gobotRenderer(w http.ResponseWriter, tplParams templateParameters, tplFiles ...string) error {
-	templates, err := template.ParseGlob(PathToStaticFiles + "/templates/*.tpl")
-	if (err != nil) { return err }
-	var s = template.New("")
-	for _, tplFile := range tplFiles {
-		fmt.Println("Looking up ", tplFile, "...")
-		s = templates.Lookup(tplFile)
-		if (s == nil) { 
-			fmt.Println("Glup...", tplFile, "gives error when looking up!")
-			continue
-		}
-	    err = s.ExecuteTemplate(w, tplFile, tplParams)
-	    if (err != nil) { return err }
-	}
-    err = s.Execute(w, tplParams)
+func (gt *GobotTemplatesType)gobotRenderer(w http.ResponseWriter, tplName string, tplParams templateParameters) error {
+    err := gt.ExecuteTemplate(w, tplName, tplParams)
 	if (err != nil) { return err }
 	
 	return nil
@@ -45,7 +45,7 @@ func backofficeMain(w http.ResponseWriter, r *http.Request) {
 			"Content": "Hi there, this is the main template",
 			"URLPathPrefix": URLPathPrefix,
 	}
-	err := gobotRenderer(w, tplParams, "header", "main", "navigation", "top-menu", "sidebar-left-menu", "footer")
+	err := GobotTemplates.gobotRenderer(w, "main", tplParams)
 	checkErr(err)
 	return
 }
@@ -58,7 +58,7 @@ func backofficeAgents(w http.ResponseWriter, r *http.Request) {
 			"Content": "Hi there, this is the agents template",
 			"URLPathPrefix": URLPathPrefix,
 	}
-	err := gobotRenderer(w, tplParams, "header", "agents", "navigation", "top-menu", "sidebar-left-menu", "footer")
+	err := GobotTemplates.gobotRenderer(w, "agents", tplParams)
 	checkErr(err)
 	return
 }
@@ -71,7 +71,7 @@ func backofficeObjects(w http.ResponseWriter, r *http.Request) {
 			"Content": "Hi there, this is the objects template",
 			"URLPathPrefix": URLPathPrefix,
 	}
-	err := gobotRenderer(w, tplParams, "header", "objects", "navigation", "top-menu", "sidebar-left-menu", "footer")
+	err := GobotTemplates.gobotRenderer(w, "objects", tplParams)
 	checkErr(err)
 	return
 }
