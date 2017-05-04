@@ -31,14 +31,12 @@ server {
 [... blah blah blah blah ...]
 
 	location ~* /go/lib {
-		rewrite_log on;
 		rewrite ^/go/lib/(.*)$ /$1 break;
 		root [my directory where I have my lib files (CSS, JS, etc.)];
 		try_files $uri =404;
 	}
 	
 	location ~* /go/templates {
-		rewrite_log on;
 		rewrite ^/go/templates/(.*)$ /$1 break;
 		root [my directory where I have my templates];
 		try_files $uri =404;
