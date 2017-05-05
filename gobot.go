@@ -115,11 +115,11 @@ func main() {
 	// For now this is crude, each page is really very similar, but there are not many so each will get its own handler function for now
 	
 	http.HandleFunc(URLPathPrefix + "/admin/agents/",		backofficeAgents)
+	http.HandleFunc(URLPathPrefix + "/admin/login/",		backofficeLogin) // unimplemented yet
 	http.HandleFunc(URLPathPrefix + "/admin/objects/",		backofficeObjects)
 	http.HandleFunc(URLPathPrefix + "/admin/",				backofficeMain)
-	
 
-	go paralelate()
+	go paralelate() // run everything but the kitchen sink in parallel; yay goroutines!
 	
     err = http.ListenAndServe(ServerPort, nil) // set listen port
     checkErr(err)

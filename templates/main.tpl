@@ -13,6 +13,21 @@
                         Header path prefix is: {{.URLPathPrefix}} and<br />
 						my content is: <br />
                         {{.Content}}
+                        <h2>Statistics</h2>
+                        <ul>
+	                        <li>
+	                        	{{.Agents}}
+	                        </li>
+	                        <li>
+	                        	{{.Inventory}}
+	                        </li>
+	                        <li>
+	                        	{{.Positions}}
+	                        </li>
+	                        <li>
+	                        	{{.Obstacles}}
+	                        </li>
+                        </ul>
                     </div>
                     <!-- /.col-lg-12 -->
                 </div>

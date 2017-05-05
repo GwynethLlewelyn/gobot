@@ -2,13 +2,14 @@
 package main
 
 import (
-//	"database/sql"
+	"database/sql"
 	"fmt"
-//	_ "github.com/mattn/go-sqlite3"
+	_ "github.com/mattn/go-sqlite3"
 	"net/http"
 	"html/template"
 //	"os"
 //	"strings"
+	"strconv"
 //	"crypto/md5"
 //	"encoding/hex"
 //	"log"
@@ -50,16 +51,63 @@ func (gt *GobotTemplatesType)gobotRenderer(w http.ResponseWriter, tplName string
 	return err
 }
 
-// backofficeMain is the main page, probably will have some statistics and such
+// backofficeMain is the main page, has some minor statistics, may do this fancier later on
 func backofficeMain(w http.ResponseWriter, r *http.Request) {
 	// let's load the main template for now, just to make sure this works
 	fmt.Println("Entered backoffice main func for URL:", r.URL, "URLPathPrefix is:", URLPathPrefix)
 	
+	// Open database just to gather some statistics
+	db, err := sql.Open(PDO_Prefix, SQLiteDBFilename) // presumes sqlite3 for now
+	checkErr(err)
+
+	var (
+		cnt int
+		strAgents, strInventory, strPositions, strObstacles string
+	)
+		
+	err = db.QueryRow("select count(*) from Agents").Scan(&cnt)
+	checkErr(err)	
+	if (cnt != 0) {
+		strAgents = "Agents: " + strconv.Itoa(cnt)
+	} else {
+		strAgents = "No Agents."
+	}
+	
+	err = db.QueryRow("select count(*) from Inventory").Scan(&cnt)
+	checkErr(err)	
+	if (cnt != 0) {
+		strInventory = "Inventory items: " + strconv.Itoa(cnt)
+	} else {
+		strInventory = "No Inventory items."
+	}
+
+	err = db.QueryRow("select count(*) from Positions").Scan(&cnt)
+	checkErr(err)	
+	if (cnt != 0) {
+		strPositions = "Positions: " + strconv.Itoa(cnt)
+	} else {
+		strPositions = "No Positions."
+	}
+
+	err = db.QueryRow("select count(*) from Obstacles").Scan(&cnt)
+	checkErr(err)	
+	if (cnt != 0) {
+		strObstacles = "Obstacles: " + strconv.Itoa(cnt)
+	} else {
+		strObstacles = "No Obstacles."
+	}
+
+	db.Close()
+		
 	tplParams := templateParameters{ "Title": "Gobot Administrator Panel - main",
-			"Content": "Hi there, this is the main template",
+			"Content": "This is trash",
+			"Agents": strAgents,
+			"Inventory": strInventory,
+			"Positions": strPositions,
+			"Obstacles": strObstacles,
 			"URLPathPrefix": URLPathPrefix,
 	}
-	err := GobotTemplates.gobotRenderer(w, "main", tplParams)
+	err = GobotTemplates.gobotRenderer(w, "main", tplParams)
 	checkErr(err)
 	return
 }
@@ -84,8 +132,22 @@ func backofficeObjects(w http.ResponseWriter, r *http.Request) {
 	tplParams := templateParameters{ "Title": "Gobot Administrator Panel - objects",
 			"Content": "Hi there, this is the objects template",
 			"URLPathPrefix": URLPathPrefix,
+			"gobotJS": "objects.js",
 	}
+	
 	err := GobotTemplates.gobotRenderer(w, "objects", tplParams)
+	checkErr(err)
+	return
+}
+
+// backofficeLogin deals with authentication (not implemented yet)
+func backofficeLogin(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("Entered backoffice login for URL:", r.URL)
+	
+	tplParams := templateParameters{ "Title": "Gobot Administrator Panel - login",
+			"URLPathPrefix": URLPathPrefix,
+	}
+	err := GobotTemplates.gobotRenderer(w, "login", tplParams)
 	checkErr(err)
 	return
 }
