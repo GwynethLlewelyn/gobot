@@ -1,4 +1,4 @@
-{{ define "agents" }}
+{{ define "positions" }}
 {{ template "header" .}}
     <div id="wrapper">
 
@@ -10,8 +10,8 @@
                 <div class="row">
                     <div class="col-lg-12">
                         <h1 class="page-header">{{.Title}}</h1>
-						<div id="agentGrid" style="height: 440px;" class="ag-fresh"></div>
-                    </div>
+                        <div id="positionGrid" style="height: 440px;" class="ag-fresh"></div>
+                	</div>
                     <!-- /.col-lg-12 -->
                 </div>
                 <!-- /.row -->
@@ -22,5 +22,6 @@
 
     </div>
     <!-- /#wrapper -->
+
 {{ template "footer" .}}
 {{ end }}

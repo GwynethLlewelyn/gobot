@@ -20,7 +20,13 @@
                             <a href="/go/admin/agents/"><i class="fa fa-android fa-fw"></i> Agents</a>
                         </li>
                         <li>
-                            <a href="/go/admin/objects/"><i class="fa fa-cubes fa-fw"></i> Objects</a>
+                            <a href="/go/admin/positions/"><i class="fa fa-codepen fa-fw"></i> Positions</a>
+                        </li>
+                        <li>
+                            <a href="/go/admin/inventory/"><i class="fa fa-folder-open-o fa-fw"></i> Content/Inventory</a>
+                        </li>
+                        <li>
+                            <a href="/go/admin/objects/"><i class="fa fa-cubes fa-fw"></i> Obstacles (Objects)</a>
                         </li>
                     </ul>
                 </div>

@@ -54,11 +54,13 @@ func (gt *GobotTemplatesType)gobotRenderer(w http.ResponseWriter, tplName string
 // backofficeMain is the main page, has some minor statistics, may do this fancier later on
 func backofficeMain(w http.ResponseWriter, r *http.Request) {
 	// let's load the main template for now, just to make sure this works
-	fmt.Println("Entered backoffice main func for URL:", r.URL, "URLPathPrefix is:", URLPathPrefix)
+//	fmt.Println("Entered backoffice main func for URL:", r.URL, "URLPathPrefix is:", URLPathPrefix)
 	
 	// Open database just to gather some statistics
 	db, err := sql.Open(PDO_Prefix, SQLiteDBFilename) // presumes sqlite3 for now
 	checkErr(err)
+
+	defer db.Close()
 
 	var (
 		cnt int
@@ -96,8 +98,6 @@ func backofficeMain(w http.ResponseWriter, r *http.Request) {
 	} else {
 		strObstacles = "No Obstacles."
 	}
-
-	db.Close()
 		
 	tplParams := templateParameters{ "Title": "Gobot Administrator Panel - main",
 			"Content": "This is trash",
@@ -114,31 +114,52 @@ func backofficeMain(w http.ResponseWriter, r *http.Request) {
 
 // backofficeAgents lists active agents
 func backofficeAgents(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("Entered backoffice agents func for URL:", r.URL)
-	
 	tplParams := templateParameters{ "Title": "Gobot Administrator Panel - agents",
 			"Content": "Hi there, this is the agents template",
 			"URLPathPrefix": URLPathPrefix,
+			"gobotJS": "agents.js",
 	}
 	err := GobotTemplates.gobotRenderer(w, "agents", tplParams)
 	checkErr(err)
 	return
 }
 
-// backofficeObjects lists objects seen as ibstacles
+// backofficeObjects lists objects seen as obstacles
 func backofficeObjects(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("Entered backoffice objects func for URL:", r.URL)
-	
 	tplParams := templateParameters{ "Title": "Gobot Administrator Panel - objects",
 			"Content": "Hi there, this is the objects template",
 			"URLPathPrefix": URLPathPrefix,
 			"gobotJS": "objects.js",
-	}
-	
+	}	
 	err := GobotTemplates.gobotRenderer(w, "objects", tplParams)
 	checkErr(err)
 	return
 }
+
+// backofficePositions lists Positions
+func backofficePositions(w http.ResponseWriter, r *http.Request) {
+	tplParams := templateParameters{ "Title": "Gobot Administrator Panel - positions",
+			"Content": "Hi there, this is the positions template",
+			"URLPathPrefix": URLPathPrefix,
+			"gobotJS": "positions.js",
+	}
+	err := GobotTemplates.gobotRenderer(w, "positions", tplParams)
+	checkErr(err)
+	return
+}
+
+// backofficeInventory lists the content or inventory currently stored on objects
+func backofficeInventory(w http.ResponseWriter, r *http.Request) {
+	tplParams := templateParameters{ "Title": "Gobot Administrator Panel - inventory",
+			"Content": "Hi there, this is the inventory template",
+			"URLPathPrefix": URLPathPrefix,
+			"gobotJS": "inventory.js",
+	}
+	err := GobotTemplates.gobotRenderer(w, "inventory", tplParams)
+	checkErr(err)
+	return
+}
+
 
 // backofficeLogin deals with authentication (not implemented yet)
 func backofficeLogin(w http.ResponseWriter, r *http.Request) {

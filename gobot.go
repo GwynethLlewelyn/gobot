@@ -85,7 +85,7 @@ func main() {
 	
 	db.Close()
 	
-	fmt.Println("\n\nStarting Gobot application at port", ServerPort, "\nfor URL:", URLPathPrefix)
+	fmt.Println("\n\nDatabase tests ended.\n\nStarting Gobot application at port", ServerPort, "\nfor URL:", URLPathPrefix)
 	
 	// this was just to make tests, now start the web server
 	
@@ -117,7 +117,16 @@ func main() {
 	http.HandleFunc(URLPathPrefix + "/admin/agents/",		backofficeAgents)
 	http.HandleFunc(URLPathPrefix + "/admin/login/",		backofficeLogin) // unimplemented yet
 	http.HandleFunc(URLPathPrefix + "/admin/objects/",		backofficeObjects)
+	http.HandleFunc(URLPathPrefix + "/admin/positions/",	backofficePositions)
+	http.HandleFunc(URLPathPrefix + "/admin/inventory/",	backofficeInventory)
 	http.HandleFunc(URLPathPrefix + "/admin/",				backofficeMain)
+	
+	// deal with agGrid UI elements
+	
+	http.HandleFunc(URLPathPrefix + "/uiObjects/",			uiObjects)
+	http.HandleFunc(URLPathPrefix + "/uiAgents/",			uiAgents)
+	http.HandleFunc(URLPathPrefix + "/uiPositions/",		uiPositions)
+	http.HandleFunc(URLPathPrefix + "/uiInventory/",		uiInventory)
 
 	go paralelate() // run everything but the kitchen sink in parallel; yay goroutines!
 	
