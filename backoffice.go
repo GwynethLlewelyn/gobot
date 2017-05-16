@@ -44,7 +44,6 @@ func (gt *GobotTemplatesType)gobotRenderer(w http.ResponseWriter, tplName string
 // backofficeMain is the main page, has some minor statistics, may do this fancier later on
 func backofficeMain(w http.ResponseWriter, r *http.Request) {
 	// let's load the main template for now, just to make sure this works
-//	fmt.Println("Entered backoffice main func for URL:", r.URL, "URLPathPrefix is:", URLPathPrefix)
 	
 	// Open database just to gather some statistics
 	db, err := sql.Open(PDO_Prefix, SQLiteDBFilename) // presumes sqlite3 for now
