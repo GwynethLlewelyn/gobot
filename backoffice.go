@@ -36,16 +36,6 @@ func (gt *GobotTemplatesType)init(globbedPath string) error {
 //  this is mostly to deal with code duplication 
 func (gt *GobotTemplatesType)gobotRenderer(w http.ResponseWriter, tplName string, tplParams templateParameters) error {
 	var err error
-//	err := gt.ExecuteTemplate(w, "header", tplParams)
-//	if (err != nil) { return err }
-//	err = gt.ExecuteTemplate(w, "navigation", tplParams)
-//	if (err != nil) { return err }
-//	err = gt.ExecuteTemplate(w, "top-menu", tplParams)
-//	if (err != nil) { return err }
-//	err = gt.ExecuteTemplate(w, "sidebar-left-menu", tplParams)
-//	if (err != nil) { return err }
-//	err = gt.ExecuteTemplate(w, "footer", tplParams)
-//	if (err != nil) { return err }
 
     err = gt.ExecuteTemplate(w, tplName, tplParams)
 	return err
