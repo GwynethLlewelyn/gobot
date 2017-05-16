@@ -129,6 +129,7 @@ func main() {
 	http.HandleFunc(URLPathPrefix + "/uiInventory/",		uiInventory)
 
 	go paralelate() // run everything but the kitchen sink in parallel; yay goroutines!
+	// very likely we will open the database, look at all agents, and run a goroutine for each (20170516)
 	
     err = http.ListenAndServe(ServerPort, nil) // set listen port
     checkErr(err)
