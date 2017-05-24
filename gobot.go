@@ -124,6 +124,7 @@ func main() {
 	// deal with agGrid UI elements
 	
 	http.HandleFunc(URLPathPrefix + "/uiObjects/",			uiObjects)
+	http.HandleFunc(URLPathPrefix + "/uiObjectsUpdate/",	uiObjectsUpdate) // to change the database manually
 	http.HandleFunc(URLPathPrefix + "/uiAgents/",			uiAgents)
 	http.HandleFunc(URLPathPrefix + "/uiPositions/",		uiPositions)
 	http.HandleFunc(URLPathPrefix + "/uiInventory/",		uiInventory)
@@ -160,8 +161,14 @@ func expandPath(path string) (string, error) {
 // paralelate is a first attempt at a goroutine
 func paralelate() {
 	fmt.Println("Testing parallelism...")
-    for x := 0;x < 100; x++ {
-	    fmt.Print(x)
+    for true {
+	    fmt.Print("\b|")
+	    time.Sleep(1000 * time.Millisecond)
+	    fmt.Print("\b/")
+	    time.Sleep(1000 * time.Millisecond)
+	    fmt.Print("\b-")
+	    time.Sleep(1000 * time.Millisecond)
+	    fmt.Print("\b\\")
 	    time.Sleep(1000 * time.Millisecond)
     }
     fmt.Println("Done! (But I'm hopefully still serving requests)")

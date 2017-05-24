@@ -123,7 +123,7 @@ func updateSensor(w http.ResponseWriter, r *http.Request) {
 		
 		defer db.Close()
 		
-		stmt, err := db.Prepare("REPLACE INTO Obstacles (`UUID`, `Name`, `BotKey`, `BotName`, `Type`, `Origin`, `Position`, `Rotation`, `Velocity`, `Phantom`, `Prims`, `BBHi`, `BBLo`, `LastUpdate`) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?");
+		stmt, err := db.Prepare("REPLACE INTO Obstacles (`UUID`, `Name`, `BotKey`, `BotName`, `Type`, `Origin`, `Position`, `Rotation`, `Velocity`, `Phantom`, `Prims`, `BBHi`, `BBLo`, `LastUpdate`) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
 		if err != nil {
 			http.Error(w, fmt.Sprintf("Replace prepare failed: %s\n", err), http.StatusServiceUnavailable)
 			return

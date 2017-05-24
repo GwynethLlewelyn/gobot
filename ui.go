@@ -6,28 +6,30 @@ import (
 	"fmt"
 	"encoding/json"
 	"net/http"
+	"io/ioutil"
 )
+
+// objectType is a struct to hold data retrieved from the database, used by several functions (including JSON)
+type objectType struct {
+	UUID string
+	Name string
+	BotKey string
+	BotName string
+	Type string // `json:"string"`
+	Position string
+	Rotation string
+	Velocity string
+	LastUpdate string
+	Origin string
+	Phantom string // `json:"string"`
+	Prims string // `json:"string"`
+	BBHi string
+	BBLo string
+}
+
 
 // uiObjects creates a JSON representation of the Obstacles table and spews it out
 func uiObjects(w http.ResponseWriter, r *http.Request) {
-// struct to hold data retrieved from the database
-	type objectType struct {
-		UUID string
-		Name string
-		BotKey string
-		BotName string
-		Type int
-		Position string
-		Rotation string
-		Velocity string
-		LastUpdate string
-		Origin string
-		Phantom int
-		Prims int
-		BBHi string
-		BBLo string
-	}
-
 	var (
 		rowArr []interface{}
 		Object objectType
@@ -73,6 +75,53 @@ func uiObjects(w http.ResponseWriter, r *http.Request) {
 		//if (err == nil) { fmt.Printf("Wrote %d bytes to interface\n", n) } else { checkErr(err) }
 		checkErr(err)
 	}
+	return
+}
+
+// uiObjectsUpdate receives a JSON representation of one row (from the agGrid) in order to update our database
+func uiObjectsUpdate(w http.ResponseWriter, r *http.Request) {
+	body, err := ioutil.ReadAll(r.Body) // from https://stackoverflow.com/questions/15672556/handling-json-post-request-in-go (20170524)
+    if err != nil {
+        panic(err)
+    }
+	// fmt.Println("\nBody is >>", string(body), "<<")
+	var obj objectType
+    err = json.Unmarshal(body, &obj)
+    if err != nil {
+        panic(err)
+    }
+    fmt.Println("\nJSON decoded body is >>", obj, "<<")
+    
+    // update database
+    // open database connection and see if we can update the inventory for this object
+	db, err := sql.Open(PDO_Prefix, SQLiteDBFilename)
+	
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Connect failed: %s\n", err), http.StatusServiceUnavailable)
+		fmt.Printf("Connect failed: %s\n", err)
+		return
+	}
+	
+	defer db.Close()
+	
+	stmt, err := db.Prepare("REPLACE INTO Obstacles (`UUID`, `Name`, `BotKey`, `BotName`, `Type`, `Position`, `Rotation`, `Velocity`, `LastUpdate`, `Origin`, `Phantom`, `Prims`, `BBHi`, `BBLo`) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Replace prepare failed: %s\n", err), http.StatusServiceUnavailable)
+		fmt.Printf("Replace prepare failed: %s\n", err)
+		return
+	}
+
+	_, err = stmt.Exec(obj.UUID, obj.Name, obj.BotKey, obj.BotName, obj.Type, obj.Position,
+		obj.Rotation, obj.Velocity, obj.LastUpdate, obj.Origin, obj.Phantom, obj.Prims, obj.BBHi, obj.BBLo)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Replace exec failed: %s\n", err), http.StatusServiceUnavailable)
+		fmt.Printf("Replace exec failed: %s\n", err)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-type", "text/plain; charset=utf-8")
+	fmt.Fprintln(w, obj, "successfully updated.")
+	fmt.Println(obj, "successfully updated.")
 	return
 }
 
