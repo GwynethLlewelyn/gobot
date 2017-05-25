@@ -14,19 +14,19 @@
                             <!-- /input-group -->
                         </li>
                         <li>
-                            <a href="/go/admin/"><i class="fa fa-dashboard fa-fw"></i> Dashboard</a>
+                            <a href="{{.URLPathPrefix}}/admin/"><i class="fa fa-dashboard fa-fw"></i> Dashboard</a>
                         </li>
                         <li>
-                            <a href="/go/admin/agents/"><i class="fa fa-android fa-fw"></i> Agents</a>
+                            <a href="{{.URLPathPrefix}}/admin/agents/"><i class="fa fa-android fa-fw"></i> Agents</a>
                         </li>
                         <li>
-                            <a href="/go/admin/positions/"><i class="fa fa-codepen fa-fw"></i> Positions</a>
+                            <a href="{{.URLPathPrefix}}/admin/positions/"><i class="fa fa-codepen fa-fw"></i> Positions</a>
                         </li>
                         <li>
-                            <a href="/go/admin/inventory/"><i class="fa fa-folder-open-o fa-fw"></i> Content/Inventory</a>
+                            <a href="{{.URLPathPrefix}}/admin/inventory/"><i class="fa fa-folder-open-o fa-fw"></i> Content/Inventory</a>
                         </li>
                         <li>
-                            <a href="/go/admin/objects/"><i class="fa fa-cubes fa-fw"></i> Obstacles (Objects)</a>
+                            <a href="{{.URLPathPrefix}}/admin/objects/"><i class="fa fa-cubes fa-fw"></i> Obstacles (Objects)</a>
                         </li>
                     </ul>
                 </div>

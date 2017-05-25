@@ -67,4 +67,5 @@
 </head>
 
 <body>
+<span id="URLPathPrefix" hidden>{{.URLPathPrefix}}</span>
 {{ end }}
