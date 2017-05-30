@@ -90,7 +90,7 @@ func uiObjectsUpdate(w http.ResponseWriter, r *http.Request) {
     if err != nil {
         panic(err)
     }
-    fmt.Println("\nJSON decoded body is >>", obj, "<<")
+    //fmt.Println("\nJSON decoded body is >>", obj, "<<")
     
     // update database
     // open database connection and see if we can update the inventory for this object
@@ -118,36 +118,37 @@ func uiObjectsUpdate(w http.ResponseWriter, r *http.Request) {
 		fmt.Printf("Replace exec failed: %s\n", err)
 		return
 	}
-	w.WriteHeader(http.StatusOK)
-	w.Header().Set("Content-type", "text/plain; charset=utf-8")
-	fmt.Fprintln(w, obj, "successfully updated.")
-	fmt.Println(obj, "successfully updated.")
+	// w.WriteHeader(http.StatusOK)
+	// w.Header().Set("Content-type", "text/plain; charset=utf-8")
+	// fmt.Fprintln(w, obj, "successfully updated.")
+	// fmt.Println(obj, "successfully updated.")
 	return
+}
+
+// agentType is a struct to hold data retrieved from the database
+type agentType struct {
+	UUID string
+	Name string
+	OwnerName string
+	OwnerKey string
+	Location string
+	Position string
+	Rotation string
+	Velocity string
+	Energy string
+	Money string
+	Happiness string
+	Class string
+	SubType string
+	PermURL string
+	LastUpdate string
+	BestPath string
+	SecondBestPath string
+	CurrentTarget string
 }
 
 // uiAgents creates a JSON representation of the Agents table and spews it out
 func uiAgents(w http.ResponseWriter, r *http.Request) {
-	type agentType struct {
-		UUID string
-		Name string
-		OwnerName string
-		OwnerKey string
-		Location string
-		Position string
-		Rotation string
-		Velocity string
-		Energy string
-		Money string
-		Happiness string
-		Class string
-		SubType string
-		PermURL string
-		LastUpdate string
-		BestPath string
-		SecondBestPath string
-		CurrentTarget string
-	}
-
 	var (
 		rowArr []interface{}
 		Agent agentType
@@ -194,6 +195,48 @@ func uiAgents(w http.ResponseWriter, r *http.Request) {
 	}
 	return
 }
+
+// uiAgentsUpdate receives a JSON representation of one row (from the agGrid) in order to update our database
+func uiAgentsUpdate(w http.ResponseWriter, r *http.Request) {
+	body, err := ioutil.ReadAll(r.Body)
+    if err != nil {
+        panic(err)
+    }
+	var ag agentType
+    err = json.Unmarshal(body, &ag)
+    if err != nil {
+        panic(err)
+    }
+    
+    db, err := sql.Open(PDO_Prefix, SQLiteDBFilename)
+	
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Connect failed: %s\n", err), http.StatusServiceUnavailable)
+		fmt.Printf("Connect failed: %s\n", err)
+		return
+	}
+	
+	defer db.Close()
+	
+	stmt, err := db.Prepare("REPLACE INTO Agents (`UUID`, `Name`, `OwnerName`, `OwnerKey`, `Location`, `Position`, `Rotation`, `Velocity`, `Energy`, `Money`, `Happiness`, `Class`, `SubType`, `PermURL`, `LastUpdate`, `BestPath`, `SecondBestPath`, `CurrentTarget`) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Replace prepare failed: %s\n", err), http.StatusServiceUnavailable)
+		fmt.Printf("Replace prepare failed: %s\n", err)
+		return
+	}
+
+	_, err = stmt.Exec(ag.UUID, ag.Name, ag.OwnerName, ag.OwnerKey, ag.Location, ag.Position,
+		ag.Rotation, ag.Velocity, ag.Energy, ag.Money, ag.Happiness, ag.Class, ag.SubType, ag.PermURL,
+		ag.LastUpdate, ag.BestPath, ag.SecondBestPath, ag.CurrentTarget)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Replace exec failed: %s\n", err), http.StatusServiceUnavailable)
+		fmt.Printf("Replace exec failed: %s\n", err)
+		return
+	}
+
+	return
+}
+
 
 // uiPositions creates a JSON representation of the Positions table and spews it out
 func uiPositions(w http.ResponseWriter, r *http.Request) {

@@ -5,7 +5,7 @@
 {{ template "navigation" .}}
 
         <!-- Page Content -->
-        <div id="page-wrapper">
+        <div id="page-wrapper mychange">
             <div class="container-fluid">
                 <div class="row">
                     <div class="col-lg-12">
@@ -22,6 +22,5 @@
 
     </div>
     <!-- /#wrapper -->
-
 {{ template "footer" .}}
 {{ end }}

@@ -126,6 +126,7 @@ func main() {
 	http.HandleFunc(URLPathPrefix + "/uiObjects/",			uiObjects)
 	http.HandleFunc(URLPathPrefix + "/uiObjectsUpdate/",	uiObjectsUpdate) // to change the database manually
 	http.HandleFunc(URLPathPrefix + "/uiAgents/",			uiAgents)
+	http.HandleFunc(URLPathPrefix + "/uiAgentsUpdate/",		uiAgentsUpdate)
 	http.HandleFunc(URLPathPrefix + "/uiPositions/",		uiPositions)
 	http.HandleFunc(URLPathPrefix + "/uiInventory/",		uiInventory)
 
