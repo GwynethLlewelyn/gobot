@@ -27,7 +27,6 @@ type objectType struct {
 	BBLo string
 }
 
-
 // uiObjects creates a JSON representation of the Obstacles table and spews it out
 func uiObjects(w http.ResponseWriter, r *http.Request) {
 	var (
@@ -237,27 +236,27 @@ func uiAgentsUpdate(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
+// positionType is a struct to hold data retrieved from the database, used by several functions (including JSON)
+type positionType struct {
+	PermURL string
+	UUID string
+	Name string
+	OwnerName string
+	Location string
+	Position string
+	Rotation string
+	Velocity string
+	LastUpdate string
+	OwnerKey string
+	ObjectType string
+	ObjectClass string
+	RateEnergy string
+	RateMoney string
+	RateHappiness string
+}
 
 // uiPositions creates a JSON representation of the Positions table and spews it out
 func uiPositions(w http.ResponseWriter, r *http.Request) {
-	type positionType struct {
-		PermURL string
-		UUID string
-		Name string
-		OwnerName string
-		Location string
-		Position string
-		Rotation string
-		Velocity string
-		LastUpdate string
-		OwnerKey string
-		ObjectType string
-		ObjectClass string
-		RateEnergy string
-		RateMoney string
-		RateHappiness string
-	}
-
 	var (
 		rowArr []interface{}
 		Position positionType
@@ -303,16 +302,58 @@ func uiPositions(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
-// uiInventory creates a JSON representation of the Inventory table and spews it out
-func uiInventory(w http.ResponseWriter, r *http.Request) {
-	type inventoryType struct {
-		UUID string
-		Name string
-		Type string
-		LastUpdate string
-		Permissions string
+// uiPositionsUpdate receives a JSON representation of one row (from the agGrid) in order to update our database
+func uiPositionsUpdate(w http.ResponseWriter, r *http.Request) {
+	body, err := ioutil.ReadAll(r.Body)
+    if err != nil {
+        panic(err)
+    }
+	var pos positionType
+    err = json.Unmarshal(body, &pos)
+    if err != nil {
+        panic(err)
+    }
+    
+    db, err := sql.Open(PDO_Prefix, SQLiteDBFilename)
+	
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Connect failed: %s\n", err), http.StatusServiceUnavailable)
+		fmt.Printf("Connect failed: %s\n", err)
+		return
+	}
+	
+	defer db.Close()
+	
+	stmt, err := db.Prepare("REPLACE INTO Positions (`PermURL`, `UUID`, `Name`, `OwnerName`, `Location`, `Position`, `Rotation`, `Velocity`, `LastUpdate`, `OwnerKey`, `ObjectType`, `ObjectClass`, `RateEnergy`, `RateMoney`, `RateHappiness`) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Replace prepare failed: %s\n", err), http.StatusServiceUnavailable)
+		fmt.Printf("Replace prepare failed: %s\n", err)
+		return
 	}
 
+	_, err = stmt.Exec(pos.PermURL, pos.UUID, pos.Name, pos.OwnerName, pos.Location, pos.Position,
+		pos.Rotation, pos.Velocity, pos.LastUpdate, pos.OwnerKey, pos.ObjectType, pos.ObjectClass,
+		pos.RateEnergy, pos.RateMoney, pos.RateHappiness)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Replace exec failed: %s\n", err), http.StatusServiceUnavailable)
+		fmt.Printf("Replace exec failed: %s\n", err)
+		return
+	}
+
+	return
+}
+
+// inventoryType is a struct to hold data retrieved from the database, used by several functions (including JSON)
+type inventoryType struct {
+	UUID string
+	Name string
+	Type string
+	LastUpdate string
+	Permissions string
+}
+
+// uiInventory creates a JSON representation of the Inventory table and spews it out
+func uiInventory(w http.ResponseWriter, r *http.Request) {
 	var (
 		rowArr []interface{}
 		Inventory inventoryType
@@ -345,5 +386,44 @@ func uiInventory(w http.ResponseWriter, r *http.Request) {
 		_, err := fmt.Fprintf(w, "%s", data)
 		checkErr(err)
 	}
+	return
+}
+
+// uiInventoryUpdate receives a JSON representation of one row (from the agGrid) in order to update our database
+func uiInventoryUpdate(w http.ResponseWriter, r *http.Request) {
+	body, err := ioutil.ReadAll(r.Body)
+    if err != nil {
+        panic(err)
+    }
+	var inv inventoryType
+    err = json.Unmarshal(body, &inv)
+    if err != nil {
+        panic(err)
+    }
+    
+    db, err := sql.Open(PDO_Prefix, SQLiteDBFilename)
+	
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Connect failed: %s\n", err), http.StatusServiceUnavailable)
+		fmt.Printf("Connect failed: %s\n", err)
+		return
+	}
+	
+	defer db.Close()
+	
+	stmt, err := db.Prepare("REPLACE INTO Inventory (`UUID`, `Name`, `Type`, `LastUpdate`, `Permissions`) VALUES (?,?,?,?,?)");
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Replace prepare failed: %s\n", err), http.StatusServiceUnavailable)
+		fmt.Printf("Replace prepare failed: %s\n", err)
+		return
+	}
+
+	_, err = stmt.Exec(inv.UUID, inv.Name, inv.Type, inv.LastUpdate, inv.Permissions)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Replace exec failed: %s\n", err), http.StatusServiceUnavailable)
+		fmt.Printf("Replace exec failed: %s\n", err)
+		return
+	}
+
 	return
 }

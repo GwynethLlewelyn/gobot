@@ -128,7 +128,9 @@ func main() {
 	http.HandleFunc(URLPathPrefix + "/uiAgents/",			uiAgents)
 	http.HandleFunc(URLPathPrefix + "/uiAgentsUpdate/",		uiAgentsUpdate)
 	http.HandleFunc(URLPathPrefix + "/uiPositions/",		uiPositions)
+	http.HandleFunc(URLPathPrefix + "/uiPositionsUpdate/",	uiPositionsUpdate)
 	http.HandleFunc(URLPathPrefix + "/uiInventory/",		uiInventory)
+	http.HandleFunc(URLPathPrefix + "/uiInventoryUpdate/",	uiInventoryUpdate)
 
 	go paralelate() // run everything but the kitchen sink in parallel; yay goroutines!
 	// very likely we will open the database, look at all agents, and run a goroutine for each (20170516)
