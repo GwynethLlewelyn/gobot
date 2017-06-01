@@ -119,6 +119,7 @@ func main() {
 	http.HandleFunc(URLPathPrefix + "/admin/objects/",		backofficeObjects)
 	http.HandleFunc(URLPathPrefix + "/admin/positions/",	backofficePositions)
 	http.HandleFunc(URLPathPrefix + "/admin/inventory/",	backofficeInventory)
+	http.HandleFunc(URLPathPrefix + "/admin/commands/",		backofficeCommands)
 	http.HandleFunc(URLPathPrefix + "/admin/",				backofficeMain)
 	
 	// deal with agGrid UI elements

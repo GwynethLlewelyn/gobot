@@ -24,8 +24,11 @@
                     <a href="{{.URLPathPrefix}}/admin/inventory/"><i class="fa fa-folder-open-o fa-fw"></i> Content/Inventory</a>
                 </li>
                 <li>
-                    <a href="/go/admin/objects/"><i class="fa fa-cubes fa-fw"></i> Obstacles (Objects)</a>
+                    <a href="{{.URLPathPrefix}}/admin/objects/"><i class="fa fa-cubes fa-fw"></i> Obstacles (Objects)</a>
                 </li>
+                <li>
+                    <a href="{{.URLPathPrefix}}/admin/commands/"><i class="fa fa-terminal fa-fw"></i> Commands (to bot)</a>
+                </li>          
                 <li class="dropdown">
                     <a class="dropdown-toggle" data-toggle="dropdown" href="#">
                         <i class="fa fa-user fa-fw"></i> <i class="fa fa-caret-down"></i>

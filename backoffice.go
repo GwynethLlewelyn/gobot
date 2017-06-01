@@ -149,15 +149,35 @@ func backofficeInventory(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
-
 // backofficeLogin deals with authentication (not implemented yet)
 func backofficeLogin(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("Entered backoffice login for URL:", r.URL)
-	
-	tplParams := templateParameters{ "Title": "Gobot Administrator Panel - login",
+	fmt.Println("Entered backoffice login for URL:", r.URL, "using method:", r.Method)
+	if r.Method == "GET" {
+		tplParams := templateParameters{ "Title": "Gobot Administrator Panel - login",
+				"URLPathPrefix": URLPathPrefix,
+		}
+		err := GobotTemplates.gobotRenderer(w, "login", tplParams)
+		checkErr(err)
+	} else {
+		r.ParseForm()
+        // logic part of log in
+        fmt.Println("email:", r.Form["email"])
+        fmt.Println("password:", r.Form["password"])
+        fmt.Println("remember:", r.Form["remember"])
+        // we need to set a cookie here etc.
+        // redirect to home
+        http.Redirect(w, r, URLPathPrefix + "/admin", 302)
+	}
+	return
+}
+
+// backofficeInventory lists the content or inventory currently stored on objects
+func backofficeCommands(w http.ResponseWriter, r *http.Request) {
+	tplParams := templateParameters{ "Title": "Gobot Administrator Panel - commands",
+			"Content": "Blah",
 			"URLPathPrefix": URLPathPrefix,
 	}
-	err := GobotTemplates.gobotRenderer(w, "login", tplParams)
+	err := GobotTemplates.gobotRenderer(w, "commands", tplParams)
 	checkErr(err)
 	return
 }
