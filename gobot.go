@@ -18,7 +18,8 @@ var (
 	RootURL, SQLiteDBFilename, URLPathPrefix, PDO_Prefix, PathToStaticFiles, ServerPort string
 )
 
-type templateParameters map[string]string;
+//type templateParameters map[string]string
+type templateParameters map[string]interface{}
 
 func main() {
 	fmt.Print("Reading Gobot configuration...")
@@ -114,24 +115,24 @@ func main() {
 	// Deal with templated output for the admin back office, defined on backoffice.go
 	// For now this is crude, each page is really very similar, but there are not many so each will get its own handler function for now
 	
-	http.HandleFunc(URLPathPrefix + "/admin/agents/",		backofficeAgents)
-	http.HandleFunc(URLPathPrefix + "/admin/login/",		backofficeLogin) // unimplemented yet
-	http.HandleFunc(URLPathPrefix + "/admin/objects/",		backofficeObjects)
-	http.HandleFunc(URLPathPrefix + "/admin/positions/",	backofficePositions)
-	http.HandleFunc(URLPathPrefix + "/admin/inventory/",	backofficeInventory)
-	http.HandleFunc(URLPathPrefix + "/admin/commands/",		backofficeCommands)
-	http.HandleFunc(URLPathPrefix + "/admin/",				backofficeMain)
+	http.HandleFunc(URLPathPrefix + "/admin/agents/",			backofficeAgents)
+	http.HandleFunc(URLPathPrefix + "/admin/login/",			backofficeLogin) // unimplemented yet
+	http.HandleFunc(URLPathPrefix + "/admin/objects/",			backofficeObjects)
+	http.HandleFunc(URLPathPrefix + "/admin/positions/",		backofficePositions)
+	http.HandleFunc(URLPathPrefix + "/admin/inventory/",		backofficeInventory)
+	http.HandleFunc(URLPathPrefix + "/admin/commands/exec/",	backofficeCommandsExec)
+	http.HandleFunc(URLPathPrefix + "/admin/commands/",			backofficeCommands)
+	http.HandleFunc(URLPathPrefix + "/admin/",					backofficeMain)
 	
 	// deal with agGrid UI elements
-	
-	http.HandleFunc(URLPathPrefix + "/uiObjects/",			uiObjects)
-	http.HandleFunc(URLPathPrefix + "/uiObjectsUpdate/",	uiObjectsUpdate) // to change the database manually
-	http.HandleFunc(URLPathPrefix + "/uiAgents/",			uiAgents)
-	http.HandleFunc(URLPathPrefix + "/uiAgentsUpdate/",		uiAgentsUpdate)
-	http.HandleFunc(URLPathPrefix + "/uiPositions/",		uiPositions)
-	http.HandleFunc(URLPathPrefix + "/uiPositionsUpdate/",	uiPositionsUpdate)
-	http.HandleFunc(URLPathPrefix + "/uiInventory/",		uiInventory)
-	http.HandleFunc(URLPathPrefix + "/uiInventoryUpdate/",	uiInventoryUpdate)
+	http.HandleFunc(URLPathPrefix + "/uiObjects/",				uiObjects)
+	http.HandleFunc(URLPathPrefix + "/uiObjectsUpdate/",		uiObjectsUpdate) // to change the database manually
+	http.HandleFunc(URLPathPrefix + "/uiAgents/",				uiAgents)
+	http.HandleFunc(URLPathPrefix + "/uiAgentsUpdate/",			uiAgentsUpdate)
+	http.HandleFunc(URLPathPrefix + "/uiPositions/",			uiPositions)
+	http.HandleFunc(URLPathPrefix + "/uiPositionsUpdate/",		uiPositionsUpdate)
+	http.HandleFunc(URLPathPrefix + "/uiInventory/",			uiInventory)
+	http.HandleFunc(URLPathPrefix + "/uiInventoryUpdate/",		uiInventoryUpdate)
 
 	go paralelate() // run everything but the kitchen sink in parallel; yay goroutines!
 	// very likely we will open the database, look at all agents, and run a goroutine for each (20170516)

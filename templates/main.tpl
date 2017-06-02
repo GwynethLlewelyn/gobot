@@ -10,9 +10,7 @@
                 <div class="row">
                     <div class="col-lg-12">
                         <h1 class="page-header">{{.Title}}</h1>
-                        Header path prefix is: {{.URLPathPrefix}} and<br />
-						my content is: <br />
-                        {{.Content}}
+                        {{ if .Agents }}
                         <h2>Statistics</h2>
                         <ul>
 	                        <li>
@@ -28,6 +26,10 @@
 	                        	{{.Obstacles}}
 	                        </li>
                         </ul>
+                        {{ end }}
+                        {{ if .Content }}
+                        {{ .Content }}
+                        {{ end }}
                     </div>
                     <!-- /.col-lg-12 -->
                 </div>

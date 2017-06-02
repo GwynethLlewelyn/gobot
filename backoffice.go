@@ -89,7 +89,6 @@ func backofficeMain(w http.ResponseWriter, r *http.Request) {
 	}
 		
 	tplParams := templateParameters{ "Title": "Gobot Administrator Panel - main",
-			"Content": "This is trash",
 			"Agents": strAgents,
 			"Inventory": strInventory,
 			"Positions": strPositions,
@@ -171,13 +170,68 @@ func backofficeLogin(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
-// backofficeInventory lists the content or inventory currently stored on objects
+// backofficeCommands is a form-based interface to give commands to individual bots
 func backofficeCommands(w http.ResponseWriter, r *http.Request) {
+	// Collect a list of existing bots and their PermURLs for the form
+	
+	db, err := sql.Open(PDO_Prefix, SQLiteDBFilename)
+	checkErr(err)
+
+	// query
+	rows, err := db.Query("SELECT Name, PermURL FROM Agents ORDER BY Name")
+	checkErr(err)
+ 	
+	var name, permURL, tmpStr = "", "", ""
+
+	for rows.Next() {
+		err = rows.Scan(&name, &permURL)
+		checkErr(err)
+		tmpStr += "\t\t\t\t\t\t\t\t\t\t\t<option value=\"" + permURL + "\">" + name + "|" + permURL + "</option>\n"
+	}
+	
+	db.Close()
+	var AvatarPermURLOptions template.HTML // trick to get valid HTML not to be escaped by the Go template engine
+	
+	AvatarPermURLOptions = template.HTML(tmpStr)
+	
+	// fmt.Println("AvatarPermURLOptions:", AvatarPermURLOptions)
+	
 	tplParams := templateParameters{ "Title": "Gobot Administrator Panel - commands",
 			"Content": "Blah",
 			"URLPathPrefix": URLPathPrefix,
+			"AvatarPermURLOptions": AvatarPermURLOptions,
 	}
-	err := GobotTemplates.gobotRenderer(w, "commands", tplParams)
+	err = GobotTemplates.gobotRenderer(w, "commands", tplParams)
+	checkErr(err)
+	return
+}
+
+// backofficeCommandsExec gets the user-selected params from the backofficeCommands form and sends them to the user, giving feedback
+//  This may change in the future, e.g. using Ajax to get inline results on the form
+func backofficeCommandsExec(w http.ResponseWriter, r *http.Request) {
+	err := r.ParseForm()
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Extracting parameters failed: %s\n", err), http.StatusServiceUnavailable)
+		return
+	}
+	
+	var tmpStr = ""
+	
+	for key, values := range r.Form {   // range over map
+		for _, value := range values {    // range over []string
+			tmpStr += "<b>" + key + "</b> -> " + value + "<br />"
+  		}
+	}
+	
+//	var content template.HTML
+	
+	var content = template.HTML(tmpStr)
+	
+	tplParams := templateParameters{ "Title": "Gobot Administrator Panel - Commands Exec Result",
+		"Content": content,
+		"URLPathPrefix": URLPathPrefix,
+	}
+	err = GobotTemplates.gobotRenderer(w, "main", tplParams)
 	checkErr(err)
 	return
 }
