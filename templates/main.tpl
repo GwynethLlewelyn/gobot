@@ -27,6 +27,9 @@
 	                        </li>
                         </ul>
                         {{ end }}
+                        {{ if .SetCookie }}
+                        <p>Welcome, {{ .SetCookie }}</p>
+                        {{ end }}
                         {{ if .Content }}
                         {{ .Content }}
                         {{ end }}

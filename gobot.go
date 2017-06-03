@@ -116,13 +116,15 @@ func main() {
 	// For now this is crude, each page is really very similar, but there are not many so each will get its own handler function for now
 	
 	http.HandleFunc(URLPathPrefix + "/admin/agents/",			backofficeAgents)
-	http.HandleFunc(URLPathPrefix + "/admin/login/",			backofficeLogin) // unimplemented yet
+	http.HandleFunc(URLPathPrefix + "/admin/logout/",			backofficeLogout)
+	http.HandleFunc(URLPathPrefix + "/admin/login/",			backofficeLogin) // probably not necessary
 	http.HandleFunc(URLPathPrefix + "/admin/objects/",			backofficeObjects)
 	http.HandleFunc(URLPathPrefix + "/admin/positions/",		backofficePositions)
 	http.HandleFunc(URLPathPrefix + "/admin/inventory/",		backofficeInventory)
 	http.HandleFunc(URLPathPrefix + "/admin/commands/exec/",	backofficeCommandsExec)
 	http.HandleFunc(URLPathPrefix + "/admin/commands/",			backofficeCommands)
 	http.HandleFunc(URLPathPrefix + "/admin/",					backofficeMain)
+	http.HandleFunc(URLPathPrefix + "/",						backofficeLogin) // if not auth, then get auth
 	
 	// deal with agGrid UI elements
 	http.HandleFunc(URLPathPrefix + "/uiObjects/",				uiObjects)

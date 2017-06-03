@@ -7,6 +7,7 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 	"net/http"
 	"html/template"
+	"github.com/gorilla/securecookie"
 //	"os"
 //	"strings"
 	"strconv"
@@ -34,12 +35,61 @@ func (gt *GobotTemplatesType)init(globbedPath string) error {
 
 // gobotRenderer assembles the correct templates together and executes them
 //  this is mostly to deal with code duplication 
-func (gt *GobotTemplatesType)gobotRenderer(w http.ResponseWriter, tplName string, tplParams templateParameters) error {
-	var err error
+func (gt *GobotTemplatesType)gobotRenderer(w http.ResponseWriter, r *http.Request, tplName string, tplParams templateParameters) error {
+//	var err error
 
-    err = gt.ExecuteTemplate(w, tplName, tplParams)
+	// add cookie to all templates
+	tplParams["SetCookie"] =  getUserName(r)
+
+    err := gt.ExecuteTemplate(w, tplName, tplParams)
 	return err
 }
+
+// Auxiliary functions for session handling
+//  see https://mschoebel.info/2014/03/09/snippet-golang-webapp-login-logout/ (20170603)
+
+var cookieHandler = securecookie.New(		// from gorilla/securecookie
+    securecookie.GenerateRandomKey(64),
+    securecookie.GenerateRandomKey(32))
+
+func setSession(userName string, response http.ResponseWriter) {
+	value := map[string]string{
+		"name": userName,
+	}
+	if encoded, err := cookieHandler.Encode("session", value); err == nil {
+		cookie := &http.Cookie{
+			Name:	"session",
+			Value: encoded,
+			Path:	"/",
+		}
+		fmt.Println("Encoded cookie:", cookie)
+		http.SetCookie(response, cookie)
+	} else {
+		fmt.Println("Error encoding cookie:", err)
+	}
+ }
+ 
+func getUserName(request *http.Request) (userName string) {
+	if cookie, err := request.Cookie("session"); err == nil {
+		cookieValue := make(map[string]string)
+		if err = cookieHandler.Decode("session", cookie.Value, &cookieValue); err == nil {
+			userName = cookieValue["name"]
+		}
+	}
+	return userName
+}
+
+func clearSession(response http.ResponseWriter) {
+	cookie := &http.Cookie{
+		Name:	"session",
+		Value:	 "",
+		Path:	 "/",
+		MaxAge: -1,
+	}
+	http.SetCookie(response, cookie)
+}
+
+// Function handlers for requests
 
 // backofficeMain is the main page, has some minor statistics, may do this fancier later on
 func backofficeMain(w http.ResponseWriter, r *http.Request) {
@@ -87,15 +137,19 @@ func backofficeMain(w http.ResponseWriter, r *http.Request) {
 	} else {
 		strObstacles = "No Obstacles."
 	}
-		
+	
+//	var setCookie = getUserName(r)
+//	fmt.Println("The Cookie I got is:", setCookie, "!")
+	
 	tplParams := templateParameters{ "Title": "Gobot Administrator Panel - main",
 			"Agents": strAgents,
 			"Inventory": strInventory,
 			"Positions": strPositions,
 			"Obstacles": strObstacles,
 			"URLPathPrefix": URLPathPrefix,
+//			"SetCookie": setCookie,
 	}
-	err = GobotTemplates.gobotRenderer(w, "main", tplParams)
+	err = GobotTemplates.gobotRenderer(w, r, "main", tplParams)
 	checkErr(err)
 	return
 }
@@ -107,7 +161,7 @@ func backofficeAgents(w http.ResponseWriter, r *http.Request) {
 			"URLPathPrefix": URLPathPrefix,
 			"gobotJS": "agents.js",
 	}
-	err := GobotTemplates.gobotRenderer(w, "agents", tplParams)
+	err := GobotTemplates.gobotRenderer(w, r, "agents", tplParams)
 	checkErr(err)
 	return
 }
@@ -119,7 +173,7 @@ func backofficeObjects(w http.ResponseWriter, r *http.Request) {
 			"URLPathPrefix": URLPathPrefix,
 			"gobotJS": "objects.js",
 	}	
-	err := GobotTemplates.gobotRenderer(w, "objects", tplParams)
+	err := GobotTemplates.gobotRenderer(w, r, "objects", tplParams)
 	checkErr(err)
 	return
 }
@@ -131,7 +185,7 @@ func backofficePositions(w http.ResponseWriter, r *http.Request) {
 			"URLPathPrefix": URLPathPrefix,
 			"gobotJS": "positions.js",
 	}
-	err := GobotTemplates.gobotRenderer(w, "positions", tplParams)
+	err := GobotTemplates.gobotRenderer(w, r, "positions", tplParams)
 	checkErr(err)
 	return
 }
@@ -143,31 +197,51 @@ func backofficeInventory(w http.ResponseWriter, r *http.Request) {
 			"URLPathPrefix": URLPathPrefix,
 			"gobotJS": "inventory.js",
 	}
-	err := GobotTemplates.gobotRenderer(w, "inventory", tplParams)
+	err := GobotTemplates.gobotRenderer(w, r, "inventory", tplParams)
 	checkErr(err)
 	return
 }
 
-// backofficeLogin deals with authentication (not implemented yet)
+// backofficeLogin deals with authentication
 func backofficeLogin(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("Entered backoffice login for URL:", r.URL, "using method:", r.Method)
 	if r.Method == "GET" {
 		tplParams := templateParameters{ "Title": "Gobot Administrator Panel - login",
 				"URLPathPrefix": URLPathPrefix,
 		}
-		err := GobotTemplates.gobotRenderer(w, "login", tplParams)
+		err := GobotTemplates.gobotRenderer(w, r, "login", tplParams)
 		checkErr(err)
-	} else {
+	} else { // POST is assumed
 		r.ParseForm()
         // logic part of log in
-        fmt.Println("email:", r.Form["email"])
-        fmt.Println("password:", r.Form["password"])
-        fmt.Println("remember:", r.Form["remember"])
-        // we need to set a cookie here etc.
+        var email, password, remember = "", "", ""
+        email		= r.Form.Get("email")
+        password	= r.Form.Get("password")
+        remember	= r.Form.Get("remember")
+        
+        fmt.Println("email:", email)
+        fmt.Println("password:", password)
+        fmt.Println("remember:", remember)
+        
+        if email == "" || password == "" {
+	        http.Redirect(w, r, URLPathPrefix + "/admin", 302)        
+        }
+        
+        // Check username on database
+        // (not implemented but trivial)
+        
+        // we need to set a cookie here
+        setSession(email, w)
         // redirect to home
         http.Redirect(w, r, URLPathPrefix + "/admin", 302)
 	}
 	return
+}
+
+// backofficeLogout clears session and returns to login prompt
+func backofficeLogout(w http.ResponseWriter, r *http.Request) {
+	clearSession(w)
+	http.Redirect(w, r, URLPathPrefix + "/", 302)
 }
 
 // backofficeCommands is a form-based interface to give commands to individual bots
@@ -196,7 +270,7 @@ func backofficeCommands(w http.ResponseWriter, r *http.Request) {
 			"URLPathPrefix": URLPathPrefix,
 			"AvatarPermURLOptions": template.HTML(AvatarPermURLOptions), // trick to get valid HTML not to be escaped by the Go template engine
 	}
-	err = GobotTemplates.gobotRenderer(w, "commands", tplParams)
+	err = GobotTemplates.gobotRenderer(w, r, "commands", tplParams)
 	checkErr(err)
 	return
 }
@@ -222,7 +296,7 @@ func backofficeCommandsExec(w http.ResponseWriter, r *http.Request) {
 		"Content": template.HTML(content),
 		"URLPathPrefix": URLPathPrefix,
 	}
-	err = GobotTemplates.gobotRenderer(w, "main", tplParams)
+	err = GobotTemplates.gobotRenderer(w, r, "main", tplParams)
 	checkErr(err)
 	return
 }
