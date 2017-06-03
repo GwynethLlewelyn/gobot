@@ -181,12 +181,12 @@ func backofficeCommands(w http.ResponseWriter, r *http.Request) {
 	rows, err := db.Query("SELECT Name, PermURL FROM Agents ORDER BY Name")
 	checkErr(err)
  	
-	var name, permURL, tmpStr = "", "", ""
+	var name, permURL, AvatarPermURLOptions = "", "", ""
 
 	for rows.Next() {
 		err = rows.Scan(&name, &permURL)
 		checkErr(err)
-		tmpStr += "\t\t\t\t\t\t\t\t\t\t\t<option value=\"" + permURL + "\">" + name + "|" + permURL + "</option>\n"
+		AvatarPermURLOptions += "\t\t\t\t\t\t\t\t\t\t\t<option value=\"" + permURL + "\">" + name + "|" + permURL + "</option>\n"
 	}
 	
 	db.Close()
@@ -194,7 +194,7 @@ func backofficeCommands(w http.ResponseWriter, r *http.Request) {
 	tplParams := templateParameters{ "Title": "Gobot Administrator Panel - commands",
 			"Content": "Blah",
 			"URLPathPrefix": URLPathPrefix,
-			"AvatarPermURLOptions": template.HTML(tmpStr), // trick to get valid HTML not to be escaped by the Go template engine
+			"AvatarPermURLOptions": template.HTML(AvatarPermURLOptions), // trick to get valid HTML not to be escaped by the Go template engine
 	}
 	err = GobotTemplates.gobotRenderer(w, "commands", tplParams)
 	checkErr(err)
@@ -210,20 +210,16 @@ func backofficeCommandsExec(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	
-	var tmpStr = ""
+	var content = ""
 	
 	for key, values := range r.Form {   // range over map
 		for _, value := range values {    // range over []string
-			tmpStr += "<b>" + key + "</b> -> " + value + "<br />"
+			content += "<b>" + key + "</b> -> " + value + "<br />"
   		}
 	}
 	
-//	var content template.HTML
-	
-	var content = template.HTML(tmpStr)
-	
 	tplParams := templateParameters{ "Title": "Gobot Administrator Panel - Commands Exec Result",
-		"Content": content,
+		"Content": template.HTML(content),
 		"URLPathPrefix": URLPathPrefix,
 	}
 	err = GobotTemplates.gobotRenderer(w, "main", tplParams)
