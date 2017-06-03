@@ -190,16 +190,11 @@ func backofficeCommands(w http.ResponseWriter, r *http.Request) {
 	}
 	
 	db.Close()
-	var AvatarPermURLOptions template.HTML // trick to get valid HTML not to be escaped by the Go template engine
-	
-	AvatarPermURLOptions = template.HTML(tmpStr)
-	
-	// fmt.Println("AvatarPermURLOptions:", AvatarPermURLOptions)
-	
+
 	tplParams := templateParameters{ "Title": "Gobot Administrator Panel - commands",
 			"Content": "Blah",
 			"URLPathPrefix": URLPathPrefix,
-			"AvatarPermURLOptions": AvatarPermURLOptions,
+			"AvatarPermURLOptions": template.HTML(tmpStr), // trick to get valid HTML not to be escaped by the Go template engine
 	}
 	err = GobotTemplates.gobotRenderer(w, "commands", tplParams)
 	checkErr(err)
