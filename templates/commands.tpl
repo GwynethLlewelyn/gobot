@@ -17,7 +17,7 @@
 				<div class="col-lg-12">
 					<div class="panel panel-default">
 						<div class="panel-heading">
-							Basic Form Elements
+						{{ .PanelHeading }}
 						</div>
 						<div class="panel-body">
 							<form role="form" action="{{.URLPathPrefix}}/admin/commands/exec/" method="post">

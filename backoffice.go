@@ -8,9 +8,10 @@ import (
 	"net/http"
 	"html/template"
 	"github.com/gorilla/securecookie"
-	"io"
+	"bytes"
 	"strconv"
 	"crypto/md5"
+	"io/ioutil"
 )
 
 // GobotTemplatesType expands on template.Template
@@ -232,16 +233,16 @@ func backofficeLogin(w http.ResponseWriter, r *http.Request) {
 		)
 	 
 		// enhash the received password; I just use MD5 for now because there is no backoffice to create
-		//  new users, so it's easy to generate passwords manually using md5sum
-		h := md5.New()
-		io.WriteString(h, password)
-		pwdmd5 := string(h.Sum(nil)) //this has the hash we need to check
-	 
-		authorised := false
+		//  new users, so it's easy to generate passwords manually using md5sum;
+		//  however, MD5 is not strong enough for 'real' applications, it's just what we also use to
+		//  communicate with the in-world scripts (20170604)
+		pwdmd5 := fmt.Sprintf("%x", md5.Sum([]byte(password))) //this has the hash we need to check
+	  
+		authorised := false // outside of the for loop because of scope
 	
-		for rows.Next() {
+		for rows.Next() {	// we ought just to have one entry, but...
 			_ = rows.Scan(&Email, &Password)
-			// ignore errors
+			// ignore errors for now, either it checks true or any error means no authentication possible
 			if Password == pwdmd5 {
 				authorised = true
 				break
@@ -256,6 +257,7 @@ func backofficeLogin(w http.ResponseWriter, r *http.Request) {
 	        // redirect to home
 	        http.Redirect(w, r, URLPathPrefix + "/admin", 302)
 		} else {
+			// possibly we ought to give an error and then redirect, but I don't know how to do that (20170604)
 			http.Redirect(w, r, URLPathPrefix + "/", 302) // will ask for login again
 		}
 		return
@@ -281,6 +283,8 @@ func backofficeCommands(w http.ResponseWriter, r *http.Request) {
  	
 	var name, permURL, AvatarPermURLOptions = "", "", ""
 
+	// find all Names and PermURLs and create select options for each of them; Bot Controller cubes
+	//  and agents react to the same command API
 	for rows.Next() {
 		err = rows.Scan(&name, &permURL)
 		checkErr(err)
@@ -290,7 +294,7 @@ func backofficeCommands(w http.ResponseWriter, r *http.Request) {
 	db.Close()
 
 	tplParams := templateParameters{ "Title": "Gobot Administrator Panel - commands",
-			"Content": "Blah",
+			"PanelHeading": "Select your command",
 			"URLPathPrefix": URLPathPrefix,
 			"AvatarPermURLOptions": template.HTML(AvatarPermURLOptions), // trick to get valid HTML not to be escaped by the Go template engine
 	}
@@ -310,15 +314,42 @@ func backofficeCommandsExec(w http.ResponseWriter, r *http.Request) {
 	
 	var content = ""
 	
+	// test: just gather the values from the form, to make sure it works properly
 	for key, values := range r.Form {   // range over map
 		for _, value := range values {    // range over []string
 			content += "<b>" + key + "</b> -> " + value + "<br />"
   		}
 	}
+	content += "<p></p><h3>In-world results</h3>"
+	
+	// prepare the call to the in-world Bot Controller
+	
+    body := []byte("command=" + r.Form.Get("command") + "&" + 
+    	r.Form.Get("param1") + "=" + r.Form.Get("data1") + "&" +
+    	r.Form.Get("param2") + "=" + r.Form.Get("data2"))
+    
+    fmt.Println("Sending to in-world object", r.Form.Get("PermURL"), "...", body)
+    
+    rs, err := http.Post(r.Form.Get("PermURL"), "body/type", bytes.NewBuffer(body))
+    // Code to process response (written in Get request snippet) goes here
+
+	defer rs.Body.Close()
+	
+	rsBody, err := ioutil.ReadAll(rs.Body)
+	if (err != nil) {
+		errMsg := fmt.Sprintf("Error response from in-world object: %s", err)
+		fmt.Println(errMsg)
+		content += "<p class=\"text-danger\">" + errMsg + "</p>"
+	} else {
+	    fmt.Println("Reply from in-world object...", rsBody)
+		content += "<p class=\"text-success\">" + string(rsBody) + "</p>"
+	}
 	
 	tplParams := templateParameters{ "Title": "Gobot Administrator Panel - Commands Exec Result",
 		"Content": template.HTML(content),
 		"URLPathPrefix": URLPathPrefix,
+		"ButtonText": "Another command",
+		"ButtonURL": "/admin/commands/",
 	}
 	err = GobotTemplates.gobotRenderer(w, r, "main", tplParams)
 	checkErr(err)

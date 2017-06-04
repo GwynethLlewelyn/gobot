@@ -33,6 +33,11 @@
                         {{ if .Content }}
                         {{ .Content }}
                         {{ end }}
+                        {{ if .ButtonText }}
+                        <a href="{{.URLPathPrefix}}{{ .ButtonURL }}">
+							<button type="button" class="btn btn-outline btn-primary btn-lg">{{ .ButtonText }}</button>
+                        </a>
+                        {{ end }}
                     </div>
                     <!-- /.col-lg-12 -->
                 </div>

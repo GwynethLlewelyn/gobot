@@ -7,24 +7,25 @@ import (
 	"encoding/json"
 	"net/http"
 	"io/ioutil"
+	"gopkg.in/guregu/null.v3/zero"
 )
 
 // objectType is a struct to hold data retrieved from the database, used by several functions (including JSON)
 type objectType struct {
-	UUID string
-	Name string
-	BotKey string
-	BotName string
-	Type string // `json:"string"`
-	Position string
-	Rotation string
-	Velocity string
-	LastUpdate string
-	Origin string
-	Phantom string // `json:"string"`
-	Prims string // `json:"string"`
-	BBHi string
-	BBLo string
+	UUID zero.String
+	Name zero.String
+	BotKey zero.String
+	BotName zero.String
+	Type zero.String // `json:"string"`
+	Position zero.String
+	Rotation zero.String
+	Velocity zero.String
+	LastUpdate zero.String
+	Origin zero.String
+	Phantom zero.String // `json:"string"`
+	Prims zero.String // `json:"string"`
+	BBHi zero.String
+	BBLo zero.String
 }
 
 // uiObjects creates a JSON representation of the Obstacles table and spews it out
@@ -126,24 +127,24 @@ func uiObjectsUpdate(w http.ResponseWriter, r *http.Request) {
 
 // agentType is a struct to hold data retrieved from the database
 type agentType struct {
-	UUID string
-	Name string
-	OwnerName string
-	OwnerKey string
-	Location string
-	Position string
-	Rotation string
-	Velocity string
-	Energy string
-	Money string
-	Happiness string
-	Class string
-	SubType string
-	PermURL string
-	LastUpdate string
-	BestPath string
-	SecondBestPath string
-	CurrentTarget string
+	UUID zero.String
+	Name zero.String
+	OwnerName zero.String
+	OwnerKey zero.String
+	Location zero.String
+	Position zero.String
+	Rotation zero.String
+	Velocity zero.String
+	Energy zero.String
+	Money zero.String
+	Happiness zero.String
+	Class zero.String
+	SubType zero.String
+	PermURL zero.String
+	LastUpdate zero.String
+	BestPath zero.String
+	SecondBestPath zero.String
+	CurrentTarget zero.String
 }
 
 // uiAgents creates a JSON representation of the Agents table and spews it out
@@ -238,21 +239,21 @@ func uiAgentsUpdate(w http.ResponseWriter, r *http.Request) {
 
 // positionType is a struct to hold data retrieved from the database, used by several functions (including JSON)
 type positionType struct {
-	PermURL string
-	UUID string
-	Name string
-	OwnerName string
-	Location string
-	Position string
-	Rotation string
-	Velocity string
-	LastUpdate string
-	OwnerKey string
-	ObjectType string
-	ObjectClass string
-	RateEnergy string
-	RateMoney string
-	RateHappiness string
+	PermURL zero.String
+	UUID zero.String
+	Name zero.String
+	OwnerName zero.String
+	Location zero.String
+	Position zero.String
+	Rotation zero.String
+	Velocity zero.String
+	LastUpdate zero.String
+	OwnerKey zero.String
+	ObjectType zero.String
+	ObjectClass zero.String
+	RateEnergy zero.String
+	RateMoney zero.String
+	RateHappiness zero.String
 }
 
 // uiPositions creates a JSON representation of the Positions table and spews it out
@@ -345,11 +346,11 @@ func uiPositionsUpdate(w http.ResponseWriter, r *http.Request) {
 
 // inventoryType is a struct to hold data retrieved from the database, used by several functions (including JSON)
 type inventoryType struct {
-	UUID string
-	Name string
-	Type string
-	LastUpdate string
-	Permissions string
+	UUID zero.String
+	Name zero.String
+	Type zero.String
+	LastUpdate zero.String
+	Permissions zero.String
 }
 
 // uiInventory creates a JSON representation of the Inventory table and spews it out
