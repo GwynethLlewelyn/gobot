@@ -6,3 +6,5 @@ CREATE TABLE Obstacles (UUID TEXT, Name TEXT, BotKey TEXT, BotName TEXT, Type IN
 CREATE UNIQUE INDEX ObstaclesIndex on Obstacles (UUID ASC);
 CREATE TABLE Agents (UUID TEXT, Name TEXT, OwnerName TEXT, OwnerKey TEXT, Location TEXT, Position TEXT, Rotation TEXT, Velocity TEXT, Energy TEXT, Money TEXT, Happiness TEXT, Class TEXT, SubType TEXT, PermURL TEXT, LastUpdate TEXT, BestPath TEXT, SecondBestPath TEXT, CurrentTarget TEXT);
 CREATE UNIQUE INDEX AgentsIndex on Agents(OwnerKey ASC);
+CREATE TABLE Users (Email TEXT, Password TEXT);
+CREATE UNIQUE INDEX UsersIndex on Users(Email ASC);

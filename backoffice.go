@@ -8,12 +8,9 @@ import (
 	"net/http"
 	"html/template"
 	"github.com/gorilla/securecookie"
-//	"os"
-//	"strings"
+	"io"
 	"strconv"
-//	"crypto/md5"
-//	"encoding/hex"
-//	"log"
+	"crypto/md5"
 )
 
 // GobotTemplatesType expands on template.Template
@@ -36,8 +33,6 @@ func (gt *GobotTemplatesType)init(globbedPath string) error {
 // gobotRenderer assembles the correct templates together and executes them
 //  this is mostly to deal with code duplication 
 func (gt *GobotTemplatesType)gobotRenderer(w http.ResponseWriter, r *http.Request, tplName string, tplParams templateParameters) error {
-//	var err error
-
 	// add cookie to all templates
 	tplParams["SetCookie"] =  getUserName(r)
 
@@ -62,7 +57,7 @@ func setSession(userName string, response http.ResponseWriter) {
 			Value: encoded,
 			Path:	"/",
 		}
-		fmt.Println("Encoded cookie:", cookie)
+		// fmt.Println("Encoded cookie:", cookie)
 		http.SetCookie(response, cookie)
 	} else {
 		fmt.Println("Error encoding cookie:", err)
@@ -138,16 +133,12 @@ func backofficeMain(w http.ResponseWriter, r *http.Request) {
 		strObstacles = "No Obstacles."
 	}
 	
-//	var setCookie = getUserName(r)
-//	fmt.Println("The Cookie I got is:", setCookie, "!")
-	
 	tplParams := templateParameters{ "Title": "Gobot Administrator Panel - main",
 			"Agents": strAgents,
 			"Inventory": strInventory,
 			"Positions": strPositions,
 			"Obstacles": strObstacles,
 			"URLPathPrefix": URLPathPrefix,
-//			"SetCookie": setCookie,
 	}
 	err = GobotTemplates.gobotRenderer(w, r, "main", tplParams)
 	checkErr(err)
@@ -223,19 +214,52 @@ func backofficeLogin(w http.ResponseWriter, r *http.Request) {
         fmt.Println("password:", password)
         fmt.Println("remember:", remember)
         
-        if email == "" || password == "" {
-	        http.Redirect(w, r, URLPathPrefix + "/admin", 302)        
+        if email == "" || password == "" { // should never happen, since the form checks this
+	        http.Redirect(w, r, URLPathPrefix + "/", 302)        
         }
         
         // Check username on database
-        // (not implemented but trivial)
-        
-        // we need to set a cookie here
-        setSession(email, w)
-        // redirect to home
-        http.Redirect(w, r, URLPathPrefix + "/admin", 302)
+        db, err := sql.Open(PDO_Prefix, SQLiteDBFilename)
+		checkErr(err)
+	
+		// query
+		rows, err := db.Query("SELECT Email, Password FROM Users")
+		checkErr(err)
+	 	   
+		var (
+			Email string
+			Password string
+		)
+	 
+		// enhash the received password; I just use MD5 for now because there is no backoffice to create
+		//  new users, so it's easy to generate passwords manually using md5sum
+		h := md5.New()
+		io.WriteString(h, password)
+		pwdmd5 := string(h.Sum(nil)) //this has the hash we need to check
+	 
+		authorised := false
+	
+		for rows.Next() {
+			_ = rows.Scan(&Email, &Password)
+			// ignore errors
+			if Password == pwdmd5 {
+				authorised = true
+				break
+			}		
+		}
+		
+		db.Close()
+		
+	    if authorised {
+	        // we need to set a cookie here
+	        setSession(email, w)
+	        // redirect to home
+	        http.Redirect(w, r, URLPathPrefix + "/admin", 302)
+		} else {
+			http.Redirect(w, r, URLPathPrefix + "/", 302) // will ask for login again
+		}
+		return
 	}
-	return
 }
 
 // backofficeLogout clears session and returns to login prompt

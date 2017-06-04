@@ -6,7 +6,7 @@
                     <span class="icon-bar"></span>
                     <span class="icon-bar"></span>
                 </button>
-                <a class="navbar-brand" href="/go/admin/"><img src="{{.URLPathPrefix}}/templates/images/botmover-logo.jpg" alt="{{.Title}}"></a>
+                <a class="navbar-brand" href="{{.URLPathPrefix}}/admin/"><img src="{{.URLPathPrefix}}/templates/images/botmover-logo.jpg" alt="{{.Title}}"></a>
             </div>
             <!-- /.navbar-header -->
 

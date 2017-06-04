@@ -34,20 +34,5 @@
 			</div>
 		</div>
 	</div>
-	<script type="text/javascript">
-		// see https://developer.mozilla.org/en-US/docs/Web/Guide/HTML/HTML5/Constraint_validation
-		function checkInput() {
-			var email		= document.getElementByName("email").value,
-				password	= document.getElementByName("password").value;
-				
-			console.log("Email status: " . email.CheckValidity("Invalid Email"));
-			console.log("Password status: " . password.CheckValidity("Invalid Password"));
-		}
-		
-		window.onload = function () {
-			document.getElementByName("email").oninput = checkInput;
-			document.getElementByName("password").oninput = checkInput;
-		}
-	</script>
 {{ template "footer" .}}
 {{ end }}
