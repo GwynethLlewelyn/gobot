@@ -1,0 +1,7 @@
+[submodule "lib/ag-grid"]
+  path = lib/ag-grid
+  url = https://github.com/ceolter/ag-grid
+
+[submodule "lib/startbootstrap-sb-admin-2"]
+  path = lib/startbootstrap-sb-admin-2
+  url = https://github.com/BlackrockDigital/startbootstrap-sb-admin-2
