@@ -99,7 +99,7 @@
 									</div> <!-- /.form-group -->
 								</div> <!-- /.col-lg.6 -->
 								<div class="col-lg-6">					
-									<div class="form-group">
+									<div class="form-group input-group">
 										<label>Parameter #1 Data</label>
 										<input class="form-control" type="text" name="data1" id="data1" placeholder="Enter data">
 									</div> <!-- /.form-group -->
@@ -119,7 +119,7 @@
 									</div> <!-- /.form-group -->
 								</div> <!-- /.col-lg.6 -->
 								<div class="col-lg-6">					
-									<div class="form-group">
+									<div class="form-group input-group">
 										<label>Parameter #2 Data</label>
 										<input class="form-control" type="text" name="data2" id="data2" placeholder="Enter data">
 									</div> <!-- /.form-group -->
