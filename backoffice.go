@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"crypto/md5"
 	"io/ioutil"
+	"strings"
 )
 
 // GobotTemplatesType expands on template.Template
@@ -283,8 +284,7 @@ func backofficeCommands(w http.ResponseWriter, r *http.Request) {
  	
 	var name, permURL, AvatarPermURLOptions = "", "", ""
 
-	// find all Names and PermURLs and create select options for each of them; Bot Controller cubes
-	//  and agents react to the same command API
+	// find all agent (NPC) Names and PermURLs and create select options for each of them
 	for rows.Next() {
 		err = rows.Scan(&name, &permURL)
 		checkErr(err)
@@ -320,15 +320,15 @@ func backofficeCommandsExec(w http.ResponseWriter, r *http.Request) {
 			content += "<b>" + key + "</b> -> " + value + "<br />"
   		}
 	}
-	content += "<p></p><h3>In-world results</h3>"
+	content += "<p></p><h3>In-world results:</h3>"
 	
-	// prepare the call to the in-world Bot Controller
-	
+	// prepare the call to the agent (OpenSimulator NPC)
+	//  HTTP request as per http://moazzam-khan.com/blog/golang-make-http-requests/
     body := []byte("command=" + r.Form.Get("command") + "&" + 
     	r.Form.Get("param1") + "=" + r.Form.Get("data1") + "&" +
     	r.Form.Get("param2") + "=" + r.Form.Get("data2"))
     
-    fmt.Println("Sending to in-world object", r.Form.Get("PermURL"), "...", body)
+    fmt.Printf("Sending to in-world object %s ... %s\n", r.Form.Get("PermURL"), body)
     
     rs, err := http.Post(r.Form.Get("PermURL"), "body/type", bytes.NewBuffer(body))
     // Code to process response (written in Get request snippet) goes here
@@ -341,7 +341,7 @@ func backofficeCommandsExec(w http.ResponseWriter, r *http.Request) {
 		fmt.Println(errMsg)
 		content += "<p class=\"text-danger\">" + errMsg + "</p>"
 	} else {
-	    fmt.Println("Reply from in-world object...", rsBody)
+	    fmt.Printf("Reply from in-world object %s\n", rsBody)
 		content += "<p class=\"text-success\">" + string(rsBody) + "</p>"
 	}
 	
@@ -350,6 +350,112 @@ func backofficeCommandsExec(w http.ResponseWriter, r *http.Request) {
 		"URLPathPrefix": URLPathPrefix,
 		"ButtonText": "Another command",
 		"ButtonURL": "/admin/commands/",
+	}
+	err = GobotTemplates.gobotRenderer(w, r, "main", tplParams)
+	checkErr(err)
+	return
+}
+
+// backofficeControllerCommands is a form-based interface to give commands to the Bot Controller
+func backofficeControllerCommands(w http.ResponseWriter, r *http.Request) {
+	// Collect a list of existing bots and their PermURLs for the form
+	
+	db, err := sql.Open(PDO_Prefix, SQLiteDBFilename)
+	checkErr(err)
+
+	// query for in-world objects that are Bot Controllers
+	rows, err := db.Query("SELECT Name, Location, Position, PermURL FROM Positions WHERE ObjectType ='Bot Controller' ORDER BY Name")
+	checkErr(err)
+ 	
+	var name, location, position, permURL, MasterBotControllers, regionName, coords = "", "", "", "", "", "", ""
+	var xyz []string
+
+	// As on backofficeCommands, but a little more complicated
+	for rows.Next() {
+		err = rows.Scan(&name, &location, &position, &permURL)
+		checkErr(err)
+		// parse name of the region and coordinates
+		regionName = location[:strings.Index(location, "(")-1]
+		coords = strings.Trim(position, "() \t\n\r")
+		xyz = strings.Split(coords, ",")
+		
+		MasterBotControllers += fmt.Sprintf("\t\t\t\t\t\t\t\t\t\t\t<option value=\"%s\">%s [%s (%s,%s,%s)]</option>\n", permURL, name, regionName, xyz[0], xyz[1], xyz[2])
+	}
+
+	rows, err = db.Query("SELECT Name, OwnerKey FROM Agents ORDER BY Name")
+	checkErr(err)
+ 	
+	var ownerKey, AgentNames = "", "" // we're reusing 'name' from above
+
+	// find all Names and OwnerKeys and create select options for each of them
+	for rows.Next() {
+		err = rows.Scan(&name, &ownerKey)
+		checkErr(err)
+		AgentNames += "\t\t\t\t\t\t\t\t\t\t\t<option value=\"" + ownerKey + "\">" + name + " (" + ownerKey + ")</option>\n"
+	}
+	
+	db.Close()
+
+	tplParams := templateParameters{ "Title": "Gobot Administrator Panel - Bot Controller Commands",
+			"PanelHeading": "Select your Bot Controller and give it a command",
+			"URLPathPrefix": URLPathPrefix,
+			"MasterBotControllers": template.HTML(MasterBotControllers),
+			"AgentNames": template.HTML(AgentNames),
+	}
+	err = GobotTemplates.gobotRenderer(w, r, "controller-commands", tplParams)
+	checkErr(err)
+	return
+}
+
+// backofficeControllerCommandsExec gets the user-selected params from the backofficeControllerCommands form and sends them to the user, giving feedback
+//  This may change in the future, e.g. using Ajax to get inline results on the form
+func backofficeControllerCommandsExec(w http.ResponseWriter, r *http.Request) {
+	err := r.ParseForm()
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Extracting parameters failed: %s\n", err), http.StatusServiceUnavailable)
+		return
+	}
+	
+	var content = ""
+	
+	// test: just gather the values from the form, to make sure it works properly
+	for key, values := range r.Form {   // range over map
+		for _, value := range values {    // range over []string
+			content += "<b>" + key + "</b> -> " + value + "<br />"
+  		}
+	}
+	content += "<p></p><h3>In-world results:</h3>"
+	
+	// prepare the call to the in-world Bot Controller
+	//  HTTP request as per http://moazzam-khan.com/blog/golang-make-http-requests/
+    body := []byte("npc=" + r.Form.Get("NPC") + "&" +
+    	"command=" + r.Form.Get("command") + "&" +
+    	r.Form.Get("param1") + "=" + r.Form.Get("data1") + "&" +
+    	r.Form.Get("param2") + "=" + r.Form.Get("data2"))
+    
+    fmt.Printf("Sending to agent %s via Bot Controller %s ... %s\n", r.Form.Get("NPC"),
+    	r.Form.Get("PermURL"), body)
+    
+    rs, err := http.Post(r.Form.Get("PermURL"), "body/type", bytes.NewBuffer(body))
+    // Code to process response (written in Get request snippet) goes here
+
+	defer rs.Body.Close()
+	
+	rsBody, err := ioutil.ReadAll(rs.Body)
+	if (err != nil) {
+		errMsg := fmt.Sprintf("Error response from in-world object: %s", err)
+		fmt.Println(errMsg)
+		content += "<p class=\"text-danger\">" + errMsg + "</p>"
+	} else {
+	    fmt.Printf("Reply from in-world object %s\n", rsBody)
+		content += "<p class=\"text-success\">" + string(rsBody) + "</p>"
+	}
+	
+	tplParams := templateParameters{ "Title": "Gobot Administrator Panel - Controller Commands Exec Result",
+		"Content": template.HTML(content),
+		"URLPathPrefix": URLPathPrefix,
+		"ButtonText": "Another controller command",
+		"ButtonURL": "/admin/controller-commands/",
 	}
 	err = GobotTemplates.gobotRenderer(w, r, "main", tplParams)
 	checkErr(err)
