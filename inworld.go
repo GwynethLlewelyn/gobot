@@ -252,7 +252,7 @@ func registerPosition(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Header().Set("Content-type", "text/plain; charset=utf-8")
 		fmt.Fprintf(w, "'%s' successfully updated!", r.Header.Get("X-Secondlife-Object-Name"))
-		fmt.Printf("These are the headers I got: %v\nAnd these are the parameters %v\n", r.Header, r.Form)
+		// fmt.Printf("These are the headers I got: %v\nAnd these are the parameters %v\n", r.Header, r.Form)
 		return
 	} else {
 		http.Error(w, "Signature not found", http.StatusServiceUnavailable) 
