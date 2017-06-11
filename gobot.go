@@ -132,6 +132,7 @@ func main() {
 	// deal with agGrid UI elements
 	http.HandleFunc(URLPathPrefix + "/uiObjects/",						uiObjects)
 	http.HandleFunc(URLPathPrefix + "/uiObjectsUpdate/",				uiObjectsUpdate) // to change the database manually
+	http.HandleFunc(URLPathPrefix + "/uiObjectsRemove/",					uiObjectsRemove) // to remove rows of the database manually
 	http.HandleFunc(URLPathPrefix + "/uiAgents/",						uiAgents)
 	http.HandleFunc(URLPathPrefix + "/uiAgentsUpdate/",					uiAgentsUpdate)
 	http.HandleFunc(URLPathPrefix + "/uiPositions/",					uiPositions)

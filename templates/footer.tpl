@@ -7,6 +7,9 @@
     <!-- Our modified Bootstrap -->
     <script src="{{.URLPathPrefix}}/lib/bootstrap/js/bootstrap.min.js"></script>
     
+    <!-- Bootstrap-Dialog -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap3-dialog/1.34.7/js/bootstrap-dialog.min.js"></script>
+    
     <!-- Metis Menu Plugin JavaScript -->
     <script src="{{.URLPathPrefix}}/lib/startbootstrap-sb-admin-2/vendor/metisMenu/metisMenu.min.js"></script>
 
