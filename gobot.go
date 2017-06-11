@@ -11,6 +11,7 @@ import (
 	"log"
 	"os/user"
 	"path/filepath"
+	"gopkg.in/guregu/null.v3/zero" // can be deleted once we move the database tests elsewhere
 )
 
 var (
@@ -55,12 +56,12 @@ func main() {
 	rows, err := db.Query("SELECT UUID, Name, Location, Position FROM Agents")
 	checkErr(err)
  	   
-	var UUID string
-	var Name string
+	var UUID zero.String
+	var Name zero.String
  //	var OwnerName string
  //	var OwnerKey string
-	var Location string
-	var Position string
+	var Location zero.String
+	var Position zero.String
 /*	var Rotation string
 	var Velocity string
 	var Energy string
@@ -121,6 +122,7 @@ func main() {
 	http.HandleFunc(URLPathPrefix + "/admin/objects/",					backofficeObjects)
 	http.HandleFunc(URLPathPrefix + "/admin/positions/",				backofficePositions)
 	http.HandleFunc(URLPathPrefix + "/admin/inventory/",				backofficeInventory)
+	http.HandleFunc(URLPathPrefix + "/admin/user-management/",			backofficeUserManagement)
 	http.HandleFunc(URLPathPrefix + "/admin/commands/exec/",			backofficeCommandsExec)
 	http.HandleFunc(URLPathPrefix + "/admin/commands/",					backofficeCommands)
 	http.HandleFunc(URLPathPrefix + "/admin/controller-commands/exec/",	backofficeControllerCommandsExec)
@@ -138,8 +140,13 @@ func main() {
 	http.HandleFunc(URLPathPrefix + "/uiAgentsRemove/",					uiAgentsRemove)
 	http.HandleFunc(URLPathPrefix + "/uiPositions/",					uiPositions)
 	http.HandleFunc(URLPathPrefix + "/uiPositionsUpdate/",				uiPositionsUpdate)
+	http.HandleFunc(URLPathPrefix + "/uiPositionsRemove/",				uiPositionsRemove)
 	http.HandleFunc(URLPathPrefix + "/uiInventory/",					uiInventory)
 	http.HandleFunc(URLPathPrefix + "/uiInventoryUpdate/",				uiInventoryUpdate)
+	http.HandleFunc(URLPathPrefix + "/uiInventoryRemove/",				uiInventoryRemove)
+	http.HandleFunc(URLPathPrefix + "/uiUserManagement/",				uiUserManagement)
+	http.HandleFunc(URLPathPrefix + "/uiUserManagementUpdate/",			uiUserManagementUpdate)
+	http.HandleFunc(URLPathPrefix + "/uiUserManagementRemove/",			uiUserManagementRemove)
 
 	go paralelate() // run everything but the kitchen sink in parallel; yay goroutines!
 	// very likely we will open the database, look at all agents, and run a goroutine for each (20170516)

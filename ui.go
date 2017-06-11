@@ -131,7 +131,7 @@ func uiObjectsRemove(w http.ResponseWriter, r *http.Request) {
     if err != nil {
         panic(err)
     }
-	fmt.Println("\nObjects body is >>", string(body), "<<")
+	// fmt.Println("\nObjects body is >>", string(body), "<<")
 	    
     // open database connection and see if we can remove the object UUIDs we got
 	db, err := sql.Open(PDO_Prefix, SQLiteDBFilename)
@@ -401,6 +401,34 @@ func uiPositionsUpdate(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
+// uiPositionsRemove receives a list of UUIDs to remove from the Positions table
+func uiPositionsRemove(w http.ResponseWriter, r *http.Request) {
+	body, err := ioutil.ReadAll(r.Body)
+    if err != nil {
+        panic(err)
+    }
+	// fmt.Println("\nPositions Body is >>", string(body), "<<")
+	    
+	db, err := sql.Open(PDO_Prefix, SQLiteDBFilename)
+	
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Connect failed: %s\n", err), http.StatusServiceUnavailable)
+		fmt.Printf("Connect failed: %s\n", err)
+		return
+	}
+	
+	defer db.Close()
+	
+	_, err = db.Exec(fmt.Sprintf("DELETE FROM Positions WHERE UUID IN (%s)", string(body)));
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Positions remove failed: %s\n", err), http.StatusServiceUnavailable)
+		fmt.Printf("Positions remove failed: %s\n", err)
+		return
+	}
+
+	fmt.Println("Positions UUIDs >>", string(body), "<< successfully removed.")
+}
+
 // inventoryType is a struct to hold data retrieved from the database, used by several functions (including JSON)
 type inventoryType struct {
 	UUID zero.String
@@ -484,4 +512,140 @@ func uiInventoryUpdate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	return
+}
+
+// uiInventoryRemove receives a list of UUIDs to remove from the Inventory table
+func uiInventoryRemove(w http.ResponseWriter, r *http.Request) {
+	body, err := ioutil.ReadAll(r.Body)
+    if err != nil {
+        panic(err)
+    }
+	// fmt.Println("\nInventory Body is >>", string(body), "<<")
+	    
+	db, err := sql.Open(PDO_Prefix, SQLiteDBFilename)
+	
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Connect failed: %s\n", err), http.StatusServiceUnavailable)
+		fmt.Printf("Connect failed: %s\n", err)
+		return
+	}
+	
+	defer db.Close()
+	
+	_, err = db.Exec(fmt.Sprintf("DELETE FROM Inventory WHERE UUID IN (%s)", string(body)));
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Inventory remove failed: %s\n", err), http.StatusServiceUnavailable)
+		fmt.Printf("Inventory remove failed: %s\n", err)
+		return
+	}
+
+	fmt.Println("Inventory UUIDs >>", string(body), "<< successfully removed.")
+}
+
+
+// userManagementType is a struct to hold data retrieved from the database, used by several functions (including JSON)
+type userManagementType struct {
+	Email zero.String
+	Password zero.String
+}
+
+// uiUserManagement creates a JSON representation of the Users table and spews it out
+func uiUserManagement(w http.ResponseWriter, r *http.Request) {
+	var (
+		rowArr []interface{}
+		UserManagement userManagementType
+	)
+
+	db, err := sql.Open(PDO_Prefix, SQLiteDBFilename)
+	checkErr(err)
+
+	defer db.Close()
+
+	// query
+	rows, err := db.Query("SELECT * FROM Users")
+	checkErr(err)
+
+	for rows.Next() {
+		err = rows.Scan(
+			&UserManagement.Email,
+			&UserManagement.Password,
+		)		
+		rowArr = append(rowArr, UserManagement)
+	}
+	checkErr(err)
+
+	if data, err := json.MarshalIndent(rowArr, "", " "); err != nil {
+		checkErr(err)
+	} else {
+		_, err := fmt.Fprintf(w, "%s", data)
+		checkErr(err)
+	}
+	return
+}
+
+// uiUserManagementUpdate receives a JSON representation of one row (from the agGrid) in order to update our database
+func uiUserManagementUpdate(w http.ResponseWriter, r *http.Request) {
+	body, err := ioutil.ReadAll(r.Body)
+    if err != nil {
+        panic(err)
+    }
+	var user userManagementType
+    err = json.Unmarshal(body, &user)
+    if err != nil {
+        panic(err)
+    }
+    
+    db, err := sql.Open(PDO_Prefix, SQLiteDBFilename)
+	
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Connect failed: %s\n", err), http.StatusServiceUnavailable)
+		fmt.Printf("Connect failed: %s\n", err)
+		return
+	}
+	
+	defer db.Close()
+	
+	stmt, err := db.Prepare("REPLACE INTO Users (`Email`, `Password`) VALUES (?,?)");
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Replace prepare failed: %s\n", err), http.StatusServiceUnavailable)
+		fmt.Printf("Replace prepare failed: %s\n", err)
+		return
+	}
+
+	_, err = stmt.Exec(user.Email, user.Password)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Replace exec failed: %s\n", err), http.StatusServiceUnavailable)
+		fmt.Printf("Replace exec failed: %s\n", err)
+		return
+	}
+
+	return
+}
+
+// uiUserManagementRemove receives a list of UUIDs to remove from the UserManagement table
+func uiUserManagementRemove(w http.ResponseWriter, r *http.Request) {
+	body, err := ioutil.ReadAll(r.Body)
+    if err != nil {
+        panic(err)
+    }
+	// fmt.Println("\nInventory Body is >>", string(body), "<<")
+	    
+	db, err := sql.Open(PDO_Prefix, SQLiteDBFilename)
+	
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Connect failed: %s\n", err), http.StatusServiceUnavailable)
+		fmt.Printf("Connect failed: %s\n", err)
+		return
+	}
+	
+	defer db.Close()
+	
+	_, err = db.Exec(fmt.Sprintf("DELETE FROM Users WHERE Email IN (%s)", string(body)));
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Users remove failed: %s\n", err), http.StatusServiceUnavailable)
+		fmt.Printf("Users remove failed: %s\n", err)
+		return
+	}
+
+	fmt.Println("User(s) Email(s) >>", string(body), "<< successfully removed.")
 }

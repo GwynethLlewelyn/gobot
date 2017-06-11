@@ -13,6 +13,7 @@ import (
 	"crypto/md5"
 	"io/ioutil"
 	"strings"
+	// "gopkg.in/guregu/null.v3/zero"
 )
 
 // GobotTemplatesType expands on template.Template
@@ -194,6 +195,21 @@ func backofficeInventory(w http.ResponseWriter, r *http.Request) {
 	checkErr(err)
 	return
 }
+
+// backofficeUserManagement deals with adding/removing application users. Just login(email) and password right now, no profiles, no email confirmations, etc. etc. etc.
+//  This is basically a stub for more complex user management, to be reused by other developments...
+//  I will not develop this further, except perhaps to link usernames to in-world avatars (may be useful)
+func backofficeUserManagement(w http.ResponseWriter, r *http.Request) {
+	tplParams := templateParameters{ "Title": "Gobot Administrator Panel - User Management",
+			"Content": "Hi there, this is the User Management template",
+			"URLPathPrefix": URLPathPrefix,
+			"gobotJS": "user-management.js",
+	}
+	err := GobotTemplates.gobotRenderer(w, r, "user-management", tplParams)
+	checkErr(err)
+	return
+}
+
 
 // backofficeLogin deals with authentication
 func backofficeLogin(w http.ResponseWriter, r *http.Request) {

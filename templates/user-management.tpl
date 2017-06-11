@@ -1,4 +1,4 @@
-{{ define "inventory" }}
+{{ define "user-management" }}
 {{ template "header" .}}
     <div id="wrapper">
 
