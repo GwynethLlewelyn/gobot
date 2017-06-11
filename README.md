@@ -23,6 +23,14 @@ For now, all you need to know is that this works only on [OpenSimulator](http://
 
 If you're placing `gobot` behind a nginx server, [this is the configuration you'll need](nginx-config.md). Note that Go is wonderful as it includes its own webserver, so running it behind a 'real' web server is not necessary, although a real web server should be able to provide things like caching and direct serving of static content (images, JS, CSS...) for the backoffice, to make it even faster.
 
+## Dependencies
+
+These will be installed, *but* you *should* make sure you have the latest versions of them! (use git pull on the directories)
+
+- agGrid
+- Bootstrap and Bootstrap Dialog
+- StartBootstrap's SB Admin 2 template
+
 ## Configuration on the Virtual World
 
 You're on your own, I haven't written it yet, but here's a bit of what you need to do.
