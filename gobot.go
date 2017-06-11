@@ -16,7 +16,7 @@ import (
 
 var (
 	// Default configurations, hopefully exported to other files and packages
-	RootURL, SQLiteDBFilename, URLPathPrefix, PDO_Prefix, PathToStaticFiles, ServerPort string
+	RootURL, SQLiteDBFilename, URLPathPrefix, PDO_Prefix, PathToStaticFiles, ServerPort, MapURL string
 )
 
 //type templateParameters map[string]string
@@ -46,6 +46,7 @@ func main() {
 	PathToStaticFiles = path
 	viper.SetDefault("gobot.ServerPort", ":3000")
 	ServerPort = viper.GetString("gobot.ServerPort"); fmt.Print(".")
+	MapURL = viper.GetString("opensim.MapURL"); fmt.Print(".")
 	
 	fmt.Println("\nGobot configuration read, now testing opening database connection at ", SQLiteDBFilename, "\nPath to static files is:", PathToStaticFiles)
 	

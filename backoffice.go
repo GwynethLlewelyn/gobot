@@ -142,6 +142,7 @@ func backofficeMain(w http.ResponseWriter, r *http.Request) {
 			"Positions": strPositions,
 			"Obstacles": strObstacles,
 			"URLPathPrefix": URLPathPrefix,
+			"MapURL": MapURL,
 	}
 	err = GobotTemplates.gobotRenderer(w, r, "main", tplParams)
 	checkErr(err)

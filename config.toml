@@ -7,3 +7,5 @@ PathToStaticFiles = "~/go/src/gobot" # where the lib/ and template/ dirs are; ch
 SQLiteDBFilename = "/var/www/bot.betatechnologies.info/web/database/botmover.db"
 PDO_Prefix = "sqlite3"
 
+[opensim]
+MapURL = "http://opensim.betatechnologies.info:8002/map-1-3646-3645-objects.jpg" # get a map tile
