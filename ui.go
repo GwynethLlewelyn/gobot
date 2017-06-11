@@ -125,13 +125,13 @@ func uiObjectsUpdate(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
-// uiObjectsRemove receives a list of UUIDs to remove from the Object table
+// uiObjectsRemove receives a list of UUIDs to remove from the Obstacles table
 func uiObjectsRemove(w http.ResponseWriter, r *http.Request) {
 	body, err := ioutil.ReadAll(r.Body)
     if err != nil {
         panic(err)
     }
-	fmt.Println("\nBody is >>", string(body), "<<")
+	fmt.Println("\nObjects body is >>", string(body), "<<")
 	    
     // open database connection and see if we can remove the object UUIDs we got
 	db, err := sql.Open(PDO_Prefix, SQLiteDBFilename)
@@ -146,12 +146,12 @@ func uiObjectsRemove(w http.ResponseWriter, r *http.Request) {
 	
 	_, err = db.Exec(fmt.Sprintf("DELETE FROM Obstacles WHERE UUID IN (%s)", string(body)));
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Remove failed: %s\n", err), http.StatusServiceUnavailable)
-		fmt.Printf("Remove failed: %s\n", err)
+		http.Error(w, fmt.Sprintf("Objects remove failed: %s\n", err), http.StatusServiceUnavailable)
+		fmt.Printf("Objects remove failed: %s\n", err)
 		return
 	}
 
-	fmt.Println("UUIDs >>", string(body), "<< successfully removed.")
+	fmt.Println("Object UUIDs >>", string(body), "<< successfully removed.")
 }
 
 // agentType is a struct to hold data retrieved from the database
@@ -264,6 +264,34 @@ func uiAgentsUpdate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	return
+}
+
+// uiAgentsRemove receives a list of UUIDs to remove from the Agents table
+func uiAgentsRemove(w http.ResponseWriter, r *http.Request) {
+	body, err := ioutil.ReadAll(r.Body)
+    if err != nil {
+        panic(err)
+    }
+	// fmt.Println("\nAgents Body is >>", string(body), "<<")
+	    
+	db, err := sql.Open(PDO_Prefix, SQLiteDBFilename)
+	
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Connect failed: %s\n", err), http.StatusServiceUnavailable)
+		fmt.Printf("Connect failed: %s\n", err)
+		return
+	}
+	
+	defer db.Close()
+	
+	_, err = db.Exec(fmt.Sprintf("DELETE FROM Agents WHERE UUID IN (%s)", string(body)));
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Agents remove failed: %s\n", err), http.StatusServiceUnavailable)
+		fmt.Printf("Agents remove failed: %s\n", err)
+		return
+	}
+
+	fmt.Println("Agents UUIDs >>", string(body), "<< successfully removed.")
 }
 
 // positionType is a struct to hold data retrieved from the database, used by several functions (including JSON)
