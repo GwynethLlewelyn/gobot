@@ -30,6 +30,8 @@ These will be installed, *but* you *should* make sure you have the latest versio
 - agGrid
 - Bootstrap and Bootstrap Dialog
 - StartBootstrap's SB Admin 2 template
+- Leaflet.vector-markers (to get cute markers for Leaflet)
+- Leaflet.js (called remotely, no need to worry about it)
 
 ## Configuration on the Virtual World
 

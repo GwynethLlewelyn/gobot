@@ -90,13 +90,9 @@ func clearSession(response http.ResponseWriter) {
 // checkSession will see if we have a valid cookie; if not, redirects to login
 func checkSession(w http.ResponseWriter, r *http.Request) {
 	// valid cookie and no errors?
-	if cookie, err := r.Cookie("session"); err == nil {
-		fmt.Println("Found cookie:", cookie) // stupid 
-		return
+	if getUserName(r) == "" {
+		http.Redirect(w, r, URLPathPrefix + "/admin/login/", 302)	
 	}
-	//fmt.Println("Cookie not found")
-	// assumes either invalid cookie, or some error; redirect to the login page
-	http.Redirect(w, r, URLPathPrefix + "/admin/login/", 302)	
 }
 
 // Function handlers for requests
@@ -149,8 +145,127 @@ func backofficeMain(w http.ResponseWriter, r *http.Request) {
 		strObstacles = "No Obstacles."
 	}
 	
-	// Generate a 
+	// Generate markers for the map
 	
+	// template: L.marker([127, 127], { title: 'Test' }).bindPopup(
+	//								L.popup({ maxWidth: 180 })
+	//									.setContent('Blah')
+	//							).addTo(map);
+								
+	// First, get Agents (there are not many)
+	var (
+		Agent AgentType // this is defined on ui.go, ugh
+		markersOutput string = ""
+		xyz []string
+		//position string
+		coords string
+	)
+	
+	rows, err := db.Query("SELECT * FROM Agents")
+	checkErr(err)
+
+	for rows.Next() {
+		err = rows.Scan(
+			&Agent.UUID,
+			&Agent.Name,
+			&Agent.OwnerName,
+			&Agent.OwnerKey,
+			&Agent.Location,
+			&Agent.Position,
+			&Agent.Rotation,
+			&Agent.Velocity,
+			&Agent.Energy,
+			&Agent.Money,
+			&Agent.Happiness,
+			&Agent.Class,
+			&Agent.SubType,
+			&Agent.PermURL,
+			&Agent.LastUpdate,
+			&Agent.BestPath,
+			&Agent.SecondBestPath,
+			&Agent.CurrentTarget,
+		)		
+		// do the magic to extract the actual coords
+		coords = strings.Trim(*Agent.Position.Ptr(), "() \t\n\r")
+		xyz = strings.Split(coords, ",")
+		
+		markersOutput += fmt.Sprintf("L.marker([%s, %s], { title: 'Agent: %s', riseOnHover: true, icon: agentMarker }).bindPopup(" +
+										"L.popup({ maxWidth: 180 })" +
+											".setContent('UUID: %s<br />Agent Name: %s<br />Position: %s')" +
+										").addTo(map);", 
+								xyz[0], xyz[1], *Agent.Name.Ptr(), *Agent.UUID.Ptr(), *Agent.Name.Ptr(), *Agent.Position.Ptr())
+	}
+	checkErr(err)
+	
+	// now do positions
+	var Position PositionType
+	
+	rows, err = db.Query("SELECT * FROM Positions")
+	checkErr(err)
+
+	for rows.Next() {
+		err = rows.Scan(
+			&Position.PermURL,
+			&Position.UUID,
+			&Position.Name,
+			&Position.OwnerName,
+			&Position.Location,
+			&Position.Position,
+			&Position.Rotation,
+			&Position.Velocity,
+			&Position.LastUpdate,
+			&Position.OwnerKey,
+			&Position.ObjectType,
+			&Position.ObjectClass,
+			&Position.RateEnergy,
+			&Position.RateMoney,
+			&Position.RateHappiness,
+		)
+		coords = strings.Trim(*Position.Position.Ptr(), "() \t\n\r")
+		xyz = strings.Split(coords, ",")
+		
+		markersOutput += fmt.Sprintf("L.marker([%s, %s], { title: 'Position: %s', riseOnHover: true, icon: positionMarker }).bindPopup(" +
+										"L.popup({ maxWidth: 180 })" +
+											".setContent('UUID: %s<br />Position Name: %s<br />Position: %s')" +
+										").addTo(map);", 
+								xyz[0], xyz[1], *Position.Name.Ptr(), *Position.UUID.Ptr(), *Position.Name.Ptr(), *Position.Position.Ptr())
+	}
+	checkErr(err)
+
+	// and at last add all the stupid obstacles...
+	var Object ObjectType
+	
+	rows, err = db.Query("SELECT * FROM Obstacles")
+	checkErr(err)
+
+	for rows.Next() {
+		err = rows.Scan(
+			&Object.UUID,
+			&Object.Name,
+			&Object.BotKey,
+			&Object.BotName,
+			&Object.Type,
+			&Object.Position,
+			&Object.Rotation,
+			&Object.Velocity,
+			&Object.LastUpdate,
+			&Object.Origin,
+			&Object.Phantom,
+			&Object.Prims,
+			&Object.BBHi,
+			&Object.BBLo,
+		)
+		coords = strings.Trim(*Object.Position.Ptr(), "() \t\n\r")
+		xyz = strings.Split(coords, ",")
+		
+		markersOutput += fmt.Sprintf("L.marker([%s, %s], { title: 'Object: %s', riseOnHover: true, icon: objectMarker }).bindPopup(" +
+										"L.popup({ maxWidth: 180 })" +
+											".setContent('UUID: %s<br />Object Name: %s<br />Position: %s')" +
+										").addTo(map);", 
+								xyz[0], xyz[1], *Object.Name.Ptr(), *Object.UUID.Ptr(), *Object.Name.Ptr(), *Object.Position.Ptr())
+	}
+	checkErr(err)
+
 	tplParams := templateParameters{ "Title": "Gobot Administrator Panel - main",
 			"Agents": strAgents,
 			"Inventory": strInventory,
@@ -158,6 +273,7 @@ func backofficeMain(w http.ResponseWriter, r *http.Request) {
 			"Obstacles": strObstacles,
 			"URLPathPrefix": URLPathPrefix,
 			"MapURL": MapURL,
+			"MapMarkers": template.JS(markersOutput),
 	}
 	err = GobotTemplates.gobotRenderer(w, r, "main", tplParams)
 	checkErr(err)
@@ -234,7 +350,7 @@ func backofficeUserManagement(w http.ResponseWriter, r *http.Request) {
 
 // backofficeLogin deals with authentication
 func backofficeLogin(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("Entered backoffice login for URL:", r.URL, "using method:", r.Method)
+	//fmt.Println("Entered backoffice login for URL:", r.URL, "using method:", r.Method)
 	if r.Method == "GET" {
 		tplParams := templateParameters{ "Title": "Gobot Administrator Panel - login",
 				"URLPathPrefix": URLPathPrefix,
@@ -243,15 +359,12 @@ func backofficeLogin(w http.ResponseWriter, r *http.Request) {
 		checkErr(err)
 	} else { // POST is assumed
 		r.ParseForm()
-        // logic part of log in
-        var email, password, remember = "", "", ""
-        email		= r.Form.Get("email")
-        password	= r.Form.Get("password")
-        remember	= r.Form.Get("remember")
+        // logic part of logging in
+        email		:= r.Form.Get("email")
+        password	:= r.Form.Get("password")
         
-        fmt.Println("email:", email)
-        fmt.Println("password:", password)
-        fmt.Println("remember:", remember)
+        //fmt.Println("email:", email)
+        //fmt.Println("password:", password)
         
         if email == "" || password == "" { // should never happen, since the form checks this
 	        http.Redirect(w, r, URLPathPrefix + "/", 302)        

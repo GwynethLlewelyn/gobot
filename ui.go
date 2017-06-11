@@ -11,7 +11,7 @@ import (
 )
 
 // objectType is a struct to hold data retrieved from the database, used by several functions (including JSON)
-type objectType struct {
+type ObjectType struct {
 	UUID zero.String
 	Name zero.String
 	BotKey zero.String
@@ -32,7 +32,7 @@ type objectType struct {
 func uiObjects(w http.ResponseWriter, r *http.Request) {
 	var (
 		rowArr []interface{}
-		Object objectType
+		Object ObjectType
 	)
 
 	db, err := sql.Open(PDO_Prefix, SQLiteDBFilename)
@@ -85,7 +85,7 @@ func uiObjectsUpdate(w http.ResponseWriter, r *http.Request) {
         panic(err)
     }
 	// fmt.Println("\nBody is >>", string(body), "<<")
-	var obj objectType
+	var obj ObjectType
     err = json.Unmarshal(body, &obj)
     if err != nil {
         panic(err)
@@ -155,7 +155,7 @@ func uiObjectsRemove(w http.ResponseWriter, r *http.Request) {
 }
 
 // agentType is a struct to hold data retrieved from the database
-type agentType struct {
+type AgentType struct {
 	UUID zero.String
 	Name zero.String
 	OwnerName zero.String
@@ -180,7 +180,7 @@ type agentType struct {
 func uiAgents(w http.ResponseWriter, r *http.Request) {
 	var (
 		rowArr []interface{}
-		Agent agentType
+		Agent AgentType
 	)
 
 	db, err := sql.Open(PDO_Prefix, SQLiteDBFilename)
@@ -231,7 +231,7 @@ func uiAgentsUpdate(w http.ResponseWriter, r *http.Request) {
     if err != nil {
         panic(err)
     }
-	var ag agentType
+	var ag AgentType
     err = json.Unmarshal(body, &ag)
     if err != nil {
         panic(err)
@@ -295,7 +295,7 @@ func uiAgentsRemove(w http.ResponseWriter, r *http.Request) {
 }
 
 // positionType is a struct to hold data retrieved from the database, used by several functions (including JSON)
-type positionType struct {
+type PositionType struct {
 	PermURL zero.String
 	UUID zero.String
 	Name zero.String
@@ -317,7 +317,7 @@ type positionType struct {
 func uiPositions(w http.ResponseWriter, r *http.Request) {
 	var (
 		rowArr []interface{}
-		Position positionType
+		Position PositionType
 	)
 
 	db, err := sql.Open(PDO_Prefix, SQLiteDBFilename)
@@ -366,7 +366,7 @@ func uiPositionsUpdate(w http.ResponseWriter, r *http.Request) {
     if err != nil {
         panic(err)
     }
-	var pos positionType
+	var pos PositionType
     err = json.Unmarshal(body, &pos)
     if err != nil {
         panic(err)
