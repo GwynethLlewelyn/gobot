@@ -35,6 +35,13 @@
     <!-- Our own overrides -->
     <link href="{{.URLPathPrefix}}/lib/gobot.css" rel="stylesheet" type="text/css">
     
+    {{ if .MapURL }}
+    <!-- Call Leaflet.js to deal with maps -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.0.3/dist/leaflet.css"
+  integrity="sha512-07I2e+7D8p6he1SIM+1twR5TIrhUQn9+I6yjqD53JQjFiMf8EtC93ty0/5vJTZGF8aAocvHYNEDJajGdNx1IsQ=="
+  crossorigin=""/>
+    {{ end }}
+    
     {{ if .gobotJS }}
     <!-- Call agGrid -->
     <script src="{{.URLPathPrefix}}/lib/ag-grid/dist/ag-grid.min.js"></script>

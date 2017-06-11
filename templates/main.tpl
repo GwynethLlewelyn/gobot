@@ -11,21 +11,23 @@
                     <div class="col-lg-12">
                         <h1 class="page-header">{{.Title}}</h1>
                         {{ if .Agents }}
-                        <h2>Statistics</h2>
-                        <ul>
-	                        <li>
-	                        	{{.Agents}}
-	                        </li>
-	                        <li>
-	                        	{{.Inventory}}
-	                        </li>
-	                        <li>
-	                        	{{.Positions}}
-	                        </li>
-	                        <li>
-	                        	{{.Obstacles}}
-	                        </li>
-                        </ul>
+                        <div class="col-lg-6">
+	                        <h2>Statistics</h2>
+	                        <ul>
+		                        <li>
+		                        	{{.Agents}}
+		                        </li>
+		                        <li>
+		                        	{{.Inventory}}
+		                        </li>
+		                        <li>
+		                        	{{.Positions}}
+		                        </li>
+		                        <li>
+		                        	{{.Obstacles}}
+		                        </li>
+	                        </ul>
+                        </div> <!-- ./col-lg-6 -->
                         {{ end }}
                         {{ if .SetCookie }}
                         <p>Welcome, {{ .SetCookie }}</p>
@@ -34,7 +36,10 @@
                         {{ .Content }}
                         {{ end }}
                         {{ if .MapURL }}
-                        <img src="{{ .MapURL }}" alt="Map">
+						<div class="col-lg-6">
+							<h2>In-world map</h2>
+                        {{ .MapURL }}
+						</div> <!-- ./col-lg-6 -->
                         {{ end }}
                         {{ if .ButtonText }}
                         <a href="{{.URLPathPrefix}}{{ .ButtonURL }}">
