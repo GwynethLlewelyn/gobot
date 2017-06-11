@@ -87,10 +87,23 @@ func clearSession(response http.ResponseWriter) {
 	http.SetCookie(response, cookie)
 }
 
+// checkSession will see if we have a valid cookie; if not, redirects to login
+func checkSession(w http.ResponseWriter, r *http.Request) {
+	// valid cookie and no errors?
+	if cookie, err := r.Cookie("session"); err == nil {
+		fmt.Println("Found cookie:", cookie) // stupid 
+		return
+	}
+	//fmt.Println("Cookie not found")
+	// assumes either invalid cookie, or some error; redirect to the login page
+	http.Redirect(w, r, URLPathPrefix + "/admin/login/", 302)	
+}
+
 // Function handlers for requests
 
 // backofficeMain is the main page, has some minor statistics, may do this fancier later on
 func backofficeMain(w http.ResponseWriter, r *http.Request) {
+	checkSession(w, r) // make sure we've got a valid cookie, or else send to login page
 	// let's load the main template for now, just to make sure this works
 	
 	// Open database just to gather some statistics
@@ -136,6 +149,8 @@ func backofficeMain(w http.ResponseWriter, r *http.Request) {
 		strObstacles = "No Obstacles."
 	}
 	
+	// Generate a 
+	
 	tplParams := templateParameters{ "Title": "Gobot Administrator Panel - main",
 			"Agents": strAgents,
 			"Inventory": strInventory,
@@ -151,6 +166,7 @@ func backofficeMain(w http.ResponseWriter, r *http.Request) {
 
 // backofficeAgents lists active agents
 func backofficeAgents(w http.ResponseWriter, r *http.Request) {
+	checkSession(w, r)
 	tplParams := templateParameters{ "Title": "Gobot Administrator Panel - agents",
 			"Content": "Hi there, this is the agents template",
 			"URLPathPrefix": URLPathPrefix,
@@ -163,6 +179,7 @@ func backofficeAgents(w http.ResponseWriter, r *http.Request) {
 
 // backofficeObjects lists objects seen as obstacles
 func backofficeObjects(w http.ResponseWriter, r *http.Request) {
+	checkSession(w, r)
 	tplParams := templateParameters{ "Title": "Gobot Administrator Panel - objects",
 			"Content": "Hi there, this is the objects template",
 			"URLPathPrefix": URLPathPrefix,
@@ -175,6 +192,7 @@ func backofficeObjects(w http.ResponseWriter, r *http.Request) {
 
 // backofficePositions lists Positions
 func backofficePositions(w http.ResponseWriter, r *http.Request) {
+	checkSession(w, r)
 	tplParams := templateParameters{ "Title": "Gobot Administrator Panel - positions",
 			"Content": "Hi there, this is the positions template",
 			"URLPathPrefix": URLPathPrefix,
@@ -187,6 +205,7 @@ func backofficePositions(w http.ResponseWriter, r *http.Request) {
 
 // backofficeInventory lists the content or inventory currently stored on objects
 func backofficeInventory(w http.ResponseWriter, r *http.Request) {
+	checkSession(w, r)
 	tplParams := templateParameters{ "Title": "Gobot Administrator Panel - inventory",
 			"Content": "Hi there, this is the inventory template",
 			"URLPathPrefix": URLPathPrefix,
@@ -201,6 +220,7 @@ func backofficeInventory(w http.ResponseWriter, r *http.Request) {
 //  This is basically a stub for more complex user management, to be reused by other developments...
 //  I will not develop this further, except perhaps to link usernames to in-world avatars (may be useful)
 func backofficeUserManagement(w http.ResponseWriter, r *http.Request) {
+	checkSession(w, r)
 	tplParams := templateParameters{ "Title": "Gobot Administrator Panel - User Management",
 			"Content": "Hi there, this is the User Management template",
 			"URLPathPrefix": URLPathPrefix,
@@ -290,6 +310,7 @@ func backofficeLogout(w http.ResponseWriter, r *http.Request) {
 
 // backofficeCommands is a form-based interface to give commands to individual bots
 func backofficeCommands(w http.ResponseWriter, r *http.Request) {
+	checkSession(w, r)
 	// Collect a list of existing bots and their PermURLs for the form
 	
 	db, err := sql.Open(PDO_Prefix, SQLiteDBFilename)
@@ -323,6 +344,7 @@ func backofficeCommands(w http.ResponseWriter, r *http.Request) {
 // backofficeCommandsExec gets the user-selected params from the backofficeCommands form and sends them to the user, giving feedback
 //  This may change in the future, e.g. using Ajax to get inline results on the form
 func backofficeCommandsExec(w http.ResponseWriter, r *http.Request) {
+	checkSession(w, r)
 	err := r.ParseForm()
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Extracting parameters failed: %s\n", err), http.StatusServiceUnavailable)
@@ -375,6 +397,7 @@ func backofficeCommandsExec(w http.ResponseWriter, r *http.Request) {
 
 // backofficeControllerCommands is a form-based interface to give commands to the Bot Controller
 func backofficeControllerCommands(w http.ResponseWriter, r *http.Request) {
+	checkSession(w, r)
 	// Collect a list of existing bots and their PermURLs for the form
 	
 	db, err := sql.Open(PDO_Prefix, SQLiteDBFilename)
@@ -427,6 +450,7 @@ func backofficeControllerCommands(w http.ResponseWriter, r *http.Request) {
 // backofficeControllerCommandsExec gets the user-selected params from the backofficeControllerCommands form and sends them to the user, giving feedback
 //  This may change in the future, e.g. using Ajax to get inline results on the form
 func backofficeControllerCommandsExec(w http.ResponseWriter, r *http.Request) {
+	checkSession(w, r)
 	err := r.ParseForm()
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Extracting parameters failed: %s\n", err), http.StatusServiceUnavailable)
