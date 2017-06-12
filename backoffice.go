@@ -106,8 +106,6 @@ func backofficeMain(w http.ResponseWriter, r *http.Request) {
 	db, err := sql.Open(PDO_Prefix, SQLiteDBFilename) // presumes sqlite3 for now
 	checkErr(err)
 
-	defer db.Close()
-
 	var (
 		cnt int
 		strAgents, strInventory, strPositions, strObstacles string
@@ -265,6 +263,8 @@ func backofficeMain(w http.ResponseWriter, r *http.Request) {
 								xyz[0], xyz[1], *Object.Name.Ptr(), *Object.UUID.Ptr(), *Object.Name.Ptr(), *Object.Position.Ptr())
 	}
 	checkErr(err)
+	
+	db.Close()
 
 	tplParams := templateParameters{ "Title": "Gobot Administrator Panel - main",
 			"Agents": strAgents,
