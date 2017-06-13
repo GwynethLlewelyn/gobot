@@ -110,6 +110,8 @@ func backofficeMain(w http.ResponseWriter, r *http.Request) {
 	// Open database just to gather some statistics
 	db, err := sql.Open(PDO_Prefix, SQLiteDBFilename) // presumes sqlite3 for now
 	checkErr(err)
+	
+	defer db.Close()
 
 	var (
 		cnt int
@@ -194,9 +196,11 @@ func backofficeMain(w http.ResponseWriter, r *http.Request) {
 		
 		markersOutput += fmt.Sprintf("L.marker([%s, %s], { title: 'Agent: %s', riseOnHover: true, icon: agentMarker }).bindPopup(" +
 										"L.popup({ maxWidth: 180 })" +
-											".setContent('UUID: %s<br />Agent Name: %s<br />Position: %s')" +
+											".setContent('UUID: <a href=\"%s\">%s</a><br />Agent Name: %s<br />Position: %s')" +
 										").addTo(map);", 
-								xyz[0], xyz[1], *Agent.Name.Ptr(), *Agent.UUID.Ptr(), *Agent.Name.Ptr(), *Agent.Position.Ptr())
+								xyz[0], xyz[1], *Agent.Name.Ptr(), URLPathPrefix + "/admin/agents/?UUID=" +
+								*Agent.UUID.Ptr(), *Agent.UUID.Ptr(), *Agent.Name.Ptr(),
+								*Agent.Position.Ptr())
 	}
 	checkErr(err)
 	
@@ -229,9 +233,11 @@ func backofficeMain(w http.ResponseWriter, r *http.Request) {
 		
 		markersOutput += fmt.Sprintf("L.marker([%s, %s], { title: 'Position: %s', riseOnHover: true, icon: positionMarker }).bindPopup(" +
 										"L.popup({ maxWidth: 180 })" +
-											".setContent('UUID: %s<br />Position Name: %s<br />Position: %s')" +
+											".setContent('UUID: <a href=\"%s\">%s</a><br />Position Name: %s<br />Position: %s')" +
 										").addTo(map);", 
-								xyz[0], xyz[1], *Position.Name.Ptr(), *Position.UUID.Ptr(), *Position.Name.Ptr(), *Position.Position.Ptr())
+								xyz[0], xyz[1], *Position.Name.Ptr(),
+								URLPathPrefix + "/admin/positions/?UUID=" + *Position.UUID.Ptr(),
+								*Position.UUID.Ptr(), *Position.Name.Ptr(), *Position.Position.Ptr())
 	}
 	checkErr(err)
 
@@ -263,13 +269,13 @@ func backofficeMain(w http.ResponseWriter, r *http.Request) {
 		
 		markersOutput += fmt.Sprintf("L.marker([%s, %s], { title: 'Object: %s', riseOnHover: true, icon: objectMarker }).bindPopup(" +
 										"L.popup({ maxWidth: 180 })" +
-											".setContent('UUID: %s<br />Object Name: %s<br />Position: %s')" +
+											".setContent('UUID: <a href=\"%s\">%s</a><br />Object Name: %s<br />Position: %s')" +
 										").addTo(map);", 
-								xyz[0], xyz[1], *Object.Name.Ptr(), *Object.UUID.Ptr(), *Object.Name.Ptr(), *Object.Position.Ptr())
+								xyz[0], xyz[1], *Object.Name.Ptr(), URLPathPrefix + "/admin/objects/?UUID=" +
+								*Object.UUID.Ptr(), *Object.UUID.Ptr(), *Object.Name.Ptr(), 
+								*Object.Position.Ptr())
 	}
 	checkErr(err)
-	
-	db.Close()
 
 	tplParams := templateParameters{ "Title": "Gobot Administrator Panel - main",
 			"Agents": strAgents,
@@ -378,11 +384,15 @@ func backofficeLogin(w http.ResponseWriter, r *http.Request) {
         // Check username on database
         db, err := sql.Open(PDO_Prefix, SQLiteDBFilename)
 		checkErr(err)
+		
+		defer db.Close()
 	
 		// query
 		rows, err := db.Query("SELECT Email, Password FROM Users")
 		checkErr(err)
-	 	   
+
+		defer rows.Close()
+		
 		var (
 			Email string
 			Password string
@@ -404,8 +414,6 @@ func backofficeLogin(w http.ResponseWriter, r *http.Request) {
 				break
 			}		
 		}
-		
-		db.Close()
 		
 	    if authorised {
 	        // we need to set a cookie here
@@ -437,6 +445,8 @@ func backofficeCommands(w http.ResponseWriter, r *http.Request) {
 	// query
 	rows, err := db.Query("SELECT Name, PermURL FROM Agents ORDER BY Name")
 	checkErr(err)
+	
+	defer rows.Close()
  	
 	var name, permURL, AvatarPermURLOptions = "", "", ""
 
@@ -521,6 +531,8 @@ func backofficeControllerCommands(w http.ResponseWriter, r *http.Request) {
 	// query for in-world objects that are Bot Controllers
 	rows, err := db.Query("SELECT Name, Location, Position, PermURL FROM Positions WHERE ObjectType ='Bot Controller' ORDER BY Name")
 	checkErr(err)
+	
+	defer rows.Close()
  	
 	var name, location, position, permURL, MasterBotControllers, regionName, coords = "", "", "", "", "", "", ""
 	var xyz []string
@@ -539,6 +551,8 @@ func backofficeControllerCommands(w http.ResponseWriter, r *http.Request) {
 
 	rows, err = db.Query("SELECT Name, OwnerKey FROM Agents ORDER BY Name")
 	checkErr(err)
+	
+	defer rows.Close()
  	
 	var ownerKey, AgentNames = "", "" // we're reusing 'name' from above
 

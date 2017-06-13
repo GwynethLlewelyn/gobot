@@ -44,6 +44,8 @@ func updateInventory(w http.ResponseWriter, r *http.Request) {
 		stmt, err := db.Prepare("REPLACE INTO Inventory (`UUID`, `Name`, `Type`, `Permissions`, `LastUpdate`) VALUES (?,?,?,?,?)");
 		checkErrPanicHTTP(w, http.StatusServiceUnavailable, "Replace prepare failed: %s\n", err)
 
+		defer stmt.Close()
+
 		_, err = stmt.Exec(
 			r.Header.Get("X-Secondlife-Object-Key"),
 			r.Form.Get("name"),
@@ -103,7 +105,9 @@ func updateSensor(w http.ResponseWriter, r *http.Request) {
 		
 		stmt, err := db.Prepare("REPLACE INTO Obstacles (`UUID`, `Name`, `BotKey`, `BotName`, `Type`, `Origin`, `Position`, `Rotation`, `Velocity`, `Phantom`, `Prims`, `BBHi`, `BBLo`, `LastUpdate`) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
 		checkErrPanicHTTP(w, http.StatusServiceUnavailable, "Replace prepare failed: %s\n", err)
-		
+
+		defer stmt.Close()
+
 		_, err = stmt.Exec(
 			r.Form.Get("key"),
 			r.Form.Get("name"),
@@ -185,6 +189,8 @@ func registerPosition(w http.ResponseWriter, r *http.Request) {
 		
 		stmt, err := db.Prepare("REPLACE INTO Positions (`UUID`, `Name`, `PermURL`, `Location`, `Position`, `Rotation`, `Velocity`, `OwnerKey`, `OwnerName`, `ObjectType`, `ObjectClass`, `RateEnergy`, `RateMoney`, `RateHappiness`, `LastUpdate`) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
 		checkErrPanicHTTP(w, http.StatusServiceUnavailable, "Replace prepare failed: %s\n", err)
+
+		defer stmt.Close()
 		
 		_, err = stmt.Exec(
 			r.Header.Get("X-Secondlife-Object-Key"),
@@ -258,6 +264,8 @@ func registerAgent(w http.ResponseWriter, r *http.Request) {
 		stmt, err := db.Prepare("REPLACE INTO Agents (`UUID`, `Name`, `OwnerKey`, `OwnerName`, `PermURL`, `Location`, `Position`, `Rotation`, `Velocity`, `Energy`, `Money`, `Happiness`, `Class`, `SubType`, `LastUpdate`) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
 		checkErrPanicHTTP(w, http.StatusServiceUnavailable, "Replace prepare failed: %s\n", err)
 
+		defer stmt.Close()
+
 		_, err = stmt.Exec(
 			r.Header.Get("X-Secondlife-Object-Key"),
 			r.Header.Get("X-Secondlife-Object-Name"),
@@ -294,6 +302,8 @@ func registerAgent(w http.ResponseWriter, r *http.Request) {
 	} else if r.Form.Get("request") == "delete" { // other requests, currently only deletion		
 		stmt, err := db.Prepare("DELETE FROM Agents WHERE UUID=?")
 		checkErrPanicHTTP(w, http.StatusServiceUnavailable, "Delete agent prepare failed: %s\n", err)
+
+		defer stmt.Close()
 		
 		_, err = stmt.Exec(r.Form.Get("npc"))
 		checkErrPanicHTTP(w, http.StatusServiceUnavailable, "Delete agent exec failed: %s\n", err)

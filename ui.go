@@ -129,6 +129,8 @@ func uiObjectsUpdate(w http.ResponseWriter, r *http.Request) {
 	stmt, err := db.Prepare("REPLACE INTO Obstacles (`UUID`, `Name`, `BotKey`, `BotName`, `Type`, `Position`, `Rotation`, `Velocity`, `LastUpdate`, `Origin`, `Phantom`, `Prims`, `BBHi`, `BBLo`) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
 	checkErrPanicHTTP(w, http.StatusServiceUnavailable, "Replace prepare failed: %s\n", err)
 
+	defer stmt.Close()
+
 	_, err = stmt.Exec(obj.UUID, obj.Name, obj.BotKey, obj.BotName, obj.Type, obj.Position,
 		obj.Rotation, obj.Velocity, obj.LastUpdate, obj.Origin, obj.Phantom, obj.Prims, obj.BBHi, obj.BBLo)
 	checkErrPanicHTTP(w, http.StatusServiceUnavailable, "Replace exec failed: %s\n", err)
@@ -143,7 +145,7 @@ func uiObjectsUpdate(w http.ResponseWriter, r *http.Request) {
 func uiObjectsRemove(w http.ResponseWriter, r *http.Request) {
 	body, err := ioutil.ReadAll(r.Body)
 	checkErrPanicHTTP(w, http.StatusServiceUnavailable, "Cannot read body of HTTP Request: %s\n", err)
-	// fmt.Println("\nObjects body is >>", string(body), "<<")
+	// log.Println("\nObjects body is >>", string(body), "<<")
 	    
     // open database connection and see if we can remove the object UUIDs we got
 	db, err := sql.Open(PDO_Prefix, SQLiteDBFilename)
@@ -243,6 +245,8 @@ func uiAgentsUpdate(w http.ResponseWriter, r *http.Request) {
 	
 	stmt, err := db.Prepare("REPLACE INTO Agents (`UUID`, `Name`, `OwnerName`, `OwnerKey`, `Location`, `Position`, `Rotation`, `Velocity`, `Energy`, `Money`, `Happiness`, `Class`, `SubType`, `PermURL`, `LastUpdate`, `BestPath`, `SecondBestPath`, `CurrentTarget`) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
 	checkErrPanicHTTP(w, http.StatusServiceUnavailable, "Replace prepare failed: %s\n", err)
+
+	defer stmt.Close()
 
 	_, err = stmt.Exec(ag.UUID, ag.Name, ag.OwnerName, ag.OwnerKey, ag.Location, ag.Position,
 		ag.Rotation, ag.Velocity, ag.Energy, ag.Money, ag.Happiness, ag.Class, ag.SubType, ag.PermURL,
@@ -351,6 +355,8 @@ func uiPositionsUpdate(w http.ResponseWriter, r *http.Request) {
 	stmt, err := db.Prepare("REPLACE INTO Positions (`PermURL`, `UUID`, `Name`, `OwnerName`, `Location`, `Position`, `Rotation`, `Velocity`, `LastUpdate`, `OwnerKey`, `ObjectType`, `ObjectClass`, `RateEnergy`, `RateMoney`, `RateHappiness`) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
 	checkErrPanicHTTP(w, http.StatusServiceUnavailable, "Replace prepare failed: %s\n", err)
 
+	defer stmt.Close()
+
 	_, err = stmt.Exec(pos.PermURL, pos.UUID, pos.Name, pos.OwnerName, pos.Location, pos.Position,
 		pos.Rotation, pos.Velocity, pos.LastUpdate, pos.OwnerKey, pos.ObjectType, pos.ObjectClass,
 		pos.RateEnergy, pos.RateMoney, pos.RateHappiness)
@@ -438,6 +444,8 @@ func uiInventoryUpdate(w http.ResponseWriter, r *http.Request) {
 	stmt, err := db.Prepare("REPLACE INTO Inventory (`UUID`, `Name`, `Type`, `LastUpdate`, `Permissions`) VALUES (?,?,?,?,?)");
 	checkErrPanicHTTP(w, http.StatusServiceUnavailable, "Replace prepare failed: %s\n", err)
 
+	defer stmt.Close()
+
 	_, err = stmt.Exec(inv.UUID, inv.Name, inv.Type, inv.LastUpdate, inv.Permissions)
 	checkErrPanicHTTP(w, http.StatusServiceUnavailable, "Replace exec failed: %s\n", err)
 
@@ -517,6 +525,8 @@ func uiUserManagementUpdate(w http.ResponseWriter, r *http.Request) {
 	
 	stmt, err := db.Prepare("REPLACE INTO Users (`Email`, `Password`) VALUES (?,?)");
 	checkErrPanicHTTP(w, http.StatusServiceUnavailable, "Replace prepare failed: %s\n", err)
+
+	defer stmt.Close()
 
 	_, err = stmt.Exec(user.Email, user.Password)
 	checkErrPanicHTTP(w, http.StatusServiceUnavailable, "Replace exec failed: %s\n", err)

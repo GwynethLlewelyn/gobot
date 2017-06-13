@@ -90,7 +90,7 @@ func main() {
 		fmt.Println(Position)
 	}
 	checkErr(err)
-	
+	rows.Close()
 	db.Close()
 	
 	fmt.Println("\n\nDatabase tests ended.\n\nStarting Gobot application at port", ServerPort, "\nfor URL:", URLPathPrefix)
