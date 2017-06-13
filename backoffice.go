@@ -51,6 +51,7 @@ var cookieHandler = securecookie.New(		// from gorilla/securecookie
     securecookie.GenerateRandomKey(64),
     securecookie.GenerateRandomKey(32))
 
+// setSession returns a new session cookie with an encoded username
 func setSession(userName string, response http.ResponseWriter) {
 	value := map[string]string{
 		"name": userName,
@@ -68,6 +69,7 @@ func setSession(userName string, response http.ResponseWriter) {
 	}
  }
  
+ // getUserName sees if we have a session cookie with an encoded user name, returning nil if not found 
 func getUserName(request *http.Request) (userName string) {
 	if cookie, err := request.Cookie("session"); err == nil {
 		cookieValue := make(map[string]string)
@@ -78,6 +80,7 @@ func getUserName(request *http.Request) (userName string) {
 	return userName
 }
 
+// clearSession will remove a cookie by setting its MaxAge to -1 and clearing its value
 func clearSession(response http.ResponseWriter) {
 	cookie := &http.Cookie{
 		Name:	"session",
@@ -96,7 +99,8 @@ func checkSession(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// Function handlers for requests
+
+// Function handlers for HTTP requests (main functions for this file)
 
 // backofficeMain is the main page, has some minor statistics, may do this fancier later on
 func backofficeMain(w http.ResponseWriter, r *http.Request) {
@@ -105,7 +109,7 @@ func backofficeMain(w http.ResponseWriter, r *http.Request) {
 	
 	// Open database just to gather some statistics
 	db, err := sql.Open(PDO_Prefix, SQLiteDBFilename) // presumes sqlite3 for now
-	log.Print(err)
+	checkErr(err)
 
 	var (
 		cnt int
@@ -113,7 +117,7 @@ func backofficeMain(w http.ResponseWriter, r *http.Request) {
 	)
 		
 	err = db.QueryRow("select count(*) from Agents").Scan(&cnt)
-	log.Print(err)	
+	checkErr(err)	
 	if (cnt != 0) {
 		strAgents = "Agents: " + strconv.Itoa(cnt)
 	} else {
@@ -121,7 +125,7 @@ func backofficeMain(w http.ResponseWriter, r *http.Request) {
 	}
 	
 	err = db.QueryRow("select count(*) from Inventory").Scan(&cnt)
-	log.Print(err)	
+	checkErr(err)	
 	if (cnt != 0) {
 		strInventory = "Inventory items: " + strconv.Itoa(cnt)
 	} else {
@@ -129,7 +133,7 @@ func backofficeMain(w http.ResponseWriter, r *http.Request) {
 	}
 
 	err = db.QueryRow("select count(*) from Positions").Scan(&cnt)
-	log.Print(err)	
+	checkErr(err)	
 	if (cnt != 0) {
 		strPositions = "Positions: " + strconv.Itoa(cnt)
 	} else {
@@ -137,14 +141,14 @@ func backofficeMain(w http.ResponseWriter, r *http.Request) {
 	}
 
 	err = db.QueryRow("select count(*) from Obstacles").Scan(&cnt)
-	log.Print(err)	
+	checkErr(err)	
 	if (cnt != 0) {
 		strObstacles = "Obstacles: " + strconv.Itoa(cnt)
 	} else {
 		strObstacles = "No Obstacles."
 	}
 	
-	// Generate markers for the map
+	// Generate markers for the Leaflet-based map (20170605)
 	
 	// template: L.marker([127, 127], { title: 'Test' }).bindPopup(
 	//								L.popup({ maxWidth: 180 })
@@ -161,7 +165,7 @@ func backofficeMain(w http.ResponseWriter, r *http.Request) {
 	)
 	
 	rows, err := db.Query("SELECT * FROM Agents")
-	log.Print(err)
+	checkErr(err)
 
 	for rows.Next() {
 		err = rows.Scan(
@@ -194,13 +198,13 @@ func backofficeMain(w http.ResponseWriter, r *http.Request) {
 										").addTo(map);", 
 								xyz[0], xyz[1], *Agent.Name.Ptr(), *Agent.UUID.Ptr(), *Agent.Name.Ptr(), *Agent.Position.Ptr())
 	}
-	log.Print(err)
+	checkErr(err)
 	
 	// now do positions
 	var Position PositionType
 	
 	rows, err = db.Query("SELECT * FROM Positions")
-	log.Print(err)
+	checkErr(err)
 
 	for rows.Next() {
 		err = rows.Scan(
@@ -229,13 +233,13 @@ func backofficeMain(w http.ResponseWriter, r *http.Request) {
 										").addTo(map);", 
 								xyz[0], xyz[1], *Position.Name.Ptr(), *Position.UUID.Ptr(), *Position.Name.Ptr(), *Position.Position.Ptr())
 	}
-	log.Print(err)
+	checkErr(err)
 
 	// and at last add all the stupid obstacles...
 	var Object ObjectType
 	
 	rows, err = db.Query("SELECT * FROM Obstacles")
-	log.Print(err)
+	checkErr(err)
 
 	for rows.Next() {
 		err = rows.Scan(
@@ -263,7 +267,7 @@ func backofficeMain(w http.ResponseWriter, r *http.Request) {
 										").addTo(map);", 
 								xyz[0], xyz[1], *Object.Name.Ptr(), *Object.UUID.Ptr(), *Object.Name.Ptr(), *Object.Position.Ptr())
 	}
-	log.Print(err)
+	checkErr(err)
 	
 	db.Close()
 
@@ -277,7 +281,7 @@ func backofficeMain(w http.ResponseWriter, r *http.Request) {
 			"MapMarkers": template.JS(markersOutput),
 	}
 	err = GobotTemplates.gobotRenderer(w, r, "main", tplParams)
-	log.Print(err)
+	checkErr(err)
 	return
 }
 
@@ -290,7 +294,7 @@ func backofficeAgents(w http.ResponseWriter, r *http.Request) {
 			"gobotJS": "agents.js",
 	}
 	err := GobotTemplates.gobotRenderer(w, r, "agents", tplParams)
-	log.Print(err)
+	checkErr(err)
 	return
 }
 
@@ -303,7 +307,7 @@ func backofficeObjects(w http.ResponseWriter, r *http.Request) {
 			"gobotJS": "objects.js",
 	}	
 	err := GobotTemplates.gobotRenderer(w, r, "objects", tplParams)
-	log.Print(err)
+	checkErr(err)
 	return
 }
 
@@ -316,7 +320,7 @@ func backofficePositions(w http.ResponseWriter, r *http.Request) {
 			"gobotJS": "positions.js",
 	}
 	err := GobotTemplates.gobotRenderer(w, r, "positions", tplParams)
-	log.Print(err)
+	checkErr(err)
 	return
 }
 
@@ -329,7 +333,7 @@ func backofficeInventory(w http.ResponseWriter, r *http.Request) {
 			"gobotJS": "inventory.js",
 	}
 	err := GobotTemplates.gobotRenderer(w, r, "inventory", tplParams)
-	log.Print(err)
+	checkErr(err)
 	return
 }
 
@@ -344,7 +348,7 @@ func backofficeUserManagement(w http.ResponseWriter, r *http.Request) {
 			"gobotJS": "user-management.js",
 	}
 	err := GobotTemplates.gobotRenderer(w, r, "user-management", tplParams)
-	log.Print(err)
+	checkErr(err)
 	return
 }
 
@@ -357,7 +361,7 @@ func backofficeLogin(w http.ResponseWriter, r *http.Request) {
 				"URLPathPrefix": URLPathPrefix,
 		}
 		err := GobotTemplates.gobotRenderer(w, r, "login", tplParams)
-		log.Print(err)
+		checkErr(err)
 	} else { // POST is assumed
 		r.ParseForm()
         // logic part of logging in
@@ -373,11 +377,11 @@ func backofficeLogin(w http.ResponseWriter, r *http.Request) {
         
         // Check username on database
         db, err := sql.Open(PDO_Prefix, SQLiteDBFilename)
-		log.Print(err)
+		checkErr(err)
 	
 		// query
 		rows, err := db.Query("SELECT Email, Password FROM Users")
-		log.Print(err)
+		checkErr(err)
 	 	   
 		var (
 			Email string
@@ -428,18 +432,18 @@ func backofficeCommands(w http.ResponseWriter, r *http.Request) {
 	// Collect a list of existing bots and their PermURLs for the form
 	
 	db, err := sql.Open(PDO_Prefix, SQLiteDBFilename)
-	log.Print(err)
+	checkErr(err)
 
 	// query
 	rows, err := db.Query("SELECT Name, PermURL FROM Agents ORDER BY Name")
-	log.Print(err)
+	checkErr(err)
  	
 	var name, permURL, AvatarPermURLOptions = "", "", ""
 
 	// find all agent (NPC) Names and PermURLs and create select options for each of them
 	for rows.Next() {
 		err = rows.Scan(&name, &permURL)
-		log.Print(err)
+		checkErr(err)
 		AvatarPermURLOptions += "\t\t\t\t\t\t\t\t\t\t\t<option value=\"" + permURL + "\">" + name + "|" + permURL + "</option>\n"
 	}
 	
@@ -451,7 +455,7 @@ func backofficeCommands(w http.ResponseWriter, r *http.Request) {
 			"AvatarPermURLOptions": template.HTML(AvatarPermURLOptions), // trick to get valid HTML not to be escaped by the Go template engine
 	}
 	err = GobotTemplates.gobotRenderer(w, r, "commands", tplParams)
-	log.Print(err)
+	checkErr(err)
 	return
 }
 
@@ -506,7 +510,7 @@ func backofficeCommandsExec(w http.ResponseWriter, r *http.Request) {
 		"ButtonURL": "/admin/commands/",
 	}
 	err = GobotTemplates.gobotRenderer(w, r, "main", tplParams)
-	log.Print(err)
+	checkErr(err)
 	return
 }
 
@@ -516,11 +520,11 @@ func backofficeControllerCommands(w http.ResponseWriter, r *http.Request) {
 	// Collect a list of existing bots and their PermURLs for the form
 	
 	db, err := sql.Open(PDO_Prefix, SQLiteDBFilename)
-	log.Print(err)
+	checkErr(err)
 
 	// query for in-world objects that are Bot Controllers
 	rows, err := db.Query("SELECT Name, Location, Position, PermURL FROM Positions WHERE ObjectType ='Bot Controller' ORDER BY Name")
-	log.Print(err)
+	checkErr(err)
  	
 	var name, location, position, permURL, MasterBotControllers, regionName, coords = "", "", "", "", "", "", ""
 	var xyz []string
@@ -528,7 +532,7 @@ func backofficeControllerCommands(w http.ResponseWriter, r *http.Request) {
 	// As on backofficeCommands, but a little more complicated
 	for rows.Next() {
 		err = rows.Scan(&name, &location, &position, &permURL)
-		log.Print(err)
+		checkErr(err)
 		// parse name of the region and coordinates
 		regionName = location[:strings.Index(location, "(")-1]
 		coords = strings.Trim(position, "() \t\n\r")
@@ -538,14 +542,14 @@ func backofficeControllerCommands(w http.ResponseWriter, r *http.Request) {
 	}
 
 	rows, err = db.Query("SELECT Name, OwnerKey FROM Agents ORDER BY Name")
-	log.Print(err)
+	checkErr(err)
  	
 	var ownerKey, AgentNames = "", "" // we're reusing 'name' from above
 
 	// find all Names and OwnerKeys and create select options for each of them
 	for rows.Next() {
 		err = rows.Scan(&name, &ownerKey)
-		log.Print(err)
+		checkErr(err)
 		AgentNames += "\t\t\t\t\t\t\t\t\t\t\t<option value=\"" + ownerKey + "\">" + name + " (" + ownerKey + ")</option>\n"
 	}
 	
@@ -558,7 +562,7 @@ func backofficeControllerCommands(w http.ResponseWriter, r *http.Request) {
 			"AgentNames": template.HTML(AgentNames),
 	}
 	err = GobotTemplates.gobotRenderer(w, r, "controller-commands", tplParams)
-	log.Print(err)
+	checkErr(err)
 	return
 }
 
@@ -614,6 +618,6 @@ func backofficeControllerCommandsExec(w http.ResponseWriter, r *http.Request) {
 		"ButtonURL": "/admin/controller-commands/",
 	}
 	err = GobotTemplates.gobotRenderer(w, r, "main", tplParams)
-	log.Print(err)
+	checkErr(err)
 	return
 }

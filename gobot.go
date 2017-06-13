@@ -160,11 +160,18 @@ func main() {
     checkErr(err)
 }
 
-// checkErr logs a fatal error and panics
+// checkErrPanic logs a fatal error and panics
+func checkErrPanic(err error) {
+	if err != nil {
+		log.Panic("gobot panic: ", err)
+	}
+}
+
+// checkErr checks if there is an error, and if yes, it logs it out and continues
+//  this is for 'normal' situations when we want to get a log if something goes wrong but do not need to panic
 func checkErr(err error) {
 	if err != nil {
-		log.Fatal("gobot: ", err)
-		panic(err)
+		log.Print(err)
 	}
 }
 
