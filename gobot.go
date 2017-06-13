@@ -23,6 +23,10 @@ var (
 type templateParameters map[string]interface{}
 
 func main() {
+	// to change the flags on the default logger
+	// see https://stackoverflow.com/a/24809859/1035977
+	log.SetFlags(log.LstdFlags | log.Lshortfile)
+	
 	fmt.Print("Reading Gobot configuration...")
 	// Open our config file and extract relevant data from there
 	viper.SetConfigName("config")
