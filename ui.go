@@ -29,8 +29,17 @@ func checkErrPanicHTTP(w http.ResponseWriter, httpStatus int, errorMessage strin
 	}
 }
 
-// main functions to respond to agGrid
-// each function class has a struct type to deal with database requests
+// logErrHTTP assumes that the error message was already composed and writes it to HTTP and logs it
+//  this is mostly to avoid code duplication and make sure that all entries are written similarly 
+func logErrHTTP(w http.ResponseWriter, httpStatus int, errorMessage string) {
+	http.Error(w, errorMessage, httpStatus)
+	log.Print("(" + http.StatusText(httpStatus) + ") " + errorMessage)
+}
+
+
+// Main functions to respond to agGrid
+//
+// Each function class has a struct type to deal with database requests
 
 // objectType is a struct to hold data retrieved from the database, used by several functions (including JSON)
 type ObjectType struct {

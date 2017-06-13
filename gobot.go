@@ -89,6 +89,7 @@ func main() {
 		fmt.Println(Location)
 		fmt.Println(Position)
 	}
+	checkErr(err)
 	
 	db.Close()
 	

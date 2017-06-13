@@ -464,12 +464,8 @@ func backofficeCommands(w http.ResponseWriter, r *http.Request) {
 func backofficeCommandsExec(w http.ResponseWriter, r *http.Request) {
 	checkSession(w, r)
 	err := r.ParseForm()
-	if err != nil {
-		http.Error(w, fmt.Sprintf("Extracting parameters failed: %s\n", err), http.StatusServiceUnavailable)
-		log.Printf(fmt.Sprintf("Extracting parameters failed: %s\n", err))
-		return
-	}
-	
+	checkErrPanicHTTP(w, http.StatusServiceUnavailable, "Extracting parameters failed: %s\n", err)
+
 	var content = ""
 	
 	// test: just gather the values from the form, to make sure it works properly
@@ -486,7 +482,7 @@ func backofficeCommandsExec(w http.ResponseWriter, r *http.Request) {
     	r.Form.Get("param1") + "=" + r.Form.Get("data1") + "&" +
     	r.Form.Get("param2") + "=" + r.Form.Get("data2"))
     
-    fmt.Printf("Sending to in-world object %s ... %s\n", r.Form.Get("PermURL"), body)
+    log.Printf("Sending to in-world object %s ... %s\n", r.Form.Get("PermURL"), body) // debug
     
     rs, err := http.Post(r.Form.Get("PermURL"), "body/type", bytes.NewBuffer(body))
     // Code to process response (written in Get request snippet) goes here
@@ -495,8 +491,8 @@ func backofficeCommandsExec(w http.ResponseWriter, r *http.Request) {
 	
 	rsBody, err := ioutil.ReadAll(rs.Body)
 	if (err != nil) {
-		errMsg := fmt.Sprintf("Error response from in-world object: %s\n", err)
-		log.Print(errMsg)
+		errMsg := fmt.Sprintf("Error response from in-world object: %s", err)
+		log.Println(errMsg)
 		content += "<p class=\"text-danger\">" + errMsg + "</p>"
 	} else {
 	    log.Printf("Reply from in-world object %s\n", rsBody)
@@ -571,10 +567,7 @@ func backofficeControllerCommands(w http.ResponseWriter, r *http.Request) {
 func backofficeControllerCommandsExec(w http.ResponseWriter, r *http.Request) {
 	checkSession(w, r)
 	err := r.ParseForm()
-	if err != nil {
-		http.Error(w, fmt.Sprintf("Extracting parameters failed: %s\n", err), http.StatusServiceUnavailable)
-		return
-	}
+	checkErrPanicHTTP(w, http.StatusServiceUnavailable, "Extracting parameters failed: %s\n", err)
 	
 	var content = ""
 	
@@ -604,10 +597,10 @@ func backofficeControllerCommandsExec(w http.ResponseWriter, r *http.Request) {
 	rsBody, err := ioutil.ReadAll(rs.Body)
 	if (err != nil) {
 		errMsg := fmt.Sprintf("Error response from in-world object: %s", err)
-		fmt.Println(errMsg)
+		log.Println(errMsg)
 		content += "<p class=\"text-danger\">" + errMsg + "</p>"
 	} else {
-	    fmt.Printf("Reply from in-world object %s\n", rsBody)
+	    log.Printf("Reply from in-world object %s\n", rsBody)
 		content += "<p class=\"text-success\">" + string(rsBody) + "</p>"
 	}
 	
