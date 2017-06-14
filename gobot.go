@@ -133,7 +133,7 @@ func main() {
 	http.HandleFunc(URLPathPrefix + "/admin/commands/",					backofficeCommands)
 	http.HandleFunc(URLPathPrefix + "/admin/controller-commands/exec/",	backofficeControllerCommandsExec)
 	http.HandleFunc(URLPathPrefix + "/admin/controller-commands/",		backofficeControllerCommands)
-	http.HandleFunc(URLPathPrefix + "/admin/engine/",					backofficeMain)
+	http.HandleFunc(URLPathPrefix + "/admin/engine/",					engine)
 	http.HandleFunc(URLPathPrefix + "/admin/",							backofficeMain)
 	http.HandleFunc(URLPathPrefix + "/",								backofficeLogin) // if not auth, then get auth
 	

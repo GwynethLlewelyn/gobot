@@ -4,8 +4,15 @@
 
 #map {
 	width: 100%;
-    height: 512px;
-    border: 1px solid #ccc;
-    margin-top: 10px;
-    margin-bottom: 10px;
+	height: 512px;
+	border: 1px solid #ccc;
+	margin-top: 10px;
+	margin-bottom: 10px;
+}
+
+.avatar {
+	border-radius: 50%;
+	-moz-border-radius: 50%;
+	-webkit-border-radius: 50%;
+	height: 32px;
 }

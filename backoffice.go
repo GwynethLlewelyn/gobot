@@ -11,10 +11,12 @@ import (
 	"bytes"
 	"strconv"
 	"crypto/md5"
+	"encoding/hex"
 	"io/ioutil"
 	"strings"
 	"log"
 	// "gopkg.in/guregu/null.v3/zero"
+	"github.com/heatxsink/go-gravatar"
 )
 
 // GobotTemplatesType expands on template.Template
@@ -37,11 +39,23 @@ func (gt *GobotTemplatesType)init(globbedPath string) error {
 // gobotRenderer assembles the correct templates together and executes them
 //  this is mostly to deal with code duplication 
 func (gt *GobotTemplatesType)gobotRenderer(w http.ResponseWriter, r *http.Request, tplName string, tplParams templateParameters) error {
+	thisUserName :=  getUserName(r)
+	
 	// add cookie to all templates
-	tplParams["SetCookie"] =  getUserName(r)
+	tplParams["SetCookie"] = thisUserName
 
-    err := gt.ExecuteTemplate(w, tplName, tplParams)
-	return err
+	// add Gravatar to templates (note that all logins are supposed to be emails)
+	
+	// calculate hash for the Gravatar hovercard
+	hasher := md5.Sum([]byte(thisUserName))
+	hash := hex.EncodeToString(hasher[:])
+	tplParams["GravatarHash"] = hash // we ought to cache this somewhere
+	
+	// Now call the nice library function to get us the URL to the image 
+	g := gravatar.New("identicon", 32, "g", true)
+	tplParams["Gravatar"] = g.GetImageUrl(thisUserName) // we also ought to cache this somewhere
+	
+	return gt.ExecuteTemplate(w, tplName, tplParams)
 }
 
 // Auxiliary functions for session handling

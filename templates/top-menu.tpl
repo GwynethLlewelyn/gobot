@@ -14,6 +14,13 @@
 	            <li>
 	            {{ if .SetCookie }}
                 {{ .SetCookie }}
+                {{ if .Gravatar }}
+                <a href="https://gravatar.com/{{ .GravatarHash }}"><img class="avatar avatar-32 photo" src="{{ .Gravatar }}" height="32" width="32" alt="{{ .SetCookie }}"></a>
+                <div style="display:none">
+					<div class="grofile-hash-map-{{ .GravatarHash }}">
+					</div>
+				</div>
+                {{ end }}
                 {{ end }}
 	            </li>
                 <li>

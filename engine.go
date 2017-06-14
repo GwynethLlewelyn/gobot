@@ -11,7 +11,8 @@ func engine(w http.ResponseWriter, r *http.Request) {
 			"URLPathPrefix": URLPathPrefix,
 			"Content": "Not implemented yet",
 	}
-	_ = GobotTemplates.gobotRenderer(w, r, "main", tplParams) // ignore error, we'll redirect anyway
+	err := GobotTemplates.gobotRenderer(w, r, "main", tplParams)
+	checkErr(err)
 	time.Sleep(time.Second * 10)
 	http.Redirect(w, r, URLPathPrefix + "/", 302)
 }
