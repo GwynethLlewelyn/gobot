@@ -10,19 +10,15 @@
             </div>
             <!-- /.navbar-header -->
 
-            <ul class="nav navbar-top-links navbar-right">
-	            <li>
+            <ul class="nav navbar-top-links navbar-right">	            
 	            {{ if .SetCookie }}
+	            <li id="#username">
                 {{ .SetCookie }}
                 {{ if .Gravatar }}
                 <a href="https://gravatar.com/{{ .GravatarHash }}"><img class="avatar avatar-32 photo" src="{{ .Gravatar }}" height="32" width="32" alt="{{ .SetCookie }}"></a>
-                <div style="display:none">
-					<div class="grofile-hash-map-{{ .GravatarHash }}">
-					</div>
-				</div>
-                {{ end }}
                 {{ end }}
 	            </li>
+                {{ end }}
                 <li>
                     <a href="{{.URLPathPrefix}}/admin/"><i class="fa fa-dashboard fa-fw"></i> Dashboard</a>
                 </li>

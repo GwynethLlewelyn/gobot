@@ -17,8 +17,12 @@
     <script src="{{.URLPathPrefix}}/lib/startbootstrap-sb-admin-2/dist/js/sb-admin-2.js"></script>
     
 	{{ if .Gravatar }}
-	<script src="https://s.gravatar.com/js/gprofiles.js"></script>
+	<script src="https://secure.gravatar.com/js/gprofiles.js"></script>
 	<script src="{{.URLPathPrefix}}/lib/gobot-js/wpgroho.js"></script>
+	<div style="display:none">
+		<div class="grofile-hash-map-{{ .GravatarHash }}">
+		</div>
+	</div>
 	{{ end }}
 
 </body>

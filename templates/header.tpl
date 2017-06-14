@@ -54,6 +54,12 @@
     <script src="{{.URLPathPrefix}}/lib/gobot-js/{{.gobotJS}}"></script>
     {{ end }}
 
+	{{ if .Gravatar }}
+	<!-- I have no idea if this is really needed! -->
+	<link rel="stylesheet" href="https://secure.gravatar.com/css/services.css" type="text/css">
+	<link rel="stylesheet" href="{{.URLPathPrefix}}/lib/gravatar-profile.css" type="text/css">
+	{{ end }}
+
     <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
     <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
     <!--[if lt IE 9]>
