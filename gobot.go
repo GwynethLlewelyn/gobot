@@ -11,23 +11,24 @@ import (
 	"log"
 	"os/user"
 	"path/filepath"
-	"gopkg.in/guregu/null.v3/zero" // can be deleted once we move the database tests elsewhere
+	"os"
+	"os/signal"
+	"syscall"
 )
 
 var (
 	// Default configurations, hopefully exported to other files and packages
-	RootURL, SQLiteDBFilename, URLPathPrefix, PDO_Prefix, PathToStaticFiles, ServerPort, MapURL string
+	// we probably should have a struct for this
+	Host, SQLiteDBFilename, URLPathPrefix, PDO_Prefix, PathToStaticFiles, ServerPort, MapURL string
 )
 
 //type templateParameters map[string]string
 type templateParameters map[string]interface{}
 
-func main() {
-	// to change the flags on the default logger
-	// see https://stackoverflow.com/a/24809859/1035977
-	log.SetFlags(log.LstdFlags | log.Lshortfile)
-	
-	fmt.Print("Reading Gobot configuration...")
+// loadConfiguration loads all the configuration from the config.toml file, it's a separate function
+//  because we want to be able to do a killall -HUP gobot to force the configuration to be read again
+func loadConfiguration() {
+	log.Print("Reading Gobot configuration...")
 	// Open our config file and extract relevant data from there
 	viper.SetConfigName("config")
 	viper.SetConfigType("toml") // just to make sure; it's the same format as OpenSimulator (or MySQL) config files
@@ -35,12 +36,10 @@ func main() {
 	viper.AddConfigPath("$HOME/go/src/github.com/GwynethLlewelyn/gobot/") // that's how you'll have it
 	viper.AddConfigPath(".")               // optionally look for config in the working directory
 	err := viper.ReadInConfig() // Find and read the config file
-	if err != nil { // Handle errors reading the config file
-		panic(fmt.Errorf("Fatal error in config file: %s \n", err))
-	}
+	checkErr(err) // Handle errors reading the config file
 	
 	// Without these set, we cannot do anything
-	RootURL = viper.GetString("gobot.RootURL"); fmt.Print(".")
+	Host = viper.GetString("gobot.Host"); fmt.Print(".")
 	URLPathPrefix = viper.GetString("gobot.URLPathPrefix"); fmt.Print(".")
 	SQLiteDBFilename = viper.GetString("gobot.SQLiteDBFilename"); fmt.Print(".")
 	PDO_Prefix = viper.GetString("gobot.PDO_Prefix"); fmt.Print(".")
@@ -51,55 +50,57 @@ func main() {
 	viper.SetDefault("gobot.ServerPort", ":3000")
 	ServerPort = viper.GetString("gobot.ServerPort"); fmt.Print(".")
 	MapURL = viper.GetString("opensim.MapURL"); fmt.Print(".")
+}
+
+func main() {
+	// to change the flags on the default logger
+	// see https://stackoverflow.com/a/24809859/1035977
+	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	
-	fmt.Println("\nGobot configuration read, now testing opening database connection at ", SQLiteDBFilename, "\nPath to static files is:", PathToStaticFiles)
+	loadConfiguration() // this gets loaded always, on the first time it runs
+	
+	// prepares a special channel to look for termination signals
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, syscall.SIGHUP)
+	
+	// goroutine which listens to signals and calls the loadConfiguration() function if someone sends us a HUP
+	go func() {
+        sig := <-sigs
+        log.Println("Got signal", sig, " ... reloading Gobot configuration again:")
+        loadConfiguration()
+    }()
+	
+	// do some database tests. If it fails, it means the database is broken or corrupted and it's worthless
+	//  to run this application anyway!
+	log.Println("\nTesting opening database connection at ", SQLiteDBFilename, "\nPath to static files is:", PathToStaticFiles)
 	
 	db, err := sql.Open(PDO_Prefix, SQLiteDBFilename) // presumes sqlite3 for now
-	checkErr(err)
+	checkErr(err) // abort if it cannot even open the database
 
 	// query
 	rows, err := db.Query("SELECT UUID, Name, Location, Position FROM Agents")
-	checkErr(err)
- 	   
-	var UUID zero.String
-	var Name zero.String
- //	var OwnerName string
- //	var OwnerKey string
-	var Location zero.String
-	var Position zero.String
-/*	var Rotation string
-	var Velocity string
-	var Energy string
-	var Money string
-	var Happiness string
-	var Class string
-	var SubType string
-	var PermURL string
-	var LastUpdate string
-	var BestPath string
-	var SecondBestPath string
-	var CurrentTarget string
-*/
+	checkErr(err) // if select fails, probably the table doesn't even exist
+ 	
+ 	var agent AgentType; // type defined on ui.go to be used on database requests
 
 	for rows.Next() {
-		err = rows.Scan(&UUID, &Name, &Location, &Position)
-		checkErr(err)
-		fmt.Println(UUID)
-		fmt.Println(Name)
-		fmt.Println(Location)
-		fmt.Println(Position)
+		err = rows.Scan(&agent.UUID, &agent.Name, &agent.Location, &agent.Position)
+		checkErr(err) // if we get some errors here, we will get in trouble later on
+		log.Println(agent.UUID)
+		log.Println(agent.Name)
+		log.Println(agent.Location)
+		log.Println(agent.Position)
 	}
-	checkErr(err)
 	rows.Close()
 	db.Close()
 	
-	fmt.Println("\n\nDatabase tests ended.\n\nStarting Gobot application at port", ServerPort, "\nfor URL:", URLPathPrefix)
+	log.Println("\n\nDatabase tests ended.\n\nStarting Gobot application at port", ServerPort, "\nfor URL:", URLPathPrefix)
 	
 	// this was just to make tests, now start the web server
 	
 	// Load all templates
 	err = GobotTemplates.init(PathToStaticFiles + "/templates/*.tpl")
-	checkErr(err)
+	checkErr(err) // abort if templates are not found
 	
 	// Configure routers for our many inworld scripts
 	// In my case, paths with /go will be served by gobot, the rest by nginx as before
@@ -153,12 +154,15 @@ func main() {
 	http.HandleFunc(URLPathPrefix + "/uiUserManagement/",				uiUserManagement)
 	http.HandleFunc(URLPathPrefix + "/uiUserManagementUpdate/",			uiUserManagementUpdate)
 	http.HandleFunc(URLPathPrefix + "/uiUserManagementRemove/",			uiUserManagementRemove)
+	
+	// Handle Websockets on Engine
+	http.HandleFunc(URLPathPrefix + "/wsEngine/",								serveWs)
 
 	go paralelate() // run everything but the kitchen sink in parallel; yay goroutines!
 	// very likely we will open the database, look at all agents, and run a goroutine for each (20170516)
 	
     err = http.ListenAndServe(ServerPort, nil) // set listen port
-    checkErr(err)
+    checkErr(err) // if it can't listen to all the above, then it has to abort anyway
 }
 
 // checkErrPanic logs a fatal error and panics
@@ -172,7 +176,7 @@ func checkErrPanic(err error) {
 //  this is for 'normal' situations when we want to get a log if something goes wrong but do not need to panic
 func checkErr(err error) {
 	if err != nil {
-		log.Print(err)
+		log.Println("gobot fatal: ", err)
 	}
 }
 
@@ -192,7 +196,7 @@ func expandPath(path string) (string, error) {
 
 // paralelate is a first attempt at a goroutine
 func paralelate() {
-	fmt.Println("Testing parallelism...")
+	log.Println("Testing parallelism...")
     for true {
 	    fmt.Print("\b|")
 	    time.Sleep(1000 * time.Millisecond)
@@ -203,5 +207,5 @@ func paralelate() {
 	    fmt.Print("\b\\")
 	    time.Sleep(1000 * time.Millisecond)
     }
-    fmt.Println("Done! (But I'm hopefully still serving requests)")
+    log.Println("Done! (But I'm hopefully still serving requests)")
 }

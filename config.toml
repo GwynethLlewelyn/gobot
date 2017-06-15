@@ -1,5 +1,6 @@
 [gobot]
-RootURL = "http://bot.betatechnologies.info"
+Host = "bot.betatechnologies.info"
+ServerPort = ":3000" # default for go
 URLPathPrefix = "/go" # leave empty if you serve from the root URL above; no slash at end
 PathToStaticFiles = "~/go/src/gobot" # where the lib/ and template/ dirs are; change as needed, no slash at end
 

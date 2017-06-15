@@ -1,4 +1,4 @@
-{{ define "main" }}
+{{ define "engine" }}
 {{ template "header" .}}
 	<div id="wrapper">
 
@@ -11,20 +11,48 @@
 					<div class="col-lg-12">
 						<h1 class="page-header">{{.Title}}</h1>
 						Results from the engine:
-						<p id="#engineResponse"><!-- websockets will fill this in --></p>
-							<script type="text/javascript">
-								(function() {
-									var data = document.getElementById("engineResponse");
-									var conn = new WebSocket("ws://{{.Host}}/ws?lastMod={{.LastMod}}");
+						<style type="text/css">
+						#log {
+						    background: white;
+						    margin: 0;
+						    padding: 0.5em 0.5em 0.5em 0.5em;
+						    //position: absolute;
+						    top: 0.5em;
+						    left: 0.5em;
+						    right: 0.5em;
+						    bottom: 3em;
+						    overflow: auto;
+						}
+						</style>
+						<div id="engineResponse"></div>
+						<!-- websockets will fill this in -->
+						<script type="text/javascript">
+							window.onload = function () {
+								var conn;
+								var log = document.getElementById("engineResponse");
+								console.log('My log div is', log);
+								function appendLog(item) {
+							        var doScroll = log.scrollTop > log.scrollHeight - log.clientHeight - 1;
+							        log.appendChild(item);
+							        if (doScroll) {
+							            log.scrollTop = log.scrollHeight - log.clientHeight;
+							        }
+							    }
+								if (window["WebSocket"]) {
+									var conn = new WebSocket("ws://{{.Host}}{{.ServerPort}}{{.URLPathPrefix}}/wsEngine/");
 									conn.onclose = function(evt) {
-										data.textContent = 'Connection closed';
+										appendLog('Connection closed');
 									}
 									conn.onmessage = function(evt) {
-										console.log('file updated');
-										data.textContent = evt.data;
+										console.log('Got an update' + evt.data);
+										appendLog(evt.data);
 									}
-								})();
-							 </script>
+								} else {
+									appendLog("<b>Your browser does not support WebSockets.</b>");
+								}
+							};
+						 </script>
+						 <noscript>Look, if you don't even bother to turn on JavaScript, you will get nothing.</noscript>
 						{{ if .Content }}
 						{{ .Content }}
 						{{ end }}
