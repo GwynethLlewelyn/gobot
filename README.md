@@ -14,7 +14,7 @@ For now, all you need to know is that this works only on [OpenSimulator](http://
 
 - Install `gobot` as any other Go application (`go get github.com/GwynethLlewelyn/gobot` should do the trick)
 - Create a database in SQLite3 using `database/schema.sql`
-- Create a new user in SQLite3 with an email address and a MD5-hashed password (something like `insert into Users (Email, Password) Values ('valid@email.address', '4405c5984441a1b86bec717dc063ca46');`), you'll need at least one user to login to the backoffice; use `echo "password"|md5sum` or an online MD5 generator to get a valid password hash
+- Create a new user in SQLite3 with an email address and a MD5-hashed password (something like `insert into Users (Email, Password) Values ('valid@email.address', '4405c5984441a1b86bec717dc063ca46');`), you'll need at least one user to login to the backoffice; use `echo "password"|md5sum` or an online MD5 generator to get a valid password hash; afterwards, you can add more users manually 
 - Remember the installation path and change `config.toml` accordingly! (you should also set an URL to grab a map tile from your OpenSimulator environment)
 - Note:
  - The directories `lib/` and `templates/` only have static content, so either you configure `config.toml` to  point to the right directories (if running `gobot` as a standalone Go application) or you get these directories directly served by your webserver/reverse proxy/whatever
