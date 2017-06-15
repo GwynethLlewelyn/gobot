@@ -15,7 +15,7 @@
 	            <li id="#username">
                 {{ .SetCookie }}
                 {{ if .Gravatar }}
-                <a href="https://gravatar.com/{{ .GravatarHash }}"><img class="avatar avatar-32 photo" src="{{ .Gravatar }}" height="32" width="32" alt="{{ .SetCookie }}"></a>
+                <div style="float:left;"><a href="https://gravatar.com/{{ .GravatarHash }}"><img class="avatar avatar-32 photo" src="{{ .Gravatar }}" height="32" width="32" alt="{{ .SetCookie }}"></a></div>
                 {{ end }}
 	            </li>
                 {{ end }}
