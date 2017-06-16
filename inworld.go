@@ -1,4 +1,4 @@
-// This deals with calls coming from Second Life or OpenSimulator
+// This deals with calls coming from Second Life or OpenSimulator.
 // it's essentially a RESTful thingy
 package main
 
@@ -21,7 +21,7 @@ func GetMD5Hash(text string) string {
     return hex.EncodeToString(hasher.Sum(nil))
 }
 
-// updateInventory updates the inventory of the object (object key will come in the headers)
+// updateInventory updates the inventory of the object (object key will come in the headers).
 func updateInventory(w http.ResponseWriter, r *http.Request) {
 	// get all parameters in array
 	err := r.ParseForm()
@@ -91,7 +91,7 @@ func updateInventory(w http.ResponseWriter, r *http.Request) {
     */
 }
 
-// updateSensor updates the Obstacles database with an additional object found by the sensors
+// updateSensor updates the Obstacles database with an additional object found by the sensors.
 func updateSensor(w http.ResponseWriter, r *http.Request) {	
 	if r.Header.Get("X-Secondlife-Object-Key") != "" {
 		err := r.ParseForm()
@@ -151,7 +151,7 @@ func updateSensor(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// registerPosition saves a HTTP URL for a single object, making it persistent
+// registerPosition saves a HTTP URL for a single object, making it persistent.
 // POST parameters:
 //  permURL: a permanent URL from llHTTPServer 
 //  signature: to make spoofing harder
@@ -225,7 +225,7 @@ func registerPosition(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// registerAgent saves a HTTP URL for a single agent, making it persistent
+// registerAgent saves a HTTP URL for a single agent, making it persistent.
 // POST parameters:
 //  permURL: a permanent URL from llHTTPServer 
 //  signature: to make spoofing harder
@@ -315,7 +315,7 @@ func registerAgent(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// configureCube Support scripts for remote startup configuration for the cubes
+// configureCube Support scripts for remote startup configuration for the cubes.
 //	This basically gives the lists of options (e.g. energy, happiness; classes of NPCs, etc.) so
 //	that we don't need to hardcode them
 func configureCube(w http.ResponseWriter, r *http.Request) {

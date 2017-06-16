@@ -43,6 +43,12 @@ Agents will try to use the Energy, Happiness, and Money cubes; you can have as m
 
 More to come...
 
+## Hidden Easter Eggs
+
+Sending a SIGHUP will reload the configuration file (as expected)
+
+SIGUSR1 will send a randomly generated female name to appear on the Engine page; SIGUSR2 will place a random country. Why? Well, this was the only way to get *something* to appear there while testing the code (and without creating a new backoffice just for testing purposes). Now if I only came up with pipes and more esoteric stuff... 😉
+
 ## License
 
 This is currently copyrighted until I finish my PhD, then you can copy it at will. If you wish to use my code **now**, then please ask me before! Thank you!

@@ -1,4 +1,4 @@
-// Functions to deal with the backoffice
+// Functions to deal with the backoffice.
 package main
 
 import (
@@ -19,16 +19,16 @@ import (
 	"github.com/heatxsink/go-gravatar"
 )
 
-// GobotTemplatesType expands on template.Template
+// GobotTemplatesType expands on template.Template.
 //  need to expand it so I can add a few more methods here 
 type GobotTemplatesType struct{
 	template.Template
 }
 
-// GobotTemplates stores all parsed templates for the backoffice
+// GobotTemplates stores all parsed templates for the backoffice.
 var GobotTemplates GobotTemplatesType
 
-// init parses all templates and puts it inside a (global) var
+// init parses all templates and puts it inside a (global) var.
 //  This is supposed to be called just once! (in func main())
 func (gt *GobotTemplatesType)init(globbedPath string) error {
 	temp, err := template.ParseGlob(globbedPath)
@@ -36,7 +36,7 @@ func (gt *GobotTemplatesType)init(globbedPath string) error {
 	return err
 }
 
-// gobotRenderer assembles the correct templates together and executes them
+// gobotRenderer assembles the correct templates together and executes them.
 //  this is mostly to deal with code duplication 
 func (gt *GobotTemplatesType)gobotRenderer(w http.ResponseWriter, r *http.Request, tplName string, tplParams templateParameters) error {
 	thisUserName :=  getUserName(r)
@@ -65,7 +65,7 @@ var cookieHandler = securecookie.New(		// from gorilla/securecookie
     securecookie.GenerateRandomKey(64),
     securecookie.GenerateRandomKey(32))
 
-// setSession returns a new session cookie with an encoded username
+// setSession returns a new session cookie with an encoded username.
 func setSession(userName string, response http.ResponseWriter) {
 	value := map[string]string{
 		"name": userName,
@@ -83,7 +83,7 @@ func setSession(userName string, response http.ResponseWriter) {
 	}
  }
  
- // getUserName sees if we have a session cookie with an encoded user name, returning nil if not found 
+ // getUserName sees if we have a session cookie with an encoded user name, returning nil if not found.
 func getUserName(request *http.Request) (userName string) {
 	if cookie, err := request.Cookie("session"); err == nil {
 		cookieValue := make(map[string]string)
@@ -94,7 +94,7 @@ func getUserName(request *http.Request) (userName string) {
 	return userName
 }
 
-// clearSession will remove a cookie by setting its MaxAge to -1 and clearing its value
+// clearSession will remove a cookie by setting its MaxAge to -1 and clearing its value.
 func clearSession(response http.ResponseWriter) {
 	cookie := &http.Cookie{
 		Name:	"session",
@@ -105,7 +105,7 @@ func clearSession(response http.ResponseWriter) {
 	http.SetCookie(response, cookie)
 }
 
-// checkSession will see if we have a valid cookie; if not, redirects to login
+// checkSession will see if we have a valid cookie; if not, redirects to login.
 func checkSession(w http.ResponseWriter, r *http.Request) {
 	// valid cookie and no errors?
 	if getUserName(r) == "" {
@@ -116,7 +116,7 @@ func checkSession(w http.ResponseWriter, r *http.Request) {
 
 // Function handlers for HTTP requests (main functions for this file)
 
-// backofficeMain is the main page, has some minor statistics, may do this fancier later on
+// backofficeMain is the main page, has some minor statistics, may do this fancier later on.
 func backofficeMain(w http.ResponseWriter, r *http.Request) {
 	checkSession(w, r) // make sure we've got a valid cookie, or else send to login page
 	// let's load the main template for now, just to make sure this works
@@ -305,7 +305,7 @@ func backofficeMain(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
-// backofficeAgents lists active agents
+// backofficeAgents lists active agents.
 func backofficeAgents(w http.ResponseWriter, r *http.Request) {
 	checkSession(w, r)
 	tplParams := templateParameters{ "Title": "Gobot Administrator Panel - agents",
@@ -318,7 +318,7 @@ func backofficeAgents(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
-// backofficeObjects lists objects seen as obstacles
+// backofficeObjects lists objects seen as obstacles.
 func backofficeObjects(w http.ResponseWriter, r *http.Request) {
 	checkSession(w, r)
 	tplParams := templateParameters{ "Title": "Gobot Administrator Panel - objects",
@@ -331,7 +331,7 @@ func backofficeObjects(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
-// backofficePositions lists Positions
+// backofficePositions lists Positions.
 func backofficePositions(w http.ResponseWriter, r *http.Request) {
 	checkSession(w, r)
 	tplParams := templateParameters{ "Title": "Gobot Administrator Panel - positions",
@@ -344,7 +344,7 @@ func backofficePositions(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
-// backofficeInventory lists the content or inventory currently stored on objects
+// backofficeInventory lists the content or inventory currently stored on objects.
 func backofficeInventory(w http.ResponseWriter, r *http.Request) {
 	checkSession(w, r)
 	tplParams := templateParameters{ "Title": "Gobot Administrator Panel - inventory",
@@ -373,7 +373,7 @@ func backofficeUserManagement(w http.ResponseWriter, r *http.Request) {
 }
 
 
-// backofficeLogin deals with authentication
+// backofficeLogin deals with authentication.
 func backofficeLogin(w http.ResponseWriter, r *http.Request) {
 	//fmt.Println("Entered backoffice login for URL:", r.URL, "using method:", r.Method)
 	if r.Method == "GET" {
@@ -442,13 +442,13 @@ func backofficeLogin(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// backofficeLogout clears session and returns to login prompt
+// backofficeLogout clears session and returns to login prompt.
 func backofficeLogout(w http.ResponseWriter, r *http.Request) {
 	clearSession(w)
 	http.Redirect(w, r, URLPathPrefix + "/", 302)
 }
 
-// backofficeCommands is a form-based interface to give commands to individual bots
+// backofficeCommands is a form-based interface to give commands to individual bots.
 func backofficeCommands(w http.ResponseWriter, r *http.Request) {
 	checkSession(w, r)
 	// Collect a list of existing bots and their PermURLs for the form
@@ -483,8 +483,8 @@ func backofficeCommands(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
-// backofficeCommandsExec gets the user-selected params from the backofficeCommands form and sends them to the user, giving feedback
-//  This may change in the future, e.g. using Ajax to get inline results on the form
+// backofficeCommandsExec gets the user-selected params from the backofficeCommands form and sends them to the user, giving feedback.
+//  This may change in the future, e.g. using Ajax to get inline results on the form.
 func backofficeCommandsExec(w http.ResponseWriter, r *http.Request) {
 	checkSession(w, r)
 	err := r.ParseForm()
@@ -534,7 +534,7 @@ func backofficeCommandsExec(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
-// backofficeControllerCommands is a form-based interface to give commands to the Bot Controller
+// backofficeControllerCommands is a form-based interface to give commands to the Bot Controller.
 func backofficeControllerCommands(w http.ResponseWriter, r *http.Request) {
 	checkSession(w, r)
 	// Collect a list of existing bots and their PermURLs for the form
@@ -590,8 +590,8 @@ func backofficeControllerCommands(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
-// backofficeControllerCommandsExec gets the user-selected params from the backofficeControllerCommands form and sends them to the user, giving feedback
-//  This may change in the future, e.g. using Ajax to get inline results on the form
+// backofficeControllerCommandsExec gets the user-selected params from the backofficeControllerCommands form and sends them to the user, giving feedback.
+//  This may change in the future, e.g. using Ajax to get inline results on the form.
 func backofficeControllerCommandsExec(w http.ResponseWriter, r *http.Request) {
 	checkSession(w, r)
 	err := r.ParseForm()

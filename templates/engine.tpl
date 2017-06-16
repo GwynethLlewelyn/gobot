@@ -11,6 +11,7 @@
 					<div class="col-lg-12">
 						<h1 class="page-header">{{.Title}}</h1>
 						Results from the engine:
+						<hr />
 						<style type="text/css">
 						#log {
 						    background: white;
@@ -24,32 +25,54 @@
 						    overflow: auto;
 						}
 						</style>
-						<div id="engineResponse"></div>
+						<div id="engineResponse" name="engineResponse" contenteditable="true"></div>
 						<!-- websockets will fill this in -->
 						<script type="text/javascript">
 							window.onload = function () {
-								var conn;
+								var conn = null;
 								var log = document.getElementById("engineResponse");
-								console.log('My log div is', log);
-								function appendLog(item) {
-							        var doScroll = log.scrollTop > log.scrollHeight - log.clientHeight - 1;
-							        log.appendChild(item);
-							        if (doScroll) {
-							            log.scrollTop = log.scrollHeight - log.clientHeight;
-							        }
-							    }
-								if (window["WebSocket"]) {
-									var conn = new WebSocket("ws://{{.Host}}{{.ServerPort}}{{.URLPathPrefix}}/wsEngine/");
-									conn.onclose = function(evt) {
-										appendLog('Connection closed');
+								log.height = 400;
+								log.scrollTop = log.scrollHeight; // scroll to bottom - http://web.archive.org/web/20080821211053/http://radio.javaranch.com/pascarello/2005/12/14/1134573598403.html
+								var wsuri = "ws://{{.Host}}{{.ServerPort}}{{.URLPathPrefix}}/wsEngine/";
+								
+							    function start() {
+									if (window["WebSocket"]) {
+										conn = new WebSocket(wsuri);
+										conn.onopen = function() {
+											console.log("connected to " + wsuri);
+	            						}
+										conn.onclose = function(evt) {
+											console.log("Connection closed; data received: " + evt.data);
+											log.innerHTML += 'Connection closed - trying to reconnect<br />';
+											log.scrollTop = log.scrollHeight;
+											check();
+										}
+										conn.onmessage = function(evt) {
+											console.log('Got an update: "' + evt.data + '"');
+											log.innerHTML += evt.data;
+											log.scrollTop = log.scrollHeight;
+										}
+										conn.onerror = function(err) {
+											console.log("Error from WebSocket: " + err.data)
+											log.innerHTML += "Error from WebSocket: " + err.data + "<br />";
+											log.scrollTop = log.scrollHeight;
+											check();
+	            						}
+	            						conn.send("Client is ready now");
+									} else {
+										log.innerHTML += "<b>Your browser does not support WebSockets.</b><br />";
+										log.scrollTop = log.scrollHeight;
 									}
-									conn.onmessage = function(evt) {
-										console.log('Got an update' + evt.data);
-										appendLog(evt.data);
-									}
-								} else {
-									appendLog("<b>Your browser does not support WebSockets.</b>");
 								}
+								
+								// see https://stackoverflow.com/questions/3780511/reconnection-of-client-when-server-reboots-in-websocket
+								function check() {
+									if(!conn || conn.readyState === WebSocket.CLOSED) start();
+								}
+								
+								start();
+								
+								setInterval(check, 5000);
 							};
 						 </script>
 						 <noscript>Look, if you don't even bother to turn on JavaScript, you will get nothing.</noscript>

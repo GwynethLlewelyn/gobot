@@ -1,4 +1,4 @@
-// Functions to deal with the agGrid (UI)
+// Functions to deal with the agGrid (UI).
 package main
 
 import (
@@ -13,7 +13,7 @@ import (
 
 // Auxiliary functions for HTTP handling
 
-// checkErrHTTP returns an error via HTTP and also logs the error
+// checkErrHTTP returns an error via HTTP and also logs the error.
 func checkErrHTTP(w http.ResponseWriter, httpStatus int, errorMessage string, err error) {
 	if err != nil {
 		http.Error(w, fmt.Sprintf(errorMessage, err), httpStatus)
@@ -21,7 +21,7 @@ func checkErrHTTP(w http.ResponseWriter, httpStatus int, errorMessage string, er
 	}
 }
 
-// checkErrPanicHTTP returns an error via HTTP and logs the error with a panic
+// checkErrPanicHTTP returns an error via HTTP and logs the error with a panic.
 func checkErrPanicHTTP(w http.ResponseWriter, httpStatus int, errorMessage string, err error) {
 	if err != nil {
 		http.Error(w, fmt.Sprintf(errorMessage, err), httpStatus)
@@ -29,7 +29,7 @@ func checkErrPanicHTTP(w http.ResponseWriter, httpStatus int, errorMessage strin
 	}
 }
 
-// logErrHTTP assumes that the error message was already composed and writes it to HTTP and logs it
+// logErrHTTP assumes that the error message was already composed and writes it to HTTP and logs it.
 //  this is mostly to avoid code duplication and make sure that all entries are written similarly 
 func logErrHTTP(w http.ResponseWriter, httpStatus int, errorMessage string) {
 	http.Error(w, errorMessage, httpStatus)
@@ -41,7 +41,7 @@ func logErrHTTP(w http.ResponseWriter, httpStatus int, errorMessage string) {
 //
 // Each function class has a struct type to deal with database requests
 
-// objectType is a struct to hold data retrieved from the database, used by several functions (including JSON)
+// objectType is a struct to hold data retrieved from the database, used by several functions (including JSON).
 type ObjectType struct {
 	UUID zero.String
 	Name zero.String
@@ -59,7 +59,7 @@ type ObjectType struct {
 	BBLo zero.String
 }
 
-// uiObjects creates a JSON representation of the Obstacles table and spews it out
+// uiObjects creates a JSON representation of the Obstacles table and spews it out.
 func uiObjects(w http.ResponseWriter, r *http.Request) {
 	var (
 		rowArr []interface{}
@@ -109,7 +109,7 @@ func uiObjects(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
-// uiObjectsUpdate receives a JSON representation of one row (from the agGrid) in order to update our database
+// uiObjectsUpdate receives a JSON representation of one row (from the agGrid) in order to update our database.
 func uiObjectsUpdate(w http.ResponseWriter, r *http.Request) {
 	body, err := ioutil.ReadAll(r.Body) // from https://stackoverflow.com/questions/15672556/handling-json-post-request-in-go (20170524)
     checkErrPanic(err)
@@ -141,7 +141,7 @@ func uiObjectsUpdate(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
-// uiObjectsRemove receives a list of UUIDs to remove from the Obstacles table
+// uiObjectsRemove receives a list of UUIDs to remove from the Obstacles table.
 func uiObjectsRemove(w http.ResponseWriter, r *http.Request) {
 	body, err := ioutil.ReadAll(r.Body)
 	checkErrPanicHTTP(w, http.StatusServiceUnavailable, "Cannot read body of HTTP Request: %s\n", err)
@@ -159,7 +159,7 @@ func uiObjectsRemove(w http.ResponseWriter, r *http.Request) {
 	log.Println("Object UUIDs >>", string(body), "<< successfully removed.")
 }
 
-// agentType is a struct to hold data retrieved from the database
+// agentType is a struct to hold data retrieved from the database.
 type AgentType struct {
 	UUID zero.String
 	Name zero.String
@@ -181,7 +181,7 @@ type AgentType struct {
 	CurrentTarget zero.String
 }
 
-// uiAgents creates a JSON representation of the Agents table and spews it out
+// uiAgents creates a JSON representation of the Agents table and spews it out.
 func uiAgents(w http.ResponseWriter, r *http.Request) {
 	var (
 		rowArr []interface{}
@@ -230,7 +230,7 @@ func uiAgents(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
-// uiAgentsUpdate receives a JSON representation of one row (from the agGrid) in order to update our database
+// uiAgentsUpdate receives a JSON representation of one row (from the agGrid) in order to update our database.
 func uiAgentsUpdate(w http.ResponseWriter, r *http.Request) {
 	body, err := ioutil.ReadAll(r.Body)
     checkErrPanic(err)
@@ -256,7 +256,7 @@ func uiAgentsUpdate(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
-// uiAgentsRemove receives a list of UUIDs to remove from the Agents table
+// uiAgentsRemove receives a list of UUIDs to remove from the Agents table.
 func uiAgentsRemove(w http.ResponseWriter, r *http.Request) {
 	body, err := ioutil.ReadAll(r.Body)
     checkErrPanic(err)
@@ -273,7 +273,7 @@ func uiAgentsRemove(w http.ResponseWriter, r *http.Request) {
 	log.Println("Agents UUIDs >>", string(body), "<< successfully removed.")
 }
 
-// positionType is a struct to hold data retrieved from the database, used by several functions (including JSON)
+// positionType is a struct to hold data retrieved from the database, used by several functions (including JSON).
 type PositionType struct {
 	PermURL zero.String
 	UUID zero.String
@@ -292,7 +292,7 @@ type PositionType struct {
 	RateHappiness zero.String
 }
 
-// uiPositions creates a JSON representation of the Positions table and spews it out
+// uiPositions creates a JSON representation of the Positions table and spews it out.
 func uiPositions(w http.ResponseWriter, r *http.Request) {
 	var (
 		rowArr []interface{}
@@ -339,7 +339,7 @@ func uiPositions(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
-// uiPositionsUpdate receives a JSON representation of one row (from the agGrid) in order to update our database
+// uiPositionsUpdate receives a JSON representation of one row (from the agGrid) in order to update our database.
 func uiPositionsUpdate(w http.ResponseWriter, r *http.Request) {
 	body, err := ioutil.ReadAll(r.Body)
     checkErrPanic(err)
@@ -365,7 +365,7 @@ func uiPositionsUpdate(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
-// uiPositionsRemove receives a list of UUIDs to remove from the Positions table
+// uiPositionsRemove receives a list of UUIDs to remove from the Positions table.
 func uiPositionsRemove(w http.ResponseWriter, r *http.Request) {
 	body, err := ioutil.ReadAll(r.Body)
     checkErrPanic(err)
@@ -382,7 +382,7 @@ func uiPositionsRemove(w http.ResponseWriter, r *http.Request) {
 	log.Println("Positions UUIDs >>", string(body), "<< successfully removed.")
 }
 
-// inventoryType is a struct to hold data retrieved from the database, used by several functions (including JSON)
+// inventoryType is a struct to hold data retrieved from the database, used by several functions (including JSON).
 type inventoryType struct {
 	UUID zero.String
 	Name zero.String
@@ -391,7 +391,7 @@ type inventoryType struct {
 	Permissions zero.String
 }
 
-// uiInventory creates a JSON representation of the Inventory table and spews it out
+// uiInventory creates a JSON representation of the Inventory table and spews it out.
 func uiInventory(w http.ResponseWriter, r *http.Request) {
 	var (
 		rowArr []interface{}
@@ -428,7 +428,7 @@ func uiInventory(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
-// uiInventoryUpdate receives a JSON representation of one row (from the agGrid) in order to update our database
+// uiInventoryUpdate receives a JSON representation of one row (from the agGrid) in order to update our database.
 func uiInventoryUpdate(w http.ResponseWriter, r *http.Request) {
 	body, err := ioutil.ReadAll(r.Body)
     checkErrPanic(err)
@@ -452,7 +452,7 @@ func uiInventoryUpdate(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
-// uiInventoryRemove receives a list of UUIDs to remove from the Inventory table
+// uiInventoryRemove receives a list of UUIDs to remove from the Inventory table.
 func uiInventoryRemove(w http.ResponseWriter, r *http.Request) {
 	body, err := ioutil.ReadAll(r.Body)
     checkErrPanic(err)
@@ -470,13 +470,13 @@ func uiInventoryRemove(w http.ResponseWriter, r *http.Request) {
 }
 
 
-// userManagementType is a struct to hold data retrieved from the database, used by several functions (including JSON)
+// userManagementType is a struct to hold data retrieved from the database, used by several functions (including JSON).
 type userManagementType struct {
 	Email zero.String
 	Password zero.String
 }
 
-// uiUserManagement creates a JSON representation of the Users table and spews it out
+// uiUserManagement creates a JSON representation of the Users table and spews it out.
 func uiUserManagement(w http.ResponseWriter, r *http.Request) {
 	var (
 		rowArr []interface{}
@@ -510,7 +510,7 @@ func uiUserManagement(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
-// uiUserManagementUpdate receives a JSON representation of one row (from the agGrid) in order to update our database
+// uiUserManagementUpdate receives a JSON representation of one row (from the agGrid) in order to update our database.
 func uiUserManagementUpdate(w http.ResponseWriter, r *http.Request) {
 	body, err := ioutil.ReadAll(r.Body)
     checkErrPanic(err)
@@ -534,7 +534,7 @@ func uiUserManagementUpdate(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
-// uiUserManagementRemove receives a list of UUIDs to remove from the UserManagement table
+// uiUserManagementRemove receives a list of UUIDs to remove from the UserManagement table.
 func uiUserManagementRemove(w http.ResponseWriter, r *http.Request) {
 	body, err := ioutil.ReadAll(r.Body)
     checkErrPanic(err)

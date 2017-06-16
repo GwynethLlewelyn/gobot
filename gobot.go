@@ -1,4 +1,4 @@
-// gobot is an attempt to do a single, monolithic Go application which deals with autonomous agents in OpenSimulator
+// gobot is an attempt to do a single, monolithic Go application which deals with autonomous agents in OpenSimulator.
 package main
 
 import (
@@ -14,6 +14,8 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"golang.org/x/net/websocket"
+	"github.com/Pallinder/go-randomdata"
 )
 
 var (
@@ -25,8 +27,8 @@ var (
 //type templateParameters map[string]string
 type templateParameters map[string]interface{}
 
-// loadConfiguration loads all the configuration from the config.toml file, it's a separate function
-//  because we want to be able to do a killall -HUP gobot to force the configuration to be read again
+// loadConfiguration loads all the configuration from the config.toml file.
+// It's a separate function because we want to be able to do a killall -HUP gobot to force the configuration to be read again
 func loadConfiguration() {
 	log.Print("Reading Gobot configuration...")
 	// Open our config file and extract relevant data from there
@@ -52,6 +54,7 @@ func loadConfiguration() {
 	MapURL = viper.GetString("opensim.MapURL"); fmt.Print(".")
 }
 
+// main() starts here.
 func main() {
 	// to change the flags on the default logger
 	// see https://stackoverflow.com/a/24809859/1035977
@@ -61,13 +64,25 @@ func main() {
 	
 	// prepares a special channel to look for termination signals
 	sigs := make(chan os.Signal, 1)
-	signal.Notify(sigs, syscall.SIGHUP)
+	signal.Notify(sigs, syscall.SIGHUP, syscall.SIGUSR1, syscall.SIGUSR2)
 	
 	// goroutine which listens to signals and calls the loadConfiguration() function if someone sends us a HUP
 	go func() {
-        sig := <-sigs
-        log.Println("Got signal", sig, " ... reloading Gobot configuration again:")
-        loadConfiguration()
+		for {
+	        sig := <-sigs
+	        log.Println("Got signal", sig)
+	        switch sig {
+		        case syscall.SIGHUP:
+		        	log.Println(" ... reloading Gobot configuration again:")
+		        	loadConfiguration()
+		        case syscall.SIGUSR1:
+		        	sendMessageToBrowser(randomdata.FullName(randomdata.Female) + "<br />") // defined on engine.go for now
+		        case syscall.SIGUSR2:
+		        	sendMessageToBrowser(randomdata.Country(randomdata.FullCountry) + "<br />") // defined on engine.go for now
+		        default:
+		        	log.Println("Unknown UNIX signal caught!! Ignoring...")
+	        }
+        }
     }()
 	
 	// do some database tests. If it fails, it means the database is broken or corrupted and it's worthless
@@ -134,7 +149,7 @@ func main() {
 	http.HandleFunc(URLPathPrefix + "/admin/commands/",					backofficeCommands)
 	http.HandleFunc(URLPathPrefix + "/admin/controller-commands/exec/",	backofficeControllerCommandsExec)
 	http.HandleFunc(URLPathPrefix + "/admin/controller-commands/",		backofficeControllerCommands)
-	http.HandleFunc(URLPathPrefix + "/admin/engine/",					engine)
+	http.HandleFunc(URLPathPrefix + "/admin/engine/",					backofficeEngine)
 	http.HandleFunc(URLPathPrefix + "/admin/",							backofficeMain)
 	http.HandleFunc(URLPathPrefix + "/",								backofficeLogin) // if not auth, then get auth
 	
@@ -156,7 +171,7 @@ func main() {
 	http.HandleFunc(URLPathPrefix + "/uiUserManagementRemove/",			uiUserManagementRemove)
 	
 	// Handle Websockets on Engine
-	http.HandleFunc(URLPathPrefix + "/wsEngine/",								serveWs)
+	http.Handle(URLPathPrefix + "/wsEngine/",						websocket.Handler(serveWs))
 
 	go paralelate() // run everything but the kitchen sink in parallel; yay goroutines!
 	// very likely we will open the database, look at all agents, and run a goroutine for each (20170516)
@@ -165,14 +180,14 @@ func main() {
     checkErr(err) // if it can't listen to all the above, then it has to abort anyway
 }
 
-// checkErrPanic logs a fatal error and panics
+// checkErrPanic logs a fatal error and panics.
 func checkErrPanic(err error) {
 	if err != nil {
 		log.Panic("gobot panic: ", err)
 	}
 }
 
-// checkErr checks if there is an error, and if yes, it logs it out and continues
+// checkErr checks if there is an error, and if yes, it logs it out and continues.
 //  this is for 'normal' situations when we want to get a log if something goes wrong but do not need to panic
 func checkErr(err error) {
 	if err != nil {
@@ -180,7 +195,7 @@ func checkErr(err error) {
 	}
 }
 
-// expandPath expands the tilde as the user's home directory
+// expandPath expands the tilde as the user's home directory.
 //  found at http://stackoverflow.com/a/43578461/1035977
 func expandPath(path string) (string, error) {
     if len(path) == 0 || path[0] != '~' {
@@ -194,7 +209,7 @@ func expandPath(path string) (string, error) {
     return filepath.Join(usr.HomeDir, path[1:]), nil
 }
 
-// paralelate is a first attempt at a goroutine
+// paralelate is a first attempt at a goroutine.
 func paralelate() {
 	log.Println("Testing parallelism...")
     for true {
