@@ -2,7 +2,9 @@
 package main
 
 import (
+	"database/sql"
 	"fmt"
+	_ "github.com/mattn/go-sqlite3"
 	"log"
 	"net/http"
 	"time"
@@ -38,14 +40,83 @@ func serveWs(ws *websocket.Conn) {
 			break
 		}
 		log.Println("Received back from client: '" + receiveMessage + "'")
+		// To-Do Next: client will tell us when it's ready, and send us an agent and a destination cube
 	}
 }
 
 // engineHandler is still being implemented, it uses the old Go websockets interface to try to keep the page updated.
 func backofficeEngine(w http.ResponseWriter, r *http.Request) {
+	// start gathering the cubes and agents for the Engine form
+		checkSession(w, r)
+	// Collect a list of existing bots and their PermURLs for the form
+	
+	db, err := sql.Open(PDO_Prefix, SQLiteDBFilename)
+	checkErr(err)
+
+	// query for in-world objects that are cubes (i.e. not Bot Controllers)
+	rows, err := db.Query("SELECT * FROM Positions WHERE ObjectType <> 'Bot Controller' ORDER BY Name")
+	checkErr(err)
+	
+	defer rows.Close()
+ 	
+	var ( 
+		Position PositionType
+		Agent AgentType
+		Cubes, regionName, coords = "", "", ""
+		xyz []string
+	)
+
+	// As on backofficeCommands, but a little more complicated
+	for rows.Next() {
+		err = rows.Scan(
+			&Position.PermURL,
+			&Position.UUID,
+			&Position.Name,
+			&Position.OwnerName,
+			&Position.Location,
+			&Position.Position,
+			&Position.Rotation,
+			&Position.Velocity,
+			&Position.LastUpdate,
+			&Position.OwnerKey,
+			&Position.ObjectType,
+			&Position.ObjectClass,
+			&Position.RateEnergy,
+			&Position.RateMoney,
+			&Position.RateHappiness,
+		)
+		checkErr(err)
+		// parse name of the region and coordinates
+		regionName = Position.Location[:strings.Index(Position.Location, "(")-1]
+		coords = strings.Trim(Position.Position, "() \t\n\r")
+		xyz = strings.Split(coords, ",")
+		
+		Cubes += fmt.Sprintf("\t\t\t\t\t\t\t\t\t\t\t<option value=\"%s\">%s (%s/%s) [%s (%s,%s,%s)]</option>\n", Position.UUID, Position.Name, Position.ObjectType, Position.ObjectClass, regionName, xyz[0], xyz[1], xyz[2])
+	}
+
+	rows, err = db.Query("SELECT Name, OwnerKey FROM Agents ORDER BY Name")
+	checkErr(err)
+	
+	defer rows.Close()
+ 	
+	var AgentNames = ""
+	
+	// To-Do: Agent options should also have location etc.
+
+	// find all Names and OwnerKeys and create select options for each of them
+	for rows.Next() {
+		err = rows.Scan(&Agent.Name, &Agent.OwnerKey)
+		checkErr(err)
+		AgentNames += "\t\t\t\t\t\t\t\t\t\t\t<option value=\"" + Agent.OwnerKey + "\">" + Agent.Name + " (" + Agent.OwnerKey + ")</option>\n"
+	}
+	
+	db.Close()
+
 	tplParams := templateParameters{ "Title": "Gobot Administrator Panel - engine",
 			"URLPathPrefix": template.HTML(URLPathPrefix),
-			"Host": Host,
+			"Host": AgentNames,
+			"DestinationOptions": Cubes,
+			"AgentOptions": Cubes,
 			"ServerPort": template.HTML(ServerPort),
 			"Content": template.HTML("<hr />"),
 	}

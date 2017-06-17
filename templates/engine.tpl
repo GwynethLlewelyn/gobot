@@ -7,9 +7,37 @@
 		<!-- Page Content -->
 		<div id="page-wrapper">
 			<div class="container-fluid">
+				<div class="row">			
+				<h1 class="page-header">{{.Title}}</h1>
+					<form role="form" id="formEngine" action="javascript:void(0);" onsubmit="formEngineSubmit()">
+						<fieldset id="formEngineFieldSet">
+						<div class="col-lg-6">						
+							<div class="form-group">
+								<label>Destination</label>
+								<select class="form-control" name="Destination" id="Destination" size="1">
+									<option value="0" selected="selected" disabled="disabled">Please choose a destination cube</option>
+											{{.DestinationOptions}}
+								</select>
+								<label>Agent</label>
+								<select class="form-control" name="Agent" id="Agent" size="1">
+									<option value="0" selected="selected" disabled="disabled">Please choose an agent</option>
+											{{.AgentOptions}}
+								</select>
+							</div> <!-- /.form-group -->
+						</div> <!-- ./col-lg-6 -->
+						<div class="col-lg-6">
+							<button type="submit" class="btn btn-default">Submit</button>
+							<button type="reset" class="btn btn-default">Reset</button>
+						</div> <!-- ./col-lg-6 -->
+						</fieldset>
+					</form>
+				</div> <!-- ./row -->
+				<div id="alertMessage" class="alert alert-warning alert-dismissable" hidden style="display: none;">
+                	<button type="button" class="close" data-dismiss="alert" aria-hidden="true">×</button>
+					<p id="message">No valid active agents or destination cubes found.</p>
+                </div>
 				<div class="row">
 					<div class="col-lg-12">
-						<h1 class="page-header">{{.Title}}</h1>
 						Results from the engine:
 						<hr />
 						<style type="text/css">
@@ -28,8 +56,19 @@
 						<div id="engineResponse" name="engineResponse" contenteditable="true"></div>
 						<!-- websockets will fill this in -->
 						<script type="text/javascript">
+							var conn = null;
+							
 							window.onload = function () {
-								var conn = null;
+								// Disable form if we have no destination cubes or active agents
+								if ("{{ .DestinationOptions }}" == "" || "{{ .AgentOptions }}" == "") {
+									document.getElementById("formEngine").disabled = true;
+									document.getElementById("formEngineFieldSet").disabled = true;
+									// we might give an explanation here, e.g. enable a hidden field
+									//  and put an answer there
+									document.getElementById("alertMessage").style.display = 'block';
+								} 
+								
+								// now deal with the WebSocket
 								var log = document.getElementById("engineResponse");
 								log.height = 400;
 								log.scrollTop = log.scrollHeight; // scroll to bottom - http://web.archive.org/web/20080821211053/http://radio.javaranch.com/pascarello/2005/12/14/1134573598403.html
@@ -74,6 +113,16 @@
 								
 								setInterval(check, 5000);
 							};
+							
+							function formEngineSubmit() {
+								// make sure we have a valid connection to the server
+								console.log("formEngine was submitted!");
+								if (!conn || conn.readyState === WebSocket.CLOSED) {
+									start();
+								} else {
+									conn.send("Ready to launch engine!");
+								}
+							}
 						 </script>
 						 <noscript>Look, if you don't even bother to turn on JavaScript, you will get nothing.</noscript>
 						{{ if .Content }}
