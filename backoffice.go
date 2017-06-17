@@ -51,9 +51,29 @@ func (gt *GobotTemplatesType)gobotRenderer(w http.ResponseWriter, r *http.Reques
 	hash := hex.EncodeToString(hasher[:])
 	tplParams["GravatarHash"] = hash // we ought to cache this somewhere
 	
-	// Now call the nice library function to get us the URL to the image 
-	g := gravatar.New("identicon", 32, "g", true)
+	// deal with sizes, we want to have a specific size for the top menu
+	var gravatarSize, gravatarSizeMenu = 32, 32
+
+	// if someone set the sizes, then use them; if not, use defaults
+	// note that this required type assertion since tplParams is interface{}
+	// see https://stackoverflow.com/questions/14289256/cannot-convert-data-type-interface-to-type-string-need-type-assertion
+	if tplParams["GravatarSize"] == nil {
+		tplParams["GravatarSize"] = gravatarSize
+	} else {
+		gravatarSize = tplParams["GravatarSize"].(int)
+	}
+	if tplParams["GravatarSizeMenu"] == nil {
+		tplParams["GravatarSizeMenu"] = gravatarSizeMenu
+	} else {
+		gravatarSizeMenu = tplParams["GravatarSizeMenu"].(int)
+	}
+	
+	// Now call the nice library function to get us the URL to the image, for the two sizes
+	g := gravatar.New("identicon", gravatarSize, "g", true)
 	tplParams["Gravatar"] = g.GetImageUrl(thisUserName) // we also ought to cache this somewhere
+	
+	g = gravatar.New("identicon", gravatarSizeMenu, "g", true)
+	tplParams["GravatarMenu"] = g.GetImageUrl(thisUserName) // we also ought to cache this somewhere
 	
 	return gt.ExecuteTemplate(w, tplName, tplParams)
 }
@@ -128,7 +148,7 @@ func backofficeMain(w http.ResponseWriter, r *http.Request) {
 	defer db.Close()
 
 	var (
-		cnt int
+		cnt, obstacles, phantom int
 		strAgents, strInventory, strPositions, strObstacles string
 	)
 		
@@ -156,14 +176,18 @@ func backofficeMain(w http.ResponseWriter, r *http.Request) {
 		strPositions = "No Positions."
 	}
 
-	err = db.QueryRow("select count(*) from Obstacles").Scan(&cnt)
-	checkErr(err)	
-	if (cnt != 0) {
-		strObstacles = "Obstacles: " + strconv.Itoa(cnt)
+	err = db.QueryRow("select count(*) from Obstacles").Scan(&obstacles)
+	checkErr(err)		
+	if (obstacles != 0) {
+		strObstacles = "Obstacles: " + strconv.Itoa(obstacles)
 	} else {
 		strObstacles = "No Obstacles."
 	}
-	
+	err = db.QueryRow("select count(*) from Obstacles where Phantom <> 0").Scan(&phantom)
+	checkErr(err)		
+	if (phantom != 0) {
+		strObstacles += " (" + strconv.Itoa(phantom) + " phantom)"
+	}
 	// Generate markers for the Leaflet-based map (20170605)
 	
 	// template: L.marker([127, 127], { title: 'Test' }).bindPopup(
@@ -296,8 +320,12 @@ func backofficeMain(w http.ResponseWriter, r *http.Request) {
 			"Inventory": strInventory,
 			"Positions": strPositions,
 			"Obstacles": strObstacles,
+			"ObstaclePieChart": true,
+			"obstaclesCnt": obstacles,
+			"phantomCnt": phantom,
 			"URLPathPrefix": URLPathPrefix,
 			"MapURL": MapURL,
+			"GravatarSize": 64,
 			"MapMarkers": template.JS(markersOutput),
 	}
 	err = GobotTemplates.gobotRenderer(w, r, "main", tplParams)

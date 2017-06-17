@@ -25,6 +25,60 @@
 	</div>
 	{{ end }}
 
+	{{ if .ObstaclePieChart }}
+    <!-- Flot Charts JavaScript -->
+    <script src="{{.URLPathPrefix}}/lib/startbootstrap-sb-admin-2/vendor/flot/excanvas.min.js"></script>
+    <script src="{{.URLPathPrefix}}/lib/startbootstrap-sb-admin-2/vendor/flot/jquery.flot.js"></script>
+    <script src="{{.URLPathPrefix}}/lib/startbootstrap-sb-admin-2/vendor/flot/jquery.flot.pie.js"></script>
+    <script src="{{.URLPathPrefix}}/lib/startbootstrap-sb-admin-2/vendor/flot/jquery.flot.resize.js"></script>
+    <script src="{{.URLPathPrefix}}/lib/startbootstrap-sb-admin-2/vendor/flot/jquery.flot.time.js"></script>
+    <script src="{{.URLPathPrefix}}/lib/startbootstrap-sb-admin-2/vendor/flot-tooltip/jquery.flot.tooltip.min.js"></script>
+    <script type="text/javascript">
+	    //data for Flot Pie Chart
+		$(function() {
+		
+		    var data = [{
+		        label: "Objects",
+		        data: {{ .obstaclesCnt }}
+		    }, {
+		        label: "Phantom",
+		        data: {{ .phantomCnt }}
+		    }];
+		
+		    var plotObj = $.plot($("#flot-pie-chart"), data, {
+		        series: {
+		            pie: {
+		                show: true,
+		                tilt: 0.35,
+		                label: {
+			                show: true,
+			                radius: 3/4,
+			                /*formatter: labelFormatter,*/
+			                background: {
+								color: '#000',
+								opacity: 0.7
+			                }
+            			}
+		            }
+		        },
+		        grid: {
+		            hoverable: true
+		        },
+		        tooltip: true,
+		        tooltipOpts: {
+		            content: "%s: %n (%p.0%)", // show percentages, rounding to 2 decimal places
+		            shifts: {
+		                x: 20,
+		                y: 0
+		            },
+		            defaultTheme: false
+		        }
+		    });
+		
+		});
+    </script>
+    {{ end }}
+
 </body>
 
 </html>

@@ -2,11 +2,18 @@
             <div class="navbar-header">
                 <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse">
                     <span class="sr-only">Toggle navigation</span>
-                    <span class="icon-bar"></span>
-                    <span class="icon-bar"></span>
-                    <span class="icon-bar"></span>
+                    <span class="icon-bar"><a href="{{.URLPathPrefix}}/admin/agents/"><i class="fa fa-android fa-fw"></i> Agents</a></span>
+                    <span class="icon-bar"><a href="{{.URLPathPrefix}}/admin/positions/"><i class="fa fa-codepen fa-fw"></i> Positions</a></span>
+                    <span class="icon-bar"><span class="icon-bar"a href="{{.URLPathPrefix}}/admin/inventory/"><i class="fa fa-folder-open-o fa-fw"></i> Content/Inventory</a></span>
+                    <span class="icon-bar"><a href="{{.URLPathPrefix}}/admin/objects/"><i class="fa fa-cubes fa-fw"></i> Obstacles (Objects)</a></span>
+                    <span class="icon-bar"><a href="{{.URLPathPrefix}}/admin/commands/"><i class="fa fa-android fa-fw"></i>Commands to Bot</a></span>
+                    <span class="icon-bar"><a href="{{.URLPathPrefix}}/admin/controller-commands/"><i class="fa fa-codepen fa-fw"></i>Commands to Controller</a></span>
+                    <span class="icon-bar"><a href="{{.URLPathPrefix}}/admin/engine/"><i class="fa fa-gears fa-fw"></i> Engine</a></span>
+                    <span class="icon-bar"><a href="{{.URLPathPrefix}}/admin/user-management/"><i class="fa fa-users fa-fw"></i> Manage Users</a></span>
+                    <span class="icon-bar"><a href="#"><i class="fa fa-gear fa-fw"></i> Settings</a></span>
+                    <span class="icon-bar"><a href="{{.URLPathPrefix}}/admin/logout/"><i class="fa fa-sign-out fa-fw"></i> Logout</a></span>
                 </button>
-                <a class="navbar-brand" href="{{.URLPathPrefix}}/admin/"><img src="{{.URLPathPrefix}}/templates/images/botmover-logo.jpg" alt="{{.Title}}"></a>
+                <a class="navbar-brand" href="{{.URLPathPrefix}}/admin/"><img src="{{.URLPathPrefix}}/templates/images/botmover-logo.jpg" height="32" alt="{{.Title}}"></a>
             </div>
             <!-- /.navbar-header -->
 
@@ -14,8 +21,8 @@
 	            {{ if .SetCookie }}
 	            <li id="#username">
                 {{ .SetCookie }}
-                {{ if .Gravatar }}
-                <div style="float:left;"><a href="https://gravatar.com/{{ .GravatarHash }}"><img class="avatar avatar-32 photo" src="{{ .Gravatar }}" height="32" width="32" alt="{{ .SetCookie }}"></a></div>
+                {{ if .GravatarMenu }}
+                <div style="float:left;"><a href="https://gravatar.com/{{ .GravatarHash }}"><img class="avatar avatar-{{ .GravatarSizeMenu }} photo" src="{{ .GravatarMenu }}" height="{{ .GravatarSizeMenu }}" width="{{ .GravatarSizeMenu }}" alt="{{ .SetCookie }}"></a></div>
                 {{ end }}
 	            </li>
                 {{ end }}
