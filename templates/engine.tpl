@@ -16,12 +16,12 @@
 								<label>Destination</label>
 								<select class="form-control" name="Destination" id="Destination" size="1">
 									<option value="0" selected="selected" disabled="disabled">Please choose a destination cube</option>
-											{{.DestinationOptions}}
+{{.DestinationOptions}}
 								</select>
 								<label>Agent</label>
 								<select class="form-control" name="Agent" id="Agent" size="1">
 									<option value="0" selected="selected" disabled="disabled">Please choose an agent</option>
-											{{.AgentOptions}}
+{{.AgentOptions}}
 								</select>
 							</div> <!-- /.form-group -->
 						</div> <!-- ./col-lg-6 -->

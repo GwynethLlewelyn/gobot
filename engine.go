@@ -10,6 +10,7 @@ import (
 	"time"
 	"html/template"
 	"golang.org/x/net/websocket"
+	"strings"
 )
 
 var wsSendMessage = make(chan string)
@@ -44,6 +45,14 @@ func serveWs(ws *websocket.Conn) {
 	}
 }
 
+// convertLocPos converts a SL/OpenSim Location and Position into a single region name and (x,y,z) position coordinates
+func convertLocPos(location string, position string) (regionName string, xyz []string) {
+	regionName = location[:strings.Index(location, "(")-1]
+	coords := strings.Trim(position, "() \t\n\r")
+	xyz = strings.Split(coords, ",")
+	return regionName, xyz
+}
+
 // engineHandler is still being implemented, it uses the old Go websockets interface to try to keep the page updated.
 func backofficeEngine(w http.ResponseWriter, r *http.Request) {
 	// start gathering the cubes and agents for the Engine form
@@ -54,73 +63,55 @@ func backofficeEngine(w http.ResponseWriter, r *http.Request) {
 	checkErr(err)
 
 	// query for in-world objects that are cubes (i.e. not Bot Controllers)
-	rows, err := db.Query("SELECT * FROM Positions WHERE ObjectType <> 'Bot Controller' ORDER BY Name")
+	rows, err := db.Query("SELECT UUID, Name, ObjectType, ObjectClass, Location, Position FROM Positions WHERE ObjectType <> 'Bot Controller' ORDER BY Name")
 	checkErr(err)
 	
 	defer rows.Close()
  	
-	var ( 
-		Position PositionType
-		Agent AgentType
-		Cubes, regionName, coords = "", "", ""
+	var (
+		cubes, regionName = "", ""
+		uuid, name, objType, objClass, location, position = "", "", "", "", "", ""
 		xyz []string
 	)
 
 	// As on backofficeCommands, but a little more complicated
 	for rows.Next() {
-		err = rows.Scan(
-			&Position.PermURL,
-			&Position.UUID,
-			&Position.Name,
-			&Position.OwnerName,
-			&Position.Location,
-			&Position.Position,
-			&Position.Rotation,
-			&Position.Velocity,
-			&Position.LastUpdate,
-			&Position.OwnerKey,
-			&Position.ObjectType,
-			&Position.ObjectClass,
-			&Position.RateEnergy,
-			&Position.RateMoney,
-			&Position.RateHappiness,
-		)
+		err = rows.Scan(&uuid, &name, &objType, &objClass, &location, &position)
 		checkErr(err)
 		// parse name of the region and coordinates
-		regionName = Position.Location[:strings.Index(Position.Location, "(")-1]
-		coords = strings.Trim(Position.Position, "() \t\n\r")
-		xyz = strings.Split(coords, ",")
+		regionName, xyz = convertLocPos(location, position)
 		
-		Cubes += fmt.Sprintf("\t\t\t\t\t\t\t\t\t\t\t<option value=\"%s\">%s (%s/%s) [%s (%s,%s,%s)]</option>\n", Position.UUID, Position.Name, Position.ObjectType, Position.ObjectClass, regionName, xyz[0], xyz[1], xyz[2])
+		cubes += fmt.Sprintf("\t\t\t\t\t\t\t\t\t<option value=\"%s\">%s (%s/%s) [%s (%s,%s,%s)]</option>\n", uuid, name, objType, objClass, regionName, xyz[0], xyz[1], xyz[2])
 	}
 
-	rows, err = db.Query("SELECT Name, OwnerKey FROM Agents ORDER BY Name")
+	rows, err = db.Query("SELECT Name, OwnerKey, Location, Position FROM Agents ORDER BY Name")
 	checkErr(err)
 	
 	defer rows.Close()
  	
-	var AgentNames = ""
+	var ownerKey, agentNames = "", ""
 	
 	// To-Do: Agent options should also have location etc.
 
 	// find all Names and OwnerKeys and create select options for each of them
 	for rows.Next() {
-		err = rows.Scan(&Agent.Name, &Agent.OwnerKey)
+		err = rows.Scan(&name, &ownerKey, &location, &position)
 		checkErr(err)
-		AgentNames += "\t\t\t\t\t\t\t\t\t\t\t<option value=\"" + Agent.OwnerKey + "\">" + Agent.Name + " (" + Agent.OwnerKey + ")</option>\n"
+		regionName, xyz = convertLocPos(location, position)
+		agentNames += fmt.Sprintf("\t\t\t\t\t\t\t\t\t<option value=\"%s\">%s  (%s) [%s (%s,%s,%s)]</option>\n", ownerKey, name, ownerKey, regionName, xyz)
 	}
 	
 	db.Close()
 
 	tplParams := templateParameters{ "Title": "Gobot Administrator Panel - engine",
 			"URLPathPrefix": template.HTML(URLPathPrefix),
-			"Host": AgentNames,
-			"DestinationOptions": Cubes,
-			"AgentOptions": Cubes,
+			"Host": template.HTML(Host),
+			"DestinationOptions": template.HTML(cubes),
+			"AgentOptions": template.HTML(agentNames),
 			"ServerPort": template.HTML(ServerPort),
 			"Content": template.HTML("<hr />"),
 	}
-	err := GobotTemplates.gobotRenderer(w, r, "engine", tplParams)
+	err = GobotTemplates.gobotRenderer(w, r, "engine", tplParams)
 	checkErr(err)
 
 	go engine()

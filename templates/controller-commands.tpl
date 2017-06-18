@@ -47,6 +47,10 @@
 										<label>Commands</label>
 										<select class="form-control" name="command" id="command" size="1">
 											<option value="0" selected="selected" disabled="disabled">Please choose</option>
+											<optgroup label="Creation and Destruction">
+										    	<option value="osNpcCreate">osNpcCreate</option>
+												<option value="osNpcRemove">osNpcRemove</option>
+										    </optgroup>
 											<optgroup label="Get and Set">
 												<option value="osNpcGetRot">osNpcGetRot</option>
 												<option value="osNpcSetRot">osNpcSetRot</option>
