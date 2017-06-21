@@ -1,3 +1,5 @@
+![botmover logo](mstile-310x310.png)
+
 Let's assume the following:
 
 - Your nginx is running under the document root of `/var/www/`

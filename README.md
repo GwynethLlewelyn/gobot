@@ -1,7 +1,7 @@
 # gobot
 ## PhD work ported to Go
 
-![botmover logo](templates/images/botmover-logo-70px.jpg)
+![botmover logo](mstile-310x310.png)
 
 `gobot` is a simplified prototype of a cluster of intelligent agents roaming a virtual world (theoretically either in Second Life or OpenSimulator). Users can visually programme the paths/activities such agents are supposed to follow by __visually__ dragging simple markers around the virtual world, without the need of learning any computer language. The principle is similar, and based on, several computer games where the player also gives visual commands to an AI controlling the players' units (like in Command & Conquer, StarCraft, or The Sims).
 
