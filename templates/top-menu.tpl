@@ -13,7 +13,7 @@
                     <span class="icon-bar"><a href="#"><i class="fa fa-gear fa-fw"></i> Settings</a></span>
                     <span class="icon-bar"><a href="{{.URLPathPrefix}}/admin/logout/"><i class="fa fa-sign-out fa-fw"></i> Logout</a></span>
                 </button>
-                <a class="navbar-brand" href="{{.URLPathPrefix}}/admin/"><img src="{{.URLPathPrefix}}/templates/images/botmover-logo.jpg" height="32" alt="{{.Title}}"></a>
+                <a class="navbar-brand" href="{{.URLPathPrefix}}/admin/"><img src="{{.URLPathPrefix}}/templates/images/gobot-logo-menunav.png" height="32" alt="{{.Title}}"></a>
             </div>
             <!-- /.navbar-header -->
 

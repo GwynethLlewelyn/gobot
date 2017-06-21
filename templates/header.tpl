@@ -67,27 +67,18 @@
         <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
     <![endif]-->
 
-	<!-- stupid favicons, added 20160520 -->
-	<link rel="apple-touch-icon" sizes="57x57" href="/apple-touch-icon-57x57.png">
-	<link rel="apple-touch-icon" sizes="60x60" href="/apple-touch-icon-60x60.png">
-	<link rel="apple-touch-icon" sizes="72x72" href="/apple-touch-icon-72x72.png">
-	<link rel="apple-touch-icon" sizes="76x76" href="/apple-touch-icon-76x76.png">
-	<link rel="apple-touch-icon" sizes="114x114" href="/apple-touch-icon-114x114.png">
-	<link rel="apple-touch-icon" sizes="120x120" href="/apple-touch-icon-120x120.png">
-	<link rel="apple-touch-icon" sizes="144x144" href="/apple-touch-icon-144x144.png">
-	<link rel="apple-touch-icon" sizes="152x152" href="/apple-touch-icon-152x152.png">
-	<link rel="icon" type="image/png" href="/favicon-32x32.png" sizes="32x32">
-	<link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96">
-	<link rel="icon" type="image/png" href="/favicon-16x16.png" sizes="16x16">
-	<link rel="manifest" href="/manifest.json">
-	<link rel="mask-icon" href="/safari-pinned-tab.svg" color="#5bbad5">
-	<meta name="apple-mobile-web-app-title" content="BotMover">
-	<meta name="application-name" content="BotMover">
-	<meta name="msapplication-TileColor" content="#2b5797">
-	<meta name="msapplication-TileImage" content="/mstile-144x144.png">
-	<meta name="theme-color" content="#ffffff"> 
-</head>
-
+	<!-- stupid favicons, updated with new logo 20170621 -->
+	<link rel="apple-touch-icon" sizes="180x180" href="{{.URLPathPrefix}}/apple-touch-icon.png">
+	<link rel="icon" type="image/png" sizes="32x32" href="{{.URLPathPrefix}}/favicon-32x32.png">
+	<link rel="icon" type="image/png" sizes="16x16" href="{{.URLPathPrefix}}/favicon-16x16.png">
+	<link rel="manifest" href="{{.URLPathPrefix}}/manifest.json">
+	<link rel="mask-icon" href="{{.URLPathPrefix}}/safari-pinned-tab.svg" color="#5bbad5">
+	<meta name="apple-mobile-web-app-title" content="Gobot">
+	<meta name="application-name" content="Gobot">
+	<meta name="msapplication-TileColor" content="#00a300">
+	<meta name="msapplication-TileImage" content="{{.URLPathPrefix}}/mstile-144x144.png">
+	<meta name="theme-color" content="#ffffff"></head>
+	<!-- favicons end here -->
 <body>
 <span id="URLPathPrefix" hidden>{{.URLPathPrefix}}</span>
 {{ end }}

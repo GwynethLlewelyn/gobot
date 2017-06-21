@@ -87,6 +87,8 @@
 											check();
 										}
 										conn.onmessage = function(evt) {
+											// see https://developer.mozilla.org/en-US/docs/Web/API/WebSockets_API/Writing_WebSocket_client_applications
+											
 											console.log('Got an update: "' + evt.data + '"');
 											log.innerHTML += evt.data;
 											log.scrollTop = log.scrollHeight;
