@@ -76,9 +76,9 @@ func main() {
 		        	log.Println(" ... reloading Gobot configuration again:")
 		        	loadConfiguration()
 		        case syscall.SIGUSR1:
-		        	sendMessageToBrowser(randomdata.FullName(randomdata.Female) + "<br />") // defined on engine.go for now
+		        	sendMessageToBrowser("status", "", randomdata.FullName(randomdata.Female) + "<br />", "") // defined on engine.go for now
 		        case syscall.SIGUSR2:
-		        	sendMessageToBrowser(randomdata.Country(randomdata.FullCountry) + "<br />") // defined on engine.go for now
+		        	sendMessageToBrowser("status", "", randomdata.Country(randomdata.FullCountry) + "<br />", "") // defined on engine.go for now
 		        default:
 		        	log.Println("Unknown UNIX signal caught!! Ignoring...")
 	        }
@@ -191,7 +191,7 @@ func checkErrPanic(err error) {
 //  this is for 'normal' situations when we want to get a log if something goes wrong but do not need to panic
 func checkErr(err error) {
 	if err != nil {
-		log.Println("gobot fatal: ", err)
+		log.Println("gobot error: ", err)
 	}
 }
 

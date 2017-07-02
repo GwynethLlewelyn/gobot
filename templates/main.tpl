@@ -92,7 +92,7 @@
 											icon: 'codepen',
 											markerColor: 'red'
 		  								});
-		
+		  								
 										// set up the map
 										var map = L.map('map', {
 											attributionControl: false,
@@ -105,6 +105,50 @@
 										map.fitBounds(bounds);
 										{{ .MapMarkers }}
 										map.setView([128, 128], 1);
+										
+										/*
+										var mapMinZoom = 1
+										var mapMaxZoom = 6
+										
+										L.Projection.Direct = {
+											project: function (latlng) {
+												return new L.Point(latlng.lat*256, latlng.lng*256);
+											},
+											unproject: function (point) {
+												return new L.LatLng(point.x/256, point.y/256);
+											}
+										};
+										
+										L.CRS.OpenSim=L.extend({},L.CRS,{
+											projection: L.Projection.Direct,
+											transformation:new L.Transformation(1,0,1,0),
+										
+											scale: function (zoom) {
+												return 1;// OpenSim zoom
+											}
+										});
+										
+										var map = L.map('map',{
+											attributionControl: false,
+											minZoom: mapMinZoom,
+											maxZoom: mapMaxZoom,
+											crs: L.CRS.OpenSim
+										});
+										
+										map.setView([3646, 3645], 1);
+
+										L.tileLayer('http://opensim.betatechnologies.info:8002/map-{z}-{x}-{y}-objects.jpg', {
+											maxZoom: mapMaxZoom,
+											continuousWorld: true,
+											noWrap:true,
+											tileSize:256,
+											crs: L.CRS.OpenSim,
+											attribution: 'opensim',
+											id: 'opensim',
+										}).addTo(map);
+										
+										map.panTo([3646, 3645]);
+										*/
 									</script>
 								</div>
 								<!-- /.panel-body -->

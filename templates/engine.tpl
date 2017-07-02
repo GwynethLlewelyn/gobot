@@ -67,7 +67,7 @@
 									//  and put an answer there
 									document.getElementById("alertMessage").style.display = 'block';
 								} 
-								
+																
 								// now deal with the WebSocket
 								var log = document.getElementById("engineResponse");
 								log.height = 400;
@@ -77,10 +77,12 @@
 							    function start() {
 									if (window["WebSocket"]) {
 										conn = new WebSocket(wsuri);
+										conn.binaryType = "arraybuffer";
 										conn.onopen = function() {
 											console.log("connected to " + wsuri);
 	            						}
 										conn.onclose = function(evt) {
+											//var msg = JSON.parse(evt.data);
 											console.log("Connection closed; data received: " + evt.data);
 											log.innerHTML += 'Connection closed - trying to reconnect<br />';
 											log.scrollTop = log.scrollHeight;
@@ -88,19 +90,76 @@
 										}
 										conn.onmessage = function(evt) {
 											// see https://developer.mozilla.org/en-US/docs/Web/API/WebSockets_API/Writing_WebSocket_client_applications
+											var msg;
 											
-											console.log('Got an update: "' + evt.data + '"');
-											log.innerHTML += evt.data;
+											if (typeof evt.data == "string") {
+												msg = JSON.parse(evt.data);
+											} else if (evt.data instanceof ArrayBuffer) {
+												// Note: sometimes the websocket data comes as an ArrayBuffer, when the data is structured; sometimes it doesn't. To figure out both cases, we force the WebSocket to return an ArrayBuffer and extract the relevant JSON strings from there: https://developers.google.com/web/updates/2014/08/Easier-ArrayBuffer-String-conversion-with-the-Encoding-API
+												
+										    	// The decode() method takes a DataView as a parameter, which is a wrapper on top of the ArrayBuffer.
+										        var dataView = new DataView(evt.data);
+										        // The TextDecoder interface is documented at http://encoding.spec.whatwg.org/#interface-textdecoder
+										        var decoder = new TextDecoder("utf-8");
+										        var decodedString = decoder.decode(dataView);
+												
+												// Now we should have a string in JSON
+												msg = JSON.parse(decodedString);
+											} else {
+												// I have no idea how to decode any other type
+												msg = evt.data;
+											}
+											
+											var logTxt = "";
+											// check for message type
+											switch (msg.type) {
+												case "status":
+													logTxt = msg.text;
+													break;
+												case "htmlControl":
+													switch (msg.subtype) {
+														case "disable":
+															document.getElementById(msg.id).disabled = true;
+															logTxt = "<em>Element " + msg.id + " disabled</em><br />";
+															break;
+														case "enable":
+															document.getElementById(msg.id).disabled = flase;
+															logTxt = "<em>Element " + msg.id + " enabled</em><br />";
+															break;
+														default:
+															logTxt = "Unknown subtype '" + msg.subtype + "'<br />";
+															break;
+													};
+													break;
+												default:
+													logTxt = "Unknown type '" + msg.type + "' with text '" +
+														msg.text + "'<br />";
+													break;
+											};
+											console.log('Received from server: (' + msg.type + '): "' +
+												msg.text + '"; writing on log: "' + logTxt + '"');
+											log.innerHTML += logTxt;
 											log.scrollTop = log.scrollHeight;
 										}
 										conn.onerror = function(err) {
-											console.log("Error from WebSocket: " + err.data)
+											console.log("Error from WebSocket: " + err.data);
 											log.innerHTML += "Error from WebSocket: " + err.data + "<br />";
 											log.scrollTop = log.scrollHeight;
 											check();
 	            						}
-	            						conn.send("Client is ready now");
-									} else {
+	            						
+	            						// when this is started, send a message to the server to tell that
+	            						//  we are ready to receive messages:
+	            						var msg = {
+											type: "status",
+											subtype: "",
+											text: "Client is ready now",
+											id: ""
+										};
+
+										 // Send the msg object as a JSON-formatted string.
+										conn.send(JSON.stringify(msg));
+	            					} else {
 										log.innerHTML += "<b>Your browser does not support WebSockets.</b><br />";
 										log.scrollTop = log.scrollHeight;
 									}
@@ -120,10 +179,23 @@
 								// make sure we have a valid connection to the server
 								console.log("formEngine was submitted!");
 								if (!conn || conn.readyState === WebSocket.CLOSED) {
+									console.log("Connection closed while sending formEngine data; trying to restart...");
 									start();
-								} else {
-									conn.send("Ready to launch engine!");
+									return false;
+								} else {								
+									console.log("Connection OK while sending formEngine data - sending...");
+									var msg = {
+											type: "formSubmit",
+											subtype: "",
+											text: document.forms["formEngine"]["Destination"].value + '|' + 
+												document.forms["formEngine"]["Agent"].value,
+											id: ""
+										};
+										
+									conn.send(JSON.stringify(msg));
+									return true;
 								}
+								return false;
 							}
 						 </script>
 						 <noscript>Look, if you don't even bother to turn on JavaScript, you will get nothing.</noscript>
