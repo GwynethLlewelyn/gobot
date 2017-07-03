@@ -9,28 +9,45 @@
 			<div class="container-fluid">
 				<div class="row">			
 				<h1 class="page-header">{{.Title}}</h1>
-					<form role="form" id="formEngine" action="javascript:void(0);" onsubmit="formEngineSubmit()">
-						<fieldset id="formEngineFieldSet">
-						<div class="col-lg-6">						
-							<div class="form-group">
-								<label>Destination</label>
-								<select class="form-control" name="Destination" id="Destination" size="1">
-									<option value="0" selected="selected" disabled="disabled">Please choose a destination cube</option>
-{{.DestinationOptions}}
-								</select>
-								<label>Agent</label>
-								<select class="form-control" name="Agent" id="Agent" size="1">
-									<option value="0" selected="selected" disabled="disabled">Please choose an agent</option>
-{{.AgentOptions}}
-								</select>
-							</div> <!-- /.form-group -->
-						</div> <!-- ./col-lg-6 -->
-						<div class="col-lg-6">
-							<button type="submit" class="btn btn-default">Submit</button>
-							<button type="reset" class="btn btn-default">Reset</button>
-						</div> <!-- ./col-lg-6 -->
-						</fieldset>
-					</form>
+					<div class="col-lg-9">
+						<div class="panel panel-default">
+							<div class="panel-heading">Send manual commands to engine</div> 
+							<div class="panel-body">
+									<form role="form" id="formEngine" action="javascript:void(0);" onsubmit="formEngineSubmit()">
+										<fieldset id="formEngineFieldSet">
+										<div class="col-lg-9">						
+											<div class="form-group">
+												<label>Destination</label>
+												<select class="form-control" name="Destination" id="Destination" size="1">
+													<option value="0" selected="selected" disabled="disabled">Please choose a destination cube</option>
+				{{.DestinationOptions}}
+												</select>
+												<label>Agent</label>
+												<select class="form-control" name="Agent" id="Agent" size="1">
+													<option value="0" selected="selected" disabled="disabled">Please choose an agent</option>
+				{{.AgentOptions}}
+												</select>
+											</div> <!-- /.form-group -->
+										</div> <!-- ./col-lg-9 -->
+										<div class="col-lg-3">
+											<button type="submit" class="btn btn-outline btn-success"><i class="fa fa-check"></i>&nbsp;Submit</button>
+											<button type="reset" class="btn btn-outline btn-warning"><i class="fa fa-trash-o"></i>&nbsp;Reset</button>
+										</div> <!-- ./col-lg-3 -->
+										</fieldset>
+									</form>
+							</div> <!-- ./panel-body -->
+						</div> <!-- ./panel -->
+					</div> <!-- ./col-lg-9 -->
+					<div class="col-lg-3">
+						<div class="panel panel-default">					
+							<div class="panel-heading">Engine master control</div> 
+							<div class="panel-body">
+									<button type="button" id="clearLog" class="btn btn-default btn-circle btn-xl"><i class="fa fa-trash-o" onclick="clearLog()"></i></button>
+									<button type="button" id="startEngine" class="btn btn-success btn-circle btn-xl"><i class="fa fa-check-circle" onclick="startEngine()"></i></button>
+									<button type="button" id="stopEngine" class="btn btn-danger btn-circle btn-xl"><i class="fa fa-times-circle" onclick="stopEngine()"></i></button>
+							</div> <!-- ./panel-body -->
+						</div> <!-- ./panel -->	
+					</div> <!-- ./col-lg-3 -->									
 				</div> <!-- ./row -->
 				<div id="alertMessage" class="alert alert-warning alert-dismissable" hidden style="display: none;">
                 	<button type="button" class="close" data-dismiss="alert" aria-hidden="true">×</button>
@@ -228,6 +245,49 @@
 									// probably needs to be addressed somehow (20170703)
 									return false;
 								}
+							}
+							
+							// This is just to get us an empty log again
+							function clearLog() {
+								var log = document.getElementById("engineResponse");
+								log.innerHTML = "<p class='text-muted'><small><i>(log cleared on request)</i></small></p>";
+								log.scrollTop = log.scrollHeight;
+								window.setTimeout(function () {
+									//log.innerHTML = "";
+									log.scrollTop = log.scrollHeight;
+								},5000);								
+							}
+							
+							function startEngine() {
+								if (conn.readyState === WebSocket.OPEN) {
+									var msg = {
+											type: "engineControl",
+											subtype: "start",
+											text: "Start Engine NOW!",
+											id: "startEngine"
+										};
+									conn.send(JSON.stringify(msg));
+									return true;
+								}
+								document.getElementById("message").innerHTML = "WebSocket not connected!";
+								document.getElementById("alertMessage").style.display = 'block';
+								return false;
+							}
+							
+							function stopEngine() {
+								if (conn.readyState === WebSocket.OPEN) {
+									var msg = {
+											type: "engineControl",
+											subtype: "stop",
+											text: "Stop Engine NOW!",
+											id: "stopEngine"
+										};
+									conn.send(JSON.stringify(msg));
+									return true;
+								}
+								document.getElementById("message").innerHTML = "WebSocket not connected!";
+								document.getElementById("alertMessage").style.display = 'block';
+								return false;
 							}
 						 </script>
 						 <noscript>Look, if you don't even bother to turn on JavaScript, you will get nothing.</noscript>

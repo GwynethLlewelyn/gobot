@@ -36,12 +36,19 @@ func (wsM *WsMessageType) New(msgType string, msgSubType string, msgText string,
 	return wsM
 }
 
-//var wsSendMessage = make(chan string)
+// Go is tricky. While we send and receive WebSocket messages as it would be expected on a 'normal' 
+//  programming language, we actually have an insane amount of goroutines all in parallel. So what we do is to 
+//  send messages to a 'channel' (Go's version of a semaphore) and receive them from a different one; two sets
+//  of goroutines will have their fun reading and sending messages to the client and updating the channels,
+//  so other goroutines only send and receive to the channels and have no concept of 'WebSocket messages'
+//  This is sort of neat because it solves parallelism (goroutines block on sockets) but it also allows
+//  us to build in other transfer mechanisms and make them abstract using Go channels (20170703)
 var wsSendMessage = make(chan WsMessageType)
 var wsReceiveMessage = make(chan WsMessageType)
 
 // serveWs - apparently this is what is 'called' from the outside, and I need to talk to a socket here.
 func serveWs(ws *websocket.Conn) {
+	// see also how it is implemented here: http://eli.thegreenplace.net/2016/go-websocket-server-sample/ (20170703)
 	var (
 		err error
 //		data []byte
@@ -120,7 +127,7 @@ func backofficeEngine(w http.ResponseWriter, r *http.Request) {
 		// parse name of the region and coordinates
 		regionName, xyz = convertLocPos(location, position)
 		
-		cubes += fmt.Sprintf("\t\t\t\t\t\t\t\t\t<option value=\"%s\">%s (%s/%s) [%s (%s,%s,%s)]</option>\n", uuid, name, objType, objClass, regionName, xyz[0], xyz[1], xyz[2])
+		cubes += fmt.Sprintf("\t\t\t\t\t\t\t\t\t\t\t\t\t<option value=\"%s\">%s (%s/%s) [%s (%s,%s,%s)]</option>\n", uuid, name, objType, objClass, regionName, xyz[0], xyz[1], xyz[2])
 	}
 
 	rows, err = db.Query("SELECT Name, OwnerKey, Location, Position FROM Agents ORDER BY Name")
@@ -137,7 +144,7 @@ func backofficeEngine(w http.ResponseWriter, r *http.Request) {
 		err = rows.Scan(&name, &ownerKey, &location, &position)
 		checkErr(err)
 		regionName, xyz = convertLocPos(location, position)
-		agentNames += fmt.Sprintf("\t\t\t\t\t\t\t\t\t<option value=\"%s\">%s  (%s) [%s (%s,%s,%s)]</option>\n", ownerKey, name, ownerKey, regionName, xyz)
+		agentNames += fmt.Sprintf("\t\t\t\t\t\t\t\t\t\t\t\t\t<option value=\"%s\">%s  (%s) [%s (%s,%s,%s)]</option>\n", ownerKey, name, ownerKey, regionName, xyz)
 	}
 	
 	db.Close()
@@ -157,6 +164,7 @@ func backofficeEngine(w http.ResponseWriter, r *http.Request) {
 // engine does everything but the kitchen sink.
 func engine() {
 	var receiveMessage WsMessageType
+	var engineRunning = true // this MAY have some race conditions... but it is mostly just to start/stop the engine, so it should be ok (20170703)
 	
 	// The theory is the following: when the browser is ready with a connection, it sends us
 	//  a message first. We don't know when this happens, so we block on the message queue until
@@ -184,6 +192,17 @@ func engine() {
 					
 					log.Println("Destination: ", Destination, "Agent:", Agent)
 					sendMessageToBrowser("status", "info", "Received '" + Destination + "|" + Agent + "'<br />", "")
+				case "engineControl":
+					var messageSubType = receiveMessage.SubType.Ptr()
+					switch *messageSubType {
+						case "start":
+							engineRunning = true
+						case "stop":
+						default:
+							engineRunning = false
+					}
+					sendMessageToBrowser("status", "info", "Engine " + *messageSubType + "<br />", "")
+							
 				default:
 					log.Println("Unknown message type", &messageType)
 			}
@@ -194,14 +213,25 @@ func engine() {
 	//  will be able to catch them. (20170703)
 	fmt.Println("Pretending to do something in parallel while we wait for connections etc...")
 	for true {
-	    fmt.Print("\b|")
-	    time.Sleep(1000 * time.Millisecond)
-	    fmt.Print("\b/")
-	    time.Sleep(1000 * time.Millisecond)
-	    fmt.Print("\b-")
-	    time.Sleep(1000 * time.Millisecond)
-	    fmt.Print("\b\\")
-	    time.Sleep(1000 * time.Millisecond)
+		if engineRunning {
+		    fmt.Print("\b|")
+		    time.Sleep(1000 * time.Millisecond)
+		    fmt.Print("\b/")
+		    time.Sleep(1000 * time.Millisecond)
+		    fmt.Print("\b-")
+		    time.Sleep(1000 * time.Millisecond)
+		    fmt.Print("\b\\")
+		    time.Sleep(1000 * time.Millisecond)
+		} else {
+		    fmt.Print("\bz")
+		    time.Sleep(1000 * time.Millisecond)
+		    fmt.Print("\bzZ")
+		    time.Sleep(1000 * time.Millisecond)
+		    fmt.Print("\bzZz")
+		    time.Sleep(1000 * time.Millisecond)
+		    fmt.Print("\bzZzZ")
+		    time.Sleep(1000 * time.Millisecond)			
+		}
     }
 	sendMessageToBrowser("status", "", "this is the engine <i>stopping</i><br />", "")
 	fmt.Println("this is the engine stopping")
