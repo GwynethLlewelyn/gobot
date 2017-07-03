@@ -38,14 +38,20 @@ func (wsM *WsMessageType) New(msgType string, msgSubType string, msgText string,
 
 //var wsSendMessage = make(chan string)
 var wsSendMessage = make(chan WsMessageType)
+var wsReceiveMessage = make(chan WsMessageType)
 
 // serveWs - apparently this is what is 'called' from the outside, and I need to talk to a socket here.
 func serveWs(ws *websocket.Conn) {
 	var (
 		err error
-		data []byte
+//		data []byte
 	)
 	
+	if ws == nil {
+		log.Panic("Received nil WebSocket — I have no idea why this happened!")
+	}
+	
+	log.Printf("Client connected from %s", ws.RemoteAddr())
 	log.Println("entering serveWs with connection config:", ws.Config())
 
 	go func() {
@@ -54,10 +60,7 @@ func serveWs(ws *websocket.Conn) {
 		for {
 			sendMessage := <-wsSendMessage
 			
-			data, err = json.MarshalIndent(sendMessage, "", " ")
-			checkErr(err)
-			
-			if err = websocket.Message.Send(ws, data); err != nil {
+			if err = websocket.JSON.Send(ws, sendMessage); err != nil {
 				log.Println("Can't send; error:", err)
 				break
 			}
@@ -68,28 +71,16 @@ func serveWs(ws *websocket.Conn) {
 	var receiveMessage WsMessageType
 
 	for {
-		if err = websocket.Message.Receive(ws, &data); err != nil {
+		if err = websocket.JSON.Receive(ws, &receiveMessage); err != nil {
 			log.Println("Can't receive; error:", err)
 			break
 		}
-		err = json.Unmarshal(data, &receiveMessage)
-		checkErr(err)
+		log.Println("Received message", receiveMessage)
 		
-		log.Printf("Received back from client: type '%s' subtype '%s' text '%s' id '%s'\n", *receiveMessage.Type.Ptr(), *receiveMessage.SubType.Ptr(), *receiveMessage.Text.Ptr(), *receiveMessage.Id.Ptr())
+		// log.Printf("Received back from client: type '%s' subtype '%s' text '%s' id '%s'\n", *receiveMessage.Type.Ptr(), *receiveMessage.SubType.Ptr(), *receiveMessage.Text.Ptr(), *receiveMessage.Id.Ptr())
 		// To-Do Next: client will tell us when it's ready, and send us an agent and a destination cube
 		
-		var messageType = receiveMessage.Type.Ptr()
-		switch *messageType {
-			case "formSubmit":
-				var messageText = *receiveMessage.Text.Ptr()
-				returnValues := strings.Split(messageText, "|")
-				Destination := returnValues[0]
-				Agent := returnValues[1]
-				
-				log.Printf("Destination: ", Destination, "Agent:", Agent)
-			default:
-				log.Printf("Unknown message type", &messageType)
-		}
+		wsReceiveMessage <- receiveMessage
 	}
 }
 
@@ -161,18 +152,57 @@ func backofficeEngine(w http.ResponseWriter, r *http.Request) {
 	}
 	err = GobotTemplates.gobotRenderer(w, r, "engine", tplParams)
 	checkErr(err)
-
-	go engine()
 }
 
 // engine does everything but the kitchen sink.
 func engine() {
+	var receiveMessage WsMessageType
+	
+	// The theory is the following: when the browser is ready with a connection, it sends us
+	//  a message first. We don't know when this happens, so we block on the message queue until
+	//  we get something. This might not be a good idea if the client dies, but we have a problem
+	//  figuring out when both client and server are ready to exchange messages with each other! (20170703)
+	receiveMessage = <-wsReceiveMessage
 	fmt.Println("this is the engine starting")
 	sendMessageToBrowser("status", "", "this is the engine <b>starting</b><br />", "")
-	for i := 1; i <= 10; i++ {
-		time.Sleep(time.Second * 1)
-		fmt.Println(i, " second(s) elapsed")
-	}
+	
+	// Now, this is a message handler to receive messages while inside the engine, we
+	//  block on a message and run a goroutine in the background, so we can safely continue
+	//  to run the engine without blocking or errors
+	//  I have no idea yet if this is a good idea or not (20170703)
+	go func() {
+		for {
+			receiveMessage = <-wsReceiveMessage
+			
+			var messageType = receiveMessage.Type.Ptr()
+			switch *messageType {
+				case "formSubmit":
+					messageText := *receiveMessage.Text.Ptr()
+					returnValues := strings.Split(messageText, "|")
+					Destination := returnValues[0]
+					Agent := returnValues[1]
+					
+					log.Println("Destination: ", Destination, "Agent:", Agent)
+					sendMessageToBrowser("status", "info", "Received '" + Destination + "|" + Agent + "'<br />", "")
+				default:
+					log.Println("Unknown message type", &messageType)
+			}
+		}
+	}()
+	
+	// We continue with engine. Things may happen in the background, and theoretically we
+	//  will be able to catch them. (20170703)
+	fmt.Println("Pretending to do something in parallel while we wait for connections etc...")
+	for true {
+	    fmt.Print("\b|")
+	    time.Sleep(1000 * time.Millisecond)
+	    fmt.Print("\b/")
+	    time.Sleep(1000 * time.Millisecond)
+	    fmt.Print("\b-")
+	    time.Sleep(1000 * time.Millisecond)
+	    fmt.Print("\b\\")
+	    time.Sleep(1000 * time.Millisecond)
+    }
 	sendMessageToBrowser("status", "", "this is the engine <i>stopping</i><br />", "")
 	fmt.Println("this is the engine stopping")
 }
@@ -190,7 +220,7 @@ func sendMessageToBrowser(msgType string, msgSubType string, msgText string, msg
 */
 	
 
-	marshalled, err := json.MarshalIndent(msgToSend, "", " ")
+	marshalled, err := json.MarshalIndent(msgToSend, "", " ") // debug line just to show msgToSend's structure
 	checkErr(err)
 	
 	select {
