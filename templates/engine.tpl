@@ -56,99 +56,33 @@
 						<div id="engineResponse" name="engineResponse" contenteditable="true"></div>
 						<!-- websockets will fill this in -->
 						<script type="text/javascript">
-							var conn = null;
+							const wsuri = "ws://{{.Host}}{{.ServerPort}}{{.URLPathPrefix}}/wsEngine/";
+							var conn = null; // WebSocket connection, must be sort-of-global-y (20170703)
 							
-							window.onload = function () {
-								// Disable form if we have no destination cubes or active agents
-								if ("{{ .DestinationOptions }}" == "" || "{{ .AgentOptions }}" == "") {
-									document.getElementById("formEngine").disabled = true;
-									document.getElementById("formEngineFieldSet").disabled = true;
-									// we might give an explanation here, e.g. enable a hidden field
-									//  and put an answer there
-									document.getElementById("alertMessage").style.display = 'block';
-								} 
-																
-								// now deal with the WebSocket
-								var log = document.getElementById("engineResponse");
-								log.height = 400;
-								log.scrollTop = log.scrollHeight; // scroll to bottom - http://web.archive.org/web/20080821211053/http://radio.javaranch.com/pascarello/2005/12/14/1134573598403.html
-								var wsuri = "ws://{{.Host}}{{.ServerPort}}{{.URLPathPrefix}}/wsEngine/";
-								
-							    function start() {
-									if (window["WebSocket"]) {
-										conn = new WebSocket(wsuri);
-										conn.binaryType = "arraybuffer";
-										conn.onopen = function() {
-											console.log("connected to " + wsuri);
-	            						}
-										conn.onclose = function(evt) {
-											//var msg = JSON.parse(evt.data);
-											console.log("Connection closed; data received: " + evt.data);
-											log.innerHTML += 'Connection closed - trying to reconnect<br />';
-											log.scrollTop = log.scrollHeight;
-											check();
-										}
-										conn.onmessage = function(evt) {
-											// see https://developer.mozilla.org/en-US/docs/Web/API/WebSockets_API/Writing_WebSocket_client_applications
-											var msg;
-											
-											if (typeof evt.data == "string") {
-												msg = JSON.parse(evt.data);
-											} else if (evt.data instanceof ArrayBuffer) {
-												// Note: sometimes the websocket data comes as an ArrayBuffer, when the data is structured; sometimes it doesn't. To figure out both cases, we force the WebSocket to return an ArrayBuffer and extract the relevant JSON strings from there: https://developers.google.com/web/updates/2014/08/Easier-ArrayBuffer-String-conversion-with-the-Encoding-API
-												
-										    	// The decode() method takes a DataView as a parameter, which is a wrapper on top of the ArrayBuffer.
-										        var dataView = new DataView(evt.data);
-										        // The TextDecoder interface is documented at http://encoding.spec.whatwg.org/#interface-textdecoder
-										        var decoder = new TextDecoder("utf-8");
-										        var decodedString = decoder.decode(dataView);
-												
-												// Now we should have a string in JSON
-												msg = JSON.parse(decodedString);
-											} else {
-												// I have no idea how to decode any other type
-												msg = evt.data;
-											}
-											
-											var logTxt = "";
-											// check for message type
-											switch (msg.type) {
-												case "status":
-													logTxt = msg.text;
-													break;
-												case "htmlControl":
-													switch (msg.subtype) {
-														case "disable":
-															document.getElementById(msg.id).disabled = true;
-															logTxt = "<em>Element " + msg.id + " disabled</em><br />";
-															break;
-														case "enable":
-															document.getElementById(msg.id).disabled = flase;
-															logTxt = "<em>Element " + msg.id + " enabled</em><br />";
-															break;
-														default:
-															logTxt = "Unknown subtype '" + msg.subtype + "'<br />";
-															break;
-													};
-													break;
-												default:
-													logTxt = "Unknown type '" + msg.type + "' with text '" +
-														msg.text + "'<br />";
-													break;
-											};
-											console.log('Received from server: (' + msg.type + '): "' +
-												msg.text + '"; writing on log: "' + logTxt + '"');
-											log.innerHTML += logTxt;
-											log.scrollTop = log.scrollHeight;
-										}
-										conn.onerror = function(err) {
-											console.log("Error from WebSocket: " + err.data);
-											log.innerHTML += "Error from WebSocket: " + err.data + "<br />";
-											log.scrollTop = log.scrollHeight;
-											check();
-	            						}
-	            						
-	            						// when this is started, send a message to the server to tell that
+							function formEngineConfig(enableStatus) {
+								document.getElementById("formEngine").disabled = enableStatus;
+								document.getElementById("formEngineFieldSet").disabled = enableStatus;
+							}
+							
+							/*
+							 * WebSocket handler, called only when the window has loaded
+							 *  and every time we suspect that the connection was closed (20170703)
+							 */
+							function start() {
+								if (window["WebSocket"]) {
+									// start by preparing the scrollable response element
+									var log = document.getElementById("engineResponse");
+									log.height = 400;
+									log.scrollTop = log.scrollHeight; // scroll to bottom - http://web.archive.org/web/20080821211053/http://radio.javaranch.com/pascarello/2005/12/14/1134573598403.html
+
+									// now deal with the WebSocket
+									conn = new WebSocket(wsuri);
+									console.log("Attempting to connect to WebSocket on " + wsuri);
+									conn.binaryType = "arraybuffer";
+									conn.onopen = function() {
+										console.log("Now connected to " + wsuri);
+										formEngineConfig(false); // enable form, we can accept ws connections
+										// when this is started, send a message to the server to tell that
 	            						//  we are ready to receive messages:
 	            						var msg = {
 											type: "status",
@@ -159,30 +93,125 @@
 
 										 // Send the msg object as a JSON-formatted string.
 										conn.send(JSON.stringify(msg));
-	            					} else {
-										log.innerHTML += "<b>Your browser does not support WebSockets.</b><br />";
+										setInterval(check, 5000); // check if connection is active every five seconds
+            						}
+									conn.onclose = function(evt) {
+										//var msg = JSON.parse(evt.data);
+										console.log("Connection closed; data received: " + evt.data);
+										log.innerHTML += 'Connection closed - trying to reconnect<br />';
+										log.scrollTop = log.scrollHeight;
+										check(); // this should disable form as well
+									}
+									// Handler to deal with messages coming from the server (20170702)
+									conn.onmessage = function(evt) {
+										// see https://developer.mozilla.org/en-US/docs/Web/API/WebSockets_API/Writing_WebSocket_client_applications
+										var msg;
+										
+										if (typeof evt.data == "string") {
+											msg = JSON.parse(evt.data);
+										} else if (evt.data instanceof ArrayBuffer) {
+											// Note: sometimes the websocket data comes as an ArrayBuffer, when the data is structured; sometimes it doesn't. To figure out both cases, we force the WebSocket to return an ArrayBuffer and extract the relevant JSON strings from there: https://developers.google.com/web/updates/2014/08/Easier-ArrayBuffer-String-conversion-with-the-Encoding-API (20170702)
+											
+									    	// The decode() method takes a DataView as a parameter, which is a wrapper on top of the ArrayBuffer.
+									        var dataView = new DataView(evt.data);
+									        // The TextDecoder interface is documented at http://encoding.spec.whatwg.org/#interface-textdecoder
+									        var decoder = new TextDecoder("utf-8");
+									        var decodedString = decoder.decode(dataView);
+											
+											// Now we should have a string in JSON
+											msg = JSON.parse(decodedString);
+										} else {
+											// I have no idea how to decode any other type
+											console.log("Unexpected type of event data, attempt to create a message out of it, even if it may fail.");
+											msg = evt.data;
+										}
+										
+										var logTxt = "";
+										// check for message type from the server, right now it may be:
+										//  status: just add that message to the scrollable element
+										//  htmlControl: to turn on/off certain elements of the form
+										//   (to disallow submission of new data while the engine
+										//    has been manually ran for one Agent/Destination pair)
+										switch (msg.type) {
+											case "status":
+												logTxt = msg.text;
+												break;
+											case "htmlControl":
+												switch (msg.subtype) {
+													case "disable":
+														document.getElementById(msg.id).disabled = true;
+														logTxt = "<em>Element " + msg.id + " disabled</em><br />";
+														break;
+													case "enable":
+														document.getElementById(msg.id).disabled = false;
+														logTxt = "<em>Element " + msg.id + " enabled</em><br />";
+														break;
+													default:
+														logTxt = "Unknown subtype '" + msg.subtype + "'<br />";
+														break;
+												};
+												break;
+											default:
+												logTxt = "Unknown type '" + msg.type + "' with text '" +
+													msg.text + "'<br />";
+												break;
+										};
+										console.log('Received from server: (' + msg.type + '): "' +
+											msg.text + '"; writing on log: "' + logTxt + '"');
+										log.innerHTML += logTxt;
 										log.scrollTop = log.scrollHeight;
 									}
+									conn.onerror = function(err) {
+										console.log("Error from WebSocket: " + err.data);
+										log.innerHTML += "Error from WebSocket: " + err.data + "<br />";
+										log.scrollTop = log.scrollHeight;
+										check();
+            						}
+            						
+
+            					} else {
+									log.innerHTML += "<b>Your browser does not support WebSockets.</b><br />";
+									log.scrollTop = log.scrollHeight;
 								}
-								
-								// see https://stackoverflow.com/questions/3780511/reconnection-of-client-when-server-reboots-in-websocket
-								function check() {
-									if(!conn || conn.readyState === WebSocket.CLOSED) start();
+							}
+							
+							/*
+							 *	Main handling starts here, when we know that everything has been loaded
+							 */
+							window.onload = function () {
+								// Disable form if we have no destination cubes or active agents
+								if ("{{ .DestinationOptions }}" == "" || "{{ .AgentOptions }}" == "") {
+									formEngineConfig(true);
+									// we might give an explanation here, e.g. enable a hidden field
+									//  and put an answer there
+									document.getElementById("alertMessage").style.display = 'block';
+								}
+								if (!conn || conn.readyState === WebSocket.CLOSED) {
+									// if we have no valid connection yet, do not allow the form to be submitted (20170703)
+									formEngineConfig(true);
 								}
 								
 								start();
-								
-								setInterval(check, 5000);
 							};
+							
+							// see https://stackoverflow.com/questions/3780511/reconnection-of-client-when-server-reboots-in-websocket
+							function check() {
+								// check if connection is ready; if not, try to start it again
+								if(!conn || conn.readyState === WebSocket.CLOSED) {
+									formEngineConfig(true); // disable form for now
+									start();
+								}
+							}
 							
 							function formEngineSubmit() {
 								// make sure we have a valid connection to the server
 								console.log("formEngine was submitted!");
 								if (!conn || conn.readyState === WebSocket.CLOSED) {
 									console.log("Connection closed while sending formEngine data; trying to restart...");
-									start();
+									formEngineConfig(true); // to be sure the form remains disabled
+									start();				//  we could call check() here... (20170703)
 									return false;
-								} else {								
+								} else if (conn.readyState === WebSocket.OPEN) {							
 									console.log("Connection OK while sending formEngine data - sending...");
 									var msg = {
 											type: "formSubmit",
@@ -194,8 +223,11 @@
 										
 									conn.send(JSON.stringify(msg));
 									return true;
+								} else {
+									console.log("Connection either starting or closing, not ready yet for sending — what to do?");
+									// probably needs to be addressed somehow (20170703)
+									return false;
 								}
-								return false;
 							}
 						 </script>
 						 <noscript>Look, if you don't even bother to turn on JavaScript, you will get nothing.</noscript>
