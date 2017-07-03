@@ -4,7 +4,6 @@ package main
 import (
 	"database/sql"
 	"fmt"
-	"time"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/spf13/viper" // to read config files
 	"net/http"
@@ -173,7 +172,7 @@ func main() {
 	// Handle Websockets on Engine
 	http.Handle(URLPathPrefix + "/wsEngine/",						websocket.Handler(serveWs))
 
-	go paralelate() // run everything but the kitchen sink in parallel; yay goroutines!
+	go engine() // run everything but the kitchen sink in parallel; yay goroutines!
 	// very likely we will open the database, look at all agents, and run a goroutine for each (20170516)
 	
     err = http.ListenAndServe(ServerPort, nil) // set listen port
@@ -207,20 +206,4 @@ func expandPath(path string) (string, error) {
         return "", err
     }
     return filepath.Join(usr.HomeDir, path[1:]), nil
-}
-
-// paralelate is a first attempt at a goroutine.
-func paralelate() {
-	log.Println("Testing parallelism...")
-    for true {
-	    fmt.Print("\b|")
-	    time.Sleep(1000 * time.Millisecond)
-	    fmt.Print("\b/")
-	    time.Sleep(1000 * time.Millisecond)
-	    fmt.Print("\b-")
-	    time.Sleep(1000 * time.Millisecond)
-	    fmt.Print("\b\\")
-	    time.Sleep(1000 * time.Millisecond)
-    }
-    log.Println("Done! (But I'm hopefully still serving requests)")
 }
