@@ -171,6 +171,8 @@ func backofficeEngine(w http.ResponseWriter, r *http.Request) {
 
 // engine does everything but the kitchen sink.
 func engine() {
+	// we use sync/atomic for making sure we can read a value that is set by a different goroutine
+	//  see https://texlution.com/post/golang-lock-free-values-with-atomic-value/ among others (20170704)
 	var (
 		receiveMessage WsMessageType
 		engineRunning atomic.Value // using sync/atomic to make values consistent among goroutines (20170704)
