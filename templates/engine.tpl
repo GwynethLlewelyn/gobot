@@ -19,12 +19,12 @@
 											<div class="form-group">
 												<label>Destination</label>
 												<select class="form-control" name="Destination" id="Destination" size="1">
-													<option value="0" selected="selected" disabled="disabled">Please choose a destination cube</option>
+													<option value="00000000-0000-0000-0000-000000000000" selected="selected" disabled="disabled">Please choose a destination cube</option>
 				{{.DestinationOptions}}
 												</select>
 												<label>Agent</label>
 												<select class="form-control" name="Agent" id="Agent" size="1">
-													<option value="0" selected="selected" disabled="disabled">Please choose an agent</option>
+													<option value="00000000-0000-0000-0000-000000000000" selected="selected" disabled="disabled">Please choose an agent</option>
 				{{.AgentOptions}}
 												</select>
 											</div> <!-- /.form-group -->
@@ -103,7 +103,7 @@
 	            						//  we are ready to receive messages:
 	            						var msg = {
 											type: "status",
-											subtype: "",
+											subtype: "ready",
 											text: "Client is ready now",
 											id: ""
 										};
@@ -210,6 +210,20 @@
 								
 								start();
 							};
+							
+							window.onunload = function () {
+								if (conn.readyState === WebSocket.OPEN) {							
+									console.log("Cool, we are able to send a message informing the server that we are gone!");
+									var msg = {
+											type: "status",
+											subtype: "gone",
+											text: "",
+											id: ""
+										};
+										
+									conn.send(JSON.stringify(msg));
+								}
+							}
 							
 							// see https://stackoverflow.com/questions/3780511/reconnection-of-client-when-server-reboots-in-websocket
 							function check() {

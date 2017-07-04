@@ -171,17 +171,13 @@ func backofficeEngine(w http.ResponseWriter, r *http.Request) {
 
 // engine does everything but the kitchen sink.
 func engine() {
-	var receiveMessage WsMessageType
-	//var engineRunning = true // this MAY have some race conditions... but it is mostly just to start/stop the engine, so it should be ok (20170703)
-	var engineRunning atomic.Value // using sync/atomic to make values consistent among goroutines (20170704)
+	var (
+		receiveMessage WsMessageType
+		engineRunning atomic.Value // using sync/atomic to make values consistent among goroutines (20170704)
+	)
 	
-	engineRunning.Store(true)
+	engineRunning.Store(true) // we start by running the engine; note that this may very well happen before we even have WebSockets up (20170704)
 	
-	// The theory is the following: when the browser is ready with a connection, it sends us
-	//  a message first. We don't know when this happens, so we block on the message queue until
-	//  we get something. This might not be a good idea if the client dies, but we have a problem
-	//  figuring out when both client and server are ready to exchange messages with each other! (20170703)
-	receiveMessage = <-wsReceiveMessage
 	fmt.Println("this is the engine starting")
 	sendMessageToBrowser("status", "", "this is the engine <b>starting</b><br />", "")
 	
@@ -189,16 +185,56 @@ func engine() {
 	//  block on a message and run a goroutine in the background, so we can safely continue
 	//  to run the engine without blocking or errors
 	//  I have no idea yet if this is a good idea or not (20170703)
+	//  At least it works (20170704)
 	go func() {
-		for {
-			//engineRunning = true
-			engineRunning.Store(true)
+		var messageType, messageSubType string
+				
+		for {		
 			receiveMessage = <-wsReceiveMessage
 			
-			var messageType = receiveMessage.Type.Ptr()
-			switch *messageType {
+			if (receiveMessage.Type.Ptr() != nil) {
+				messageType = *receiveMessage.Type.Ptr()
+			} else {
+				messageType = "empty"
+			}			
+			if (receiveMessage.SubType.Ptr() != nil) {
+				messageSubType = *receiveMessage.SubType.Ptr()
+			} else {
+				messageSubType = "empty"
+			}
+					
+			switch messageType {
+				case "status":
+					switch messageSubType {
+						case "ready": // this is what we get when WebSockets are established on the client
+							// check for engine running or not and set the controls
+							switch engineRunning.Load().(bool) {
+								case true:
+									sendMessageToBrowser("htmlControl", "disable", "", "startEngine")
+									sendMessageToBrowser("htmlControl", "enable", "", "stopEngine")
+								case false:
+									sendMessageToBrowser("htmlControl", "enable", "", "startEngine")
+									sendMessageToBrowser("htmlControl", "false", "", "stopEngine")
+								default: // should never happen, but turn both buttons off just in case
+									sendMessageToBrowser("htmlControl", "disable", "", "startEngine")
+									sendMessageToBrowser("htmlControl", "disable", "", "stopEngine")
+							}
+						case "gone": // The client has gone, we have no more websocket for this one (20170704)
+							fmt.Println("Client just told us that it went away, we continue on our own")
+						default: // no other special functions for now, just echo what the client has sent...
+							//unknownMessage := *receiveMessage.Text.Ptr() // better not...
+							//fmt.Println("Received from client unknown status message with subtype",
+							//	messageSubType, "and text: >>", unknownMessage, "<< — ignoring...")
+							fmt.Println("Received from client unknown status message with subtype",
+								messageSubType, " — ignoring...")
+					}
 				case "formSubmit":
-					messageText := *receiveMessage.Text.Ptr()
+					var messageText string
+					if receiveMessage.Text.Ptr() != nil {
+						messageText = *receiveMessage.Text.Ptr()
+					} else {
+						messageText = NullUUID + "|" + NullUUID // a bit stupid, we could skip this and do direct assigns, but this way we do a bit more effort wasting CPU cycles for the sake of code clarity (20170704)
+					}
 					returnValues := strings.Split(messageText, "|")
 					Destination := returnValues[0]
 					Agent := returnValues[1]
@@ -206,32 +242,33 @@ func engine() {
 					log.Println("Destination: ", Destination, "Agent:", Agent)
 					sendMessageToBrowser("status", "info", "Received '" + Destination + "|" + Agent + "'<br />", "")
 				case "engineControl":
-					var messageSubType = receiveMessage.SubType.Ptr()
-					switch *messageSubType {
+					switch messageSubType {
 						case "start":
-							// engineRunning = true
+							sendMessageToBrowser("htmlControl", "disable", "", "startEngine")
+							sendMessageToBrowser("htmlControl", "enable", "", "stopEngine")
 							engineRunning.Store(true)
 						case "stop":
-						default:
-							//engineRunning = false
+							sendMessageToBrowser("htmlControl", "enable", "", "startEngine")
+							sendMessageToBrowser("htmlControl", "disable", "", "stopEngine")
+							engineRunning.Store(false)
+						default: // anything will stop the engine!
+							sendMessageToBrowser("htmlControl", "enable", "", "startEngine")
+							sendMessageToBrowser("htmlControl", "disable", "", "stopEngine")
 							engineRunning.Store(false)
 					}
-					sendMessageToBrowser("status", "info", "Engine " + *messageSubType + "<br />", "")
+					sendMessageToBrowser("status", "info", "Engine " + messageSubType + "<br />", "")
 							
 				default:
-					log.Println("Unknown message type", &messageType)
+					log.Println("Unknown message type", messageType)
 			}
 		}
 	}()
 	
 	// We continue with engine. Things may happen in the background, and theoretically we
 	//  will be able to catch them. (20170703)
-	fmt.Println("Pretending to do something in parallel while we wait for connections etc...")
-	var engineRunningStatus bool
 	for {
-		engineRunningStatus = engineRunning.Load().(bool)
-		
-		if engineRunningStatus {
+		if engineRunning.Load().(bool) {
+			// do stuff while it runs, e.g. open databases, search for agents and so forth
 		    fmt.Print("\b|")
 		    time.Sleep(1000 * time.Millisecond)
 		    fmt.Print("\b/")
@@ -241,16 +278,20 @@ func engine() {
 		    fmt.Print("\b\\")
 		    time.Sleep(1000 * time.Millisecond)
 		} else {
+			// stop everything!!!
+			// in theory this is used to deal with reconfigurations etc.
+		    fmt.Print("\b𝔷")
+		    time.Sleep(1000 * time.Millisecond)
 		    fmt.Print("\bz")
 		    time.Sleep(1000 * time.Millisecond)
-		    fmt.Print("\bzZ")
+		    fmt.Print("\bZ")
 		    time.Sleep(1000 * time.Millisecond)
-		    fmt.Print("\bzZz")
-		    time.Sleep(1000 * time.Millisecond)
-		    fmt.Print("\bzZzZ")
+		    fmt.Print("\bℤ")
 		    time.Sleep(1000 * time.Millisecond)			
 		}
     }
+    
+    // Why should we ever stop? :)
 	sendMessageToBrowser("status", "", "this is the engine <i>stopping</i><br />", "")
 	fmt.Println("this is the engine stopping")
 }
