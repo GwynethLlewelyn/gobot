@@ -13,6 +13,7 @@ import (
 	"strings"
 	"encoding/json"
 	"gopkg.in/guregu/null.v3/zero"
+	"sync/atomic" // used for sync'ing values across goroutines at a low level
 )
 
 // Define a communications procotol with the client, so that we can selectively
@@ -35,6 +36,13 @@ func (wsM *WsMessageType) New(msgType string, msgSubType string, msgText string,
 
 	return wsM
 }
+
+// The following struct is used to hold status information across goroutines
+//  It uses the sync/atomic package to do this at a low level, we could have used mutexes (20170704)
+
+//type atomic.Value struct {
+//	running bool
+//}
 
 // Go is tricky. While we send and receive WebSocket messages as it would be expected on a 'normal' 
 //  programming language, we actually have an insane amount of goroutines all in parallel. So what we do is to 
@@ -164,7 +172,10 @@ func backofficeEngine(w http.ResponseWriter, r *http.Request) {
 // engine does everything but the kitchen sink.
 func engine() {
 	var receiveMessage WsMessageType
-	var engineRunning = true // this MAY have some race conditions... but it is mostly just to start/stop the engine, so it should be ok (20170703)
+	//var engineRunning = true // this MAY have some race conditions... but it is mostly just to start/stop the engine, so it should be ok (20170703)
+	var engineRunning atomic.Value // using sync/atomic to make values consistent among goroutines (20170704)
+	
+	engineRunning.Store(true)
 	
 	// The theory is the following: when the browser is ready with a connection, it sends us
 	//  a message first. We don't know when this happens, so we block on the message queue until
@@ -180,6 +191,8 @@ func engine() {
 	//  I have no idea yet if this is a good idea or not (20170703)
 	go func() {
 		for {
+			//engineRunning = true
+			engineRunning.Store(true)
 			receiveMessage = <-wsReceiveMessage
 			
 			var messageType = receiveMessage.Type.Ptr()
@@ -196,10 +209,12 @@ func engine() {
 					var messageSubType = receiveMessage.SubType.Ptr()
 					switch *messageSubType {
 						case "start":
-							engineRunning = true
+							// engineRunning = true
+							engineRunning.Store(true)
 						case "stop":
 						default:
-							engineRunning = false
+							//engineRunning = false
+							engineRunning.Store(false)
 					}
 					sendMessageToBrowser("status", "info", "Engine " + *messageSubType + "<br />", "")
 							
@@ -212,8 +227,11 @@ func engine() {
 	// We continue with engine. Things may happen in the background, and theoretically we
 	//  will be able to catch them. (20170703)
 	fmt.Println("Pretending to do something in parallel while we wait for connections etc...")
-	for true {
-		if engineRunning {
+	var engineRunningStatus bool
+	for {
+		engineRunningStatus = engineRunning.Load().(bool)
+		
+		if engineRunningStatus {
 		    fmt.Print("\b|")
 		    time.Sleep(1000 * time.Millisecond)
 		    fmt.Print("\b/")
