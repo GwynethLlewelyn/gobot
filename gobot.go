@@ -23,6 +23,8 @@ var (
 	Host, SQLiteDBFilename, URLPathPrefix, PDO_Prefix, PathToStaticFiles, ServerPort, MapURL string
 )
 
+const NullUUID = "00000000-0000-0000-0000-000000000000" // always useful when we deal with SL/OpenSimulator...
+
 //type templateParameters map[string]string
 type templateParameters map[string]interface{}
 
@@ -110,7 +112,11 @@ func main() {
 	
 	log.Println("\n\nDatabase tests ended.\n\nStarting Gobot application at port", ServerPort, "\nfor URL:", URLPathPrefix)
 	
-	// this was just to make tests, now start the web server
+	// this was just to make tests; now start the engine as a separate goroutine in the background
+	
+	go engine() // run everything but the kitchen sink in parallel; yay goroutines!
+
+	// Now prepare the web interface
 	
 	// Load all templates
 	err = GobotTemplates.init(PathToStaticFiles + "/templates/*.tpl")
@@ -171,9 +177,6 @@ func main() {
 	
 	// Handle Websockets on Engine
 	http.Handle(URLPathPrefix + "/wsEngine/",						websocket.Handler(serveWs))
-
-	go engine() // run everything but the kitchen sink in parallel; yay goroutines!
-	// very likely we will open the database, look at all agents, and run a goroutine for each (20170516)
 	
     err = http.ListenAndServe(ServerPort, nil) // set listen port
     checkErr(err) // if it can't listen to all the above, then it has to abort anyway
