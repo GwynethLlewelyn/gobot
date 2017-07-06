@@ -20,11 +20,6 @@
 	<!-- this does not work yet -->
 	<script src="{{.URLPathPrefix}}/lib/gobot-js/gprofiles.js"></script>
 	<script src="{{.URLPathPrefix}}/lib/gobot-js/wpgroho.js"></script>
-	<div style="display:none" class="emptyPlaceholder">
-		<div class="grofile-hash-map-{{ .GravatarHash }}">
-		</div>
-	</div>
-	
 	{{ end }}
 
 	{{ if .ObstaclePieChart }}
