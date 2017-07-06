@@ -18,7 +18,6 @@ For now, all you need to know is that this works only on [OpenSimulator](http://
 - Remember the installation path and change `config.toml` accordingly! (you should also set an URL to grab a map tile from your OpenSimulator environment)
 - Note:
  - The directories `lib/` and `templates/` only have static content, so either you configure `config.toml` to  point to the right directories (if running `gobot` as a standalone Go application) or you get these directories directly served by your webserver/reverse proxy/whatever
- - The `lsl/` directory just holds LSL (Linden Scripting Language) scripts, which are to be placed inside in-world objects, and they will *not* be served by `gobot` (or the webserver/reverse proxy)
 - Point your browser to the URL of the `gobot` appplication, login with the email/password, and try things out on the menus
 
 If you're placing `gobot` behind a nginx server, [this is the configuration you'll need](nginx-config.md). Note that Go is wonderful as it includes its own webserver, so running it behind a 'real' web server is not necessary, although a real web server should be able to provide things like caching and direct serving of static content (images, JS, CSS...) for the backoffice, to make it even faster.
@@ -37,9 +36,13 @@ These will be installed, *but* you *should* make sure you have the latest versio
 
 You're on your own, I haven't written it yet, but here's a bit of what you need to do.
 
+Move over to the _LSL scripts_ menu option. These should pre-generate correctly configured LSL scripts for the many in-world scripts. (Currently just one, I'll be adding the next few in a jiffy.) Copy & paste them inside the LSL editor on the SL Viewer Application of your choice, and drop them inside the appropriate cubes.
+
 You should at least place on OpenSimulator one box with a 'Bot Controller' LSL script (you can have multiple Bot Controllers if you wish, spread out over several sims or grids, and control them all from a single interface). The Bot Controller item will only launch new agents, it does not do anything else (all AI logic is actually done in Go, and the actual commands given to the agents are directly made from `gobot` to each individual agent).
 
 Agents will try to use the Energy, Happiness, and Money cubes; you can have as many of those as you wish. It's not obvious, but the Description field will tell which class of agent should use that particular cube. I think that the default is 'peasant' but you will have to figure it out on your own. The three types of cubes will have hovertext to show its current values, and you can set them up as you wish (there is just one script for all three types anyway).
+
+The tough bit will be configuring Agents. This requires a special notecard with the avatar appearance and lots of blah blah blah that will one day be explained here.
 
 More to come...
 
