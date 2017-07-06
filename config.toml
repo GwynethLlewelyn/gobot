@@ -1,6 +1,7 @@
 [gobot]
 Host = "bot.betatechnologies.info"
 ServerPort = ":3000" # default for go
+FrontEnd = "nginx" # leave empty if you don't have a frontend, will use ServerPort instead
 URLPathPrefix = "/go" # leave empty if you serve from the root URL above; no slash at end
 PathToStaticFiles = "~/go/src/gobot" # where the lib/ and template/ dirs are; change as needed, no slash at end
 
@@ -10,3 +11,4 @@ PDO_Prefix = "sqlite3"
 
 [opensim]
 MapURL = "http://opensim.betatechnologies.info:8002/map-1-3646-3645-objects.jpg" # get a map tile
+LSLSignaturePIN = "9876"

@@ -32,6 +32,7 @@ var GobotTemplates GobotTemplatesType
 //  This is supposed to be called just once! (in func main())
 func (gt *GobotTemplatesType)init(globbedPath string) error {
 	temp, err := template.ParseGlob(globbedPath)
+	checkErr(err) // move out later, we just need it here to check what's wrong with the templates (20170706)
 	gt.Template = *temp;
 	return err
 }
@@ -667,6 +668,27 @@ func backofficeControllerCommandsExec(w http.ResponseWriter, r *http.Request) {
 		"ButtonURL": "/admin/controller-commands/",
 	}
 	err = GobotTemplates.gobotRenderer(w, r, "main", tplParams)
+	checkErr(err)
+	return
+}
+
+// backofficeLSLRegisterObject creates a LSL script for registering agents, using the defaults set by the user.
+//  This is better than using 'template' LSL scripts which people may fill in wrongly, this way at least
+//   we won't get errors about wrong signature PIN or hostnames etc.
+func backofficeLSLRegisterObject(w http.ResponseWriter, r *http.Request) {
+	checkSession(w, r)
+	tplParams := templateParameters{ "Title": "Gobot LSL Generator - register object.lsl",
+			"URLPathPrefix": URLPathPrefix,
+			"LSLRegisterObject": true,
+			"Host": Host,
+			"LSLSignaturePIN": LSLSignaturePIN,
+	}
+	// check if we have a frontend (it's configured on the config.toml file); if no, use the ServerPort
+	//  the 'frontend' will be nginx, Apache, etc. to cache replies from Go and serve static files from port 80 (20170706)
+	if FrontEnd == "" {
+		tplParams["ServerPort"] = ServerPort
+	}
+	err := GobotTemplates.gobotRenderer(w, r, "main", tplParams)
 	checkErr(err)
 	return
 }

@@ -28,7 +28,7 @@ func updateInventory(w http.ResponseWriter, r *http.Request) {
 	checkErrPanicHTTP(w, http.StatusServiceUnavailable, "Extracting parameters failed: %s\n", err)
 	
 	if r.Form.Get("signature") != "" && r.Header.Get("X-Secondlife-Object-Key") != "" {
-		signature := GetMD5Hash(r.Header.Get("X-Secondlife-Object-Key") + r.Form.Get("timestamp") + ":9876")
+		signature := GetMD5Hash(r.Header.Get("X-Secondlife-Object-Key") + r.Form.Get("timestamp") + ":" + LSLSignaturePIN)
 						
 		if signature != r.Form.Get("signature") {
 			logErrHTTP(w, http.StatusForbidden, "Signature does not match - hack attempt?")
@@ -174,7 +174,7 @@ func registerPosition(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		
-		signature := GetMD5Hash(r.Header.Get("X-Secondlife-Object-Key") + r.Form.Get("timestamp") + ":9876")
+		signature := GetMD5Hash(r.Header.Get("X-Secondlife-Object-Key") + r.Form.Get("timestamp") + ":" +  LSLSignaturePIN)
 						
 		if signature != r.Form.Get("signature") {
 			logErrHTTP(w, http.StatusServiceUnavailable, "Signature does not match - hack attempt?") 
@@ -247,7 +247,7 @@ func registerAgent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	
-	signature := GetMD5Hash(r.Header.Get("X-Secondlife-Object-Key") + r.Form.Get("timestamp") + ":9876")
+	signature := GetMD5Hash(r.Header.Get("X-Secondlife-Object-Key") + r.Form.Get("timestamp") + ":" + LSLSignaturePIN)
 						
 	if signature != r.Form.Get("signature") {
 		logErrHTTP(w, http.StatusForbidden, "Signature does not match - hack attempt?")

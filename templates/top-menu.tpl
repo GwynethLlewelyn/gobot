@@ -69,6 +69,19 @@
                 </li>
                 <li class="dropdown">
                     <a class="dropdown-toggle" data-toggle="dropdown" href="#">
+                    	<i class="fa fa-edit fa-fw"></i> LSL scripts <i class="fa fa-caret-down"></i>
+                    </a>
+                    <ul class="dropdown-menu">
+		                <li>
+		                    <a href="{{.URLPathPrefix}}/admin/lsl-register-object/">Register Object</a>
+		                </li>
+		                <li disabled>
+		                    <a href="{{.URLPathPrefix}}/admin/">Another LSL script</a>
+		                </li>
+                    </ul> <!-- /.dropdown-menu -->
+                </li> <!-- /.dropdown (LSL scripts) -->
+                <li class="dropdown">
+                    <a class="dropdown-toggle" data-toggle="dropdown" href="#">
                         <i class="fa fa-user fa-fw"></i> <i class="fa fa-caret-down"></i>
                     </a>
                     <ul class="dropdown-menu dropdown-user">

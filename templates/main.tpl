@@ -48,7 +48,7 @@
 							{{ end }}
 						</div> <!-- ./col-lg-6 -->
 						<div class="col-lg-6">
-							{{ if .SetCookie }}
+							{{ if and .SetCookie (not .LSLRegisterObject) }}
 							<div class="panel panel-default">
 								<div class="panel-heading">
 									User
@@ -159,9 +159,12 @@
 						{{ if .Content }}
 						{{ .Content }}
 						{{ end }}
+						{{ if .LSLRegisterObject }}
+						{{ template "lsl-register-object" .}}
+						{{ end }}
 						{{ if .ButtonText }}
 						<a href="{{.URLPathPrefix}}{{ .ButtonURL }}">
-							<button type="button" class="btn btn-outline btn-primary btn-lg">{{ .ButtonText }}</button>
+							<button id={{.ButtonID}} type="button" class="btn btn-outline btn-primary btn-lg">{{ .ButtonText }}</button>
 						</a>
 						{{ end }}
 					</div>

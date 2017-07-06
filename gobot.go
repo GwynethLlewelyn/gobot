@@ -20,7 +20,8 @@ import (
 var (
 	// Default configurations, hopefully exported to other files and packages
 	// we probably should have a struct for this
-	Host, SQLiteDBFilename, URLPathPrefix, PDO_Prefix, PathToStaticFiles, ServerPort, MapURL string
+	Host, SQLiteDBFilename, URLPathPrefix, PDO_Prefix, PathToStaticFiles,
+	ServerPort, FrontEnd, MapURL, LSLSignaturePIN string
 )
 
 const NullUUID = "00000000-0000-0000-0000-000000000000" // always useful when we deal with SL/OpenSimulator...
@@ -42,17 +43,21 @@ func loadConfiguration() {
 	checkErr(err) // Handle errors reading the config file
 	
 	// Without these set, we cannot do anything
+	viper.SetDefault("gobot.Host", "localhost") // to prevent bombing out with panics
 	Host = viper.GetString("gobot.Host"); fmt.Print(".")
 	URLPathPrefix = viper.GetString("gobot.URLPathPrefix"); fmt.Print(".")
 	SQLiteDBFilename = viper.GetString("gobot.SQLiteDBFilename"); fmt.Print(".")
 	PDO_Prefix = viper.GetString("gobot.PDO_Prefix"); fmt.Print(".")
-	viper.SetDefault("go.PathToStaticFiles", "~/go/src/gobot")
+	viper.SetDefault("gobot.PathToStaticFiles", "~/go/src/gobot")
 	path, err := expandPath(viper.GetString("gobot.PathToStaticFiles")); fmt.Print(".")
 	checkErr(err)
 	PathToStaticFiles = path
 	viper.SetDefault("gobot.ServerPort", ":3000")
 	ServerPort = viper.GetString("gobot.ServerPort"); fmt.Print(".")
+	FrontEnd = viper.GetString("gobot.FrontEnd"); fmt.Print(".")
 	MapURL = viper.GetString("opensim.MapURL"); fmt.Print(".")
+	viper.SetDefault("gobot.LSLSignaturePIN", "9876") // better than no signature at all
+	LSLSignaturePIN = viper.GetString("opensim.LSLSignaturePIN"); fmt.Print(".")
 }
 
 // main() starts here.
@@ -155,8 +160,10 @@ func main() {
 	http.HandleFunc(URLPathPrefix + "/admin/controller-commands/exec/",	backofficeControllerCommandsExec)
 	http.HandleFunc(URLPathPrefix + "/admin/controller-commands/",		backofficeControllerCommands)
 	http.HandleFunc(URLPathPrefix + "/admin/engine/",					backofficeEngine)
+	// LSL Template Generator
+	http.HandleFunc(URLPathPrefix + "/admin/lsl-register-object/",		backofficeLSLRegisterObject)	
+	// fallthrough for admin
 	http.HandleFunc(URLPathPrefix + "/admin/",							backofficeMain)
-	http.HandleFunc(URLPathPrefix + "/",								backofficeLogin) // if not auth, then get auth
 	
 	// deal with agGrid UI elements
 	http.HandleFunc(URLPathPrefix + "/uiObjects/",						uiObjects)
@@ -173,10 +180,12 @@ func main() {
 	http.HandleFunc(URLPathPrefix + "/uiInventoryRemove/",				uiInventoryRemove)
 	http.HandleFunc(URLPathPrefix + "/uiUserManagement/",				uiUserManagement)
 	http.HandleFunc(URLPathPrefix + "/uiUserManagementUpdate/",			uiUserManagementUpdate)
-	http.HandleFunc(URLPathPrefix + "/uiUserManagementRemove/",			uiUserManagementRemove)
+	http.HandleFunc(URLPathPrefix + "/uiUserManagementRemove/",			uiUserManagementRemove)	
 	
 	// Handle Websockets on Engine
-	http.Handle(URLPathPrefix + "/wsEngine/",						websocket.Handler(serveWs))
+	http.Handle(URLPathPrefix + "/wsEngine/",							websocket.Handler(serveWs))
+
+	http.HandleFunc(URLPathPrefix + "/",								backofficeLogin) // if not auth, then get auth
 	
     err = http.ListenAndServe(ServerPort, nil) // set listen port
     checkErr(err) // if it can't listen to all the above, then it has to abort anyway
