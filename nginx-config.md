@@ -44,6 +44,16 @@ server {
 		try_files $uri =404;
 	}
 	
+	location ~* /go/.+\.(jpe?g|gif|png|ico|svg|css|zip|tgz|gz|rar|bz2|doc|xls|exe|pdf|ppt|txt|tar|tpl|mid|midi|wav|bmp|rtf|js|json|xml|swf|flv|mp3)$ {
+		rewrite ^/go/(.*)$ /$1 break;
+		root [my directory where I place things like favicons and browser configuration stuff];
+		access_log off;
+		add_header Cache-Control "public";
+		proxy_cache_valid 200 1d;
+		expires 3d;
+		try_files $uri =404;
+	}	
+	
 	location /go {
 		add_header X-Proxy-Cache $upstream_cache_status;
 		proxy_set_header X-Real-IP $remote_addr;
@@ -54,7 +64,7 @@ server {
 		proxy_pass http://127.0.0.1:3000;
 	}
 	
-	location ~* ^.+.(jpg|jpeg|gif|png|ico|css|zip|tgz|gz|rar|bz2|doc|xls|exe|pdf|ppt|txt|tar|tpl|mid|midi|wav|bmp|rtf|js|swf|flv|mp3)$ {
+	location ~* ^.+.(jpe?g|gif|png|ico|svg|css|zip|tgz|gz|rar|bz2|doc|xls|exe|pdf|ppt|txt|tar|tpl|mid|midi|wav|bmp|rtf|js|json|xml|swf|flv|mp3)$ {
 		access_log off;
 		add_header Cache-Control "public";
 		proxy_cache_valid 200 1d;
