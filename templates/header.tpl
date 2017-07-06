@@ -32,9 +32,6 @@
     <!--<link href="../vendor/font-awesome/css/font-awesome.min.css" rel="stylesheet" type="text/css">-->
     <link href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet" type="text/css">
     
-    <!-- Our own overrides -->
-    <link href="{{.URLPathPrefix}}/lib/gobot.css" rel="stylesheet" type="text/css">
-    
     {{ if .MapURL }}
     <!-- Call Leaflet.js to deal with maps -->
 	<link rel="stylesheet" href="https://unpkg.com/leaflet@1.1.0/dist/leaflet.css"
@@ -60,6 +57,17 @@
 	<link rel="stylesheet" href="{{.URLPathPrefix}}/lib/gravatar-profile.css" type="text/css">
 	{{ end }}
 	
+	{{ if .LSL }}
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.6.0/themes/prism.min.css" type="text/css">
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.6.0/prism.min.js"></script>
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.6.0/plugins/toolbar/prism-toolbar.min.css" type="text/css">
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.6.0/plugins/toolbar/prism-toolbar.min.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.6.0/plugins/copy-to-clipboard/prism-copy-to-clipboard.min.js"></script>
+	{{ end }}
+
+    <!-- Our own overrides -->
+    <link href="{{.URLPathPrefix}}/lib/gobot.css" rel="stylesheet" type="text/css">
+
     <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
     <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
     <!--[if lt IE 9]>
@@ -80,5 +88,16 @@
 	<meta name="theme-color" content="#ffffff"></head>
 	<!-- favicons end here -->
 <body>
+{{ if .Gravatar }}
+<!-- Gravatar Hovercards are sneaky, they add their own CSS at the top of the header! -->
+<style>
+.gcard {
+	z-index: 1000;
+}
+.emptyPlaceholder {
+	z-index: 1000;
+}
+</style>
+{{ end }}
 <span id="URLPathPrefix" hidden>{{.URLPathPrefix}}</span>
 {{ end }}

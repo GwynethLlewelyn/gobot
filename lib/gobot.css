@@ -30,4 +30,14 @@
     position: fixed;
     top: 0;
     width: 100%;
+    z-index: 999;
+}
+
+/* Place Gravatar Hovercards over everything else */
+.gcard {
+	z-index: 1000;
+}
+
+.emptyPlaceholder {
+	z-index: 1000;
 }

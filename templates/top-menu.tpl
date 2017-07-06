@@ -22,9 +22,13 @@
 	            <li id="#username">
                 {{ .SetCookie }}
                 {{ if .GravatarMenu }}
-                <div style="float:left;"><a href="https://gravatar.com/{{ .GravatarHash }}"><img class="avatar avatar-{{ .GravatarSizeMenu }} photo" src="{{ .GravatarMenu }}" height="{{ .GravatarSizeMenu }}" width="{{ .GravatarSizeMenu }}" alt="{{ .SetCookie }}"></a></div>
+	                <div style="float:left;" class="gravatar-container">
+		                <a href="https://gravatar.com/{{ .GravatarHash }}" title="{{ .SetCookie }}">
+			                <img class="avatar avatar-{{ .GravatarSizeMenu }} photo" src="{{ .GravatarMenu }}" srcset="https://secure.gravatar.com/avatar/{{ .GravatarHash }}?s={{ .GravatarTwiceSizeMenu }}&amp;d=mm&amp;r=r 2x" height="{{ .GravatarSizeMenu }}" width="{{ .GravatarSizeMenu }}" alt="{{ .SetCookie }}">
+				    	</a>
+				    </div> <!-- ./gravatar-container -->
                 {{ end }}
-	            </li>
+	            </li> <!-- ./username -->
                 {{ end }}
                 <li>
                     <a href="{{.URLPathPrefix}}/admin/"><i class="fa fa-dashboard fa-fw"></i> Dashboard</a>

@@ -68,6 +68,9 @@ func (gt *GobotTemplatesType)gobotRenderer(w http.ResponseWriter, r *http.Reques
 	} else {
 		gravatarSizeMenu = tplParams["GravatarSizeMenu"].(int)
 	}
+	// for Retina displays; we could add a multiplication function for Go templates, but I'm lazy (20170706)
+	tplParams["GravatarTwiceSize"] = 2 * gravatarSize
+	tplParams["GravatarTwiceSizeMenu"] = 2 * gravatarSizeMenu
 	
 	// Now call the nice library function to get us the URL to the image, for the two sizes
 	g := gravatar.New("identicon", gravatarSize, "g", true)
@@ -682,6 +685,7 @@ func backofficeLSLRegisterObject(w http.ResponseWriter, r *http.Request) {
 			"LSLRegisterObject": true,
 			"Host": Host,
 			"LSLSignaturePIN": LSLSignaturePIN,
+			"LSL": true, // this will change some formatting on the 'main' template (20170706)
 	}
 	// check if we have a frontend (it's configured on the config.toml file); if no, use the ServerPort
 	//  the 'frontend' will be nginx, Apache, etc. to cache replies from Go and serve static files from port 80 (20170706)

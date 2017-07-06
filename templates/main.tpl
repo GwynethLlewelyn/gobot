@@ -48,7 +48,7 @@
 							{{ end }}
 						</div> <!-- ./col-lg-6 -->
 						<div class="col-lg-6">
-							{{ if and .SetCookie (not .LSLRegisterObject) }}
+							{{ if and .SetCookie (not .LSL) }}
 							<div class="panel panel-default">
 								<div class="panel-heading">
 									User
@@ -57,8 +57,8 @@
 								<div class="panel-body">            
 									{{ if .Gravatar }}
 									<div style="float:left;">
-										<a href="https://gravatar.com/{{ .GravatarHash }}">
-											<img class="avatar avatar-{{ .GravatarSize }} photo" src="{{ .Gravatar }}" height="{{ .GravatarSize }}" width="{{ .GravatarSize }}" alt="{{ .SetCookie }}">
+										<a href="https://gravatar.com/{{ .GravatarHash }}" title="{{ .SetCookie }}">
+											<img class="avatar avatar-{{ .GravatarSize }} photo" src="{{ .Gravatar }}" srcset="https://secure.gravatar.com/avatar/{{ .GravatarHash }}?s={{ .GravatarTwiceSize }}&amp;d=mm&amp;r=r 2x" height="{{ .GravatarSize }}" width="{{ .GravatarSize }}" alt="{{ .SetCookie }}">
 										</a>
 									</div>
 									{{ end }}
@@ -161,6 +161,7 @@
 						{{ end }}
 						{{ if .LSLRegisterObject }}
 						{{ template "lsl-register-object" .}}
+						<script>hljs.initHighlightingOnLoad();</script>
 						{{ end }}
 						{{ if .ButtonText }}
 						<a href="{{.URLPathPrefix}}{{ .ButtonURL }}">

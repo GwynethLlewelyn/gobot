@@ -26,11 +26,13 @@ If you're placing `gobot` behind a nginx server, [this is the configuration you'
 
 These will be installed, *but* you *should* make sure you have the latest versions of them! (use git pull on the directories)
 
-- agGrid
-- Bootstrap and Bootstrap Dialog
-- StartBootstrap's SB Admin 2 template
-- Leaflet.vector-markers (to get cute markers for Leaflet)
-- Leaflet.js (called remotely, no need to worry about it)
+- [agGrid](https://www.ag-grid.com/)
+- [Bootstrap](http://getbootstrap.com/) and [Bootstrap Dialog](https://nakupanda.github.io/bootstrap3-dialog/)
+- StartBootstrap's [SB Admin 2](https://startbootstrap.com/template-overviews/sb-admin-2/) template
+- [Leaflet.js](http://leafletjs.com/) (called remotely, no need to worry about it)
+- [Leaflet.vector-markers](https://github.com/hiasinho/Leaflet.vector-markers) (to get cute markers for Leaflet)
+- [Prism.js](http://prismjs.com/) (called remotely, no need to worry about it)
+- Gravatar Hovercard support (also called remotely except for one file)
 
 ## Configuration on the Virtual World
 

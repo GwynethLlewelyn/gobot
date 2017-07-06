@@ -1,7 +1,7 @@
 {{ define "lsl-register-object" }}
 <p>Copy the below code to a script called <code>register object.lsl</code> and put it inside a cube.</p>
 
-<pre id="lsl">
+<pre><code class="language-javascript">
 // Handles registration with the external database
 // Send current configuration for class, type, and rates for energy/money/happiness
 // To-do: Accepts remote calls to trigger animations, send IMs to people etc
@@ -341,21 +341,5 @@ state read_inventory
         llOwnerSay("Web server did not reply after 3 minutes - not updated - try again later");
     }
 }
-</pre>
-
-<script type="text/javascript">
-// see https://stackoverflow.com/a/30905277/1035977 (and comments for the tip on using textarea!) (20170706)
-function copy(element_id){
-  var aux = document.createElement("textarea");
-  aux.setAttribute("contentEditable", true);
-  aux.innerHTML = document.getElementById(element_id).innerHTML;
-  aux.setAttribute("onfocus", "document.execCommand('selectAll',false,null)"); 
-  document.body.appendChild(aux);
-  aux.focus();
-  document.execCommand("copy");
-  document.body.removeChild(aux);
-}
-</script>
-<noscript>Note that the button below will not work.</noscript>
-<button onclick="copy('lsl')" type="button" class="btn btn-outline btn-primary btn-lg">Copy LSL</button> 
+</code></pre>
 {{ end }}
