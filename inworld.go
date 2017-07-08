@@ -10,7 +10,7 @@ import (
 	"strings"
 	"crypto/md5"
 	"encoding/hex"
-//	"log"
+	//"log"
 )
 
 // GetMD5Hash takes a string which is to be encoded using MD5 and returns a string with the hex-encoded MD5 sum.
@@ -175,7 +175,13 @@ func registerPosition(w http.ResponseWriter, r *http.Request) {
 		}
 		
 		signature := GetMD5Hash(r.Header.Get("X-Secondlife-Object-Key") + r.Form.Get("timestamp") + ":" +  LSLSignaturePIN)
-						
+		/*log.Printf("%s: Calculating signature and comparing with what we got: Object Key: '%s' Timestamp: '%s' PIN: '%s' LSL signature: '%s' Our signature: %s\n",
+			funcName(),
+			r.Header.Get("X-Secondlife-Object-Key"),
+			r.Form.Get("timestamp"),
+			LSLSignaturePIN,
+			r.Form.Get("signature"),
+			signature)	*/	
 		if signature != r.Form.Get("signature") {
 			logErrHTTP(w, http.StatusServiceUnavailable, funcName() + ": Signature does not match - hack attempt?") 
 			return

@@ -64,7 +64,7 @@ updateSetText()
             "\nEnergy: " + (string)npcEnergy +
             "\nMoney: " + (string)npcMoney +
             "\nHappiness: " + (string)npcHappiness +
-            "\nHome: " + home, <npcEnergy,npcMoney,npcHappiness>, 1.0);
+            "\nHome: " + home, &lt;npcEnergy,npcMoney,npcHappiness&gt;, 1.0);
 }
 
 default

@@ -166,7 +166,7 @@
 							{{ if eq .LSL "lsl-bot-controller" }}
 							{{ template "lsl-bot-controller" . }}
 							{{ end }}					
-						<script>hljs.initHighlightingOnLoad();</script>
+							<script>hljs.initHighlightingOnLoad();</script>
 						{{ end }}
 						{{ if .ButtonText }}
 						<a href="{{.URLPathPrefix}}{{ .ButtonURL }}">
