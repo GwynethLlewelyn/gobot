@@ -139,7 +139,7 @@ default
                 + "&money=" + llEscapeURL((string)npcMoney)
                 + "&happiness=" + llEscapeURL((string)npcHappiness)
                 + "&home=" + llEscapeURL(home)
-                + "&timestamp=" + myTimestamp
+                + "&amp;timestamp=" + myTimestamp
                 + "&signature=" + llMD5String((string)llGetKey() + myTimestamp, LSLSignaturePIN));
             
             llSetTimerEvent(3600.0);    // if the registration fails, try later
