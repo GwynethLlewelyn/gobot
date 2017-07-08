@@ -1,5 +1,5 @@
 {{ define "lsl-register-object" }}
-<p>Copy the below code to a script called <code>register object.lsl</code> and put it inside a cube.</p>
+<p>Copy the below code to a script called <code>GoBot Registering Button.lsl</code> and put it inside a cube.</p>
 
 <pre><code class="language-javascript">
 // Handles registration with the external database
@@ -13,7 +13,7 @@ key registrationRequest;    // used to track down the request for registration
 key updateRequest;    // used to track down the request for registration
 key serverKey; // for inventory updates
 key httpRequestKey;
-string LSLSignaturePIN = "{{.LSLSignaturePIN}}";
+integer LSLSignaturePIN = {{.LSLSignaturePIN}};
 string type = "money";
 string class = "peasant";
 float rateEnergy;   // cube configuration parameters; touch on the face
@@ -28,6 +28,9 @@ init()
     // parse description field
     parseDescription();
     
+    // release URLs before requesting a new one
+    llReleaseURL(externalURL);
+    externalURL = "";
     llRequestURL();
 }
 
@@ -82,7 +85,7 @@ default
         {
             // Only face 0 is active for this
             if (llDetectedTouchFace(0) == -1)
-                llInstantMessage(llDetectedKey(0), "Sorry, either your viewer doesn't support touched faces or you are touching outside the face.");
+                llWhisper(PUBLIC_CHANNEL, "Sorry, your viewer doesn't support touched faces.");
             else if (llDetectedTouchFace(0) == 0)
             {
                 touchST = llDetectedTouchST(0);

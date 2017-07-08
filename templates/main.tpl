@@ -159,13 +159,13 @@
 						{{ if .Content }}
 						{{ .Content }}
 						{{ end }}
-						{{ if eq .LSL "lsl-register-object" }}
-						{{ template "lsl-register-object" . }}
-						{{ end }}
-						{{ if eq .LSL "lsl-bot-controller" }}
-						{{ template "lsl-bot-controller" . }}
-						{{ end }}
 						{{ if .LSL }}
+							{{ if eq .LSL "lsl-register-object" }}
+							{{ template "lsl-register-object" . }}
+							{{ end }}
+							{{ if eq .LSL "lsl-bot-controller" }}
+							{{ template "lsl-bot-controller" . }}
+							{{ end }}					
 						<script>hljs.initHighlightingOnLoad();</script>
 						{{ end }}
 						{{ if .ButtonText }}
