@@ -520,7 +520,7 @@ func backofficeCommands(w http.ResponseWriter, r *http.Request) {
 func backofficeCommandsExec(w http.ResponseWriter, r *http.Request) {
 	checkSession(w, r)
 	err := r.ParseForm()
-	checkErrPanicHTTP(w, http.StatusServiceUnavailable, "Extracting parameters failed: %s\n", err)
+	checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Extracting parameters failed: %s\n", err)
 
 	var content = ""
 	
@@ -627,7 +627,7 @@ func backofficeControllerCommands(w http.ResponseWriter, r *http.Request) {
 func backofficeControllerCommandsExec(w http.ResponseWriter, r *http.Request) {
 	checkSession(w, r)
 	err := r.ParseForm()
-	checkErrPanicHTTP(w, http.StatusServiceUnavailable, "Extracting parameters failed: %s\n", err)
+	checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Extracting parameters failed: %s\n", err)
 	
 	var content = ""
 	
