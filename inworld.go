@@ -25,24 +25,24 @@ func GetMD5Hash(text string) string {
 func updateInventory(w http.ResponseWriter, r *http.Request) {
 	// get all parameters in array
 	err := r.ParseForm()
-	checkErrPanicHTTP(w, http.StatusServiceUnavailable, "Extracting parameters failed: %s\n", err)
+	checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Extracting parameters failed: %s\n", err)
 	
 	if r.Form.Get("signature") != "" && r.Header.Get("X-Secondlife-Object-Key") != "" {
 		signature := GetMD5Hash(r.Header.Get("X-Secondlife-Object-Key") + r.Form.Get("timestamp") + ":" + LSLSignaturePIN)
 						
 		if signature != r.Form.Get("signature") {
-			logErrHTTP(w, http.StatusForbidden, "Signature does not match - hack attempt?")
+			logErrHTTP(w, http.StatusForbidden, funcName() + ": Signature does not match - hack attempt?")
 			return
 		}
 		
 		// open database connection and see if we can update the inventory for this object
 		db, err := sql.Open(PDO_Prefix, SQLiteDBFilename)
-		checkErrPanicHTTP(w, http.StatusServiceUnavailable, "Connect failed: %s\n", err)
+		checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Connect failed: %s\n", err)
 		
 		defer db.Close()		
 		
 		stmt, err := db.Prepare("REPLACE INTO Inventory (`UUID`, `Name`, `Type`, `Permissions`, `LastUpdate`) VALUES (?,?,?,?,?)");
-		checkErrPanicHTTP(w, http.StatusServiceUnavailable, "Replace prepare failed: %s\n", err)
+		checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Replace prepare failed: %s\n", err)
 
 		defer stmt.Close()
 
@@ -53,7 +53,7 @@ func updateInventory(w http.ResponseWriter, r *http.Request) {
 			r.Form.Get("permissions"),
 			r.Form.Get("timestamp"),
 		)
-		checkErrPanicHTTP(w, http.StatusServiceUnavailable, "Replace exec failed: %s\n", err)
+		checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Replace exec failed: %s\n", err)
 
 		//_, err := res.RowsAffected()
 		//checkErr(err)
@@ -63,7 +63,7 @@ func updateInventory(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "%s successfully updated!", r.Header.Get("X-Secondlife-Object-Key"))
 		return
 	} else {
-		logErrHTTP(w, http.StatusForbidden, "Signature not found")
+		logErrHTTP(w, http.StatusForbidden, funcName() + ": Signature not found")
 		return
 	}
 	
@@ -95,16 +95,16 @@ func updateInventory(w http.ResponseWriter, r *http.Request) {
 func updateSensor(w http.ResponseWriter, r *http.Request) {	
 	if r.Header.Get("X-Secondlife-Object-Key") != "" {
 		err := r.ParseForm()
-		checkErrPanicHTTP(w, http.StatusServiceUnavailable, "Extracting parameters failed: %s\n", err)
+		checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Extracting parameters failed: %s\n", err)
 		
 		// open database connection and see if we can update the inventory for this object
 		db, err := sql.Open(PDO_Prefix, SQLiteDBFilename)
-		checkErrPanicHTTP(w, http.StatusServiceUnavailable, "Connect failed: %s\n", err)
+		checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Connect failed: %s\n", err)
 		
 		defer db.Close()
 		
 		stmt, err := db.Prepare("REPLACE INTO Obstacles (`UUID`, `Name`, `BotKey`, `BotName`, `Type`, `Origin`, `Position`, `Rotation`, `Velocity`, `Phantom`, `Prims`, `BBHi`, `BBLo`, `LastUpdate`) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
-		checkErrPanicHTTP(w, http.StatusServiceUnavailable, "Replace prepare failed: %s\n", err)
+		checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Replace prepare failed: %s\n", err)
 
 		defer stmt.Close()
 
@@ -124,7 +124,7 @@ func updateSensor(w http.ResponseWriter, r *http.Request) {
 			strings.Trim(r.Form.Get("bblo"), "<>()"),
 			r.Form.Get("timestamp"),
 		)
-		checkErrPanicHTTP(w, http.StatusServiceUnavailable, "Replace exec failed: %s\n", err)
+		checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Replace exec failed: %s\n", err)
 
 		//_, err := res.RowsAffected()
 		//checkErr(err)
@@ -146,7 +146,7 @@ func updateSensor(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprint(w, reply)
 		return
 	} else {
-		logErrHTTP(w, http.StatusForbidden, "Not called from within the virtual world.")
+		logErrHTTP(w, http.StatusForbidden, funcName() + ": Not called from within the virtual world.")
 		return
 	}
 }
@@ -159,36 +159,36 @@ func updateSensor(w http.ResponseWriter, r *http.Request) {
 func registerPosition(w http.ResponseWriter, r *http.Request) {
 	// get all parameters in array
 	err := r.ParseForm()
-	checkErrPanicHTTP(w, http.StatusServiceUnavailable, "Extracting parameters failed: %s\n", err)
+	checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Extracting parameters failed: %s\n", err)
 	
 	if r.Header.Get("X-Secondlife-Object-Key") == "" {
 		// fmt.Printf("Got '%s'\n", r.Header["X-Secondlife-Object-Key"])
-		logErrHTTP(w, http.StatusForbidden, "Not called from within the virtual world.") 
+		logErrHTTP(w, http.StatusForbidden, funcName() + ": Not called from within the virtual world.") 
 		return		
 	}
 	
 	if r.Form.Get("signature") != "" {
 		// if we don't have the permURL to store, registering this object is pointless
 		if r.Form["permURL"] == nil {
-			logErrHTTP(w, http.StatusForbidden, "No PermURL specified") 
+			logErrHTTP(w, http.StatusForbidden, funcName() + ": No PermURL specified") 
 			return
 		}
 		
 		signature := GetMD5Hash(r.Header.Get("X-Secondlife-Object-Key") + r.Form.Get("timestamp") + ":" +  LSLSignaturePIN)
 						
 		if signature != r.Form.Get("signature") {
-			logErrHTTP(w, http.StatusServiceUnavailable, "Signature does not match - hack attempt?") 
+			logErrHTTP(w, http.StatusServiceUnavailable, funcName() + ": Signature does not match - hack attempt?") 
 			return
 		}
 		
 		// open database connection and see if we can update the inventory for this object
 		db, err := sql.Open(PDO_Prefix, SQLiteDBFilename)
-		checkErrPanicHTTP(w, http.StatusServiceUnavailable, "Connect failed: %s\n", err)
+		checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Connect failed: %s\n", err)
 		
 		defer db.Close()
 		
 		stmt, err := db.Prepare("REPLACE INTO Positions (`UUID`, `Name`, `PermURL`, `Location`, `Position`, `Rotation`, `Velocity`, `OwnerKey`, `OwnerName`, `ObjectType`, `ObjectClass`, `RateEnergy`, `RateMoney`, `RateHappiness`, `LastUpdate`) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
-		checkErrPanicHTTP(w, http.StatusServiceUnavailable, "Replace prepare failed: %s\n", err)
+		checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Replace prepare failed: %s\n", err)
 
 		defer stmt.Close()
 		
@@ -209,7 +209,7 @@ func registerPosition(w http.ResponseWriter, r *http.Request) {
 			r.Form.Get("ratehappiness"),
 			r.Form.Get("timestamp"),
 		)
-		checkErrPanicHTTP(w, http.StatusServiceUnavailable, "Replace exec failed: %s\n", err)
+		checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Replace exec failed: %s\n", err)
 
 		//_, err := res.RowsAffected()
 		//checkErr(err)
@@ -220,7 +220,7 @@ func registerPosition(w http.ResponseWriter, r *http.Request) {
 		// log.Printf("These are the headers I got: %v\nAnd these are the parameters %v\n", r.Header, r.Form)
 		return
 	} else {
-		logErrHTTP(w, http.StatusForbidden, "Signature not found") 
+		logErrHTTP(w, http.StatusForbidden, funcName() + ": Signature not found") 
 		return
 	}
 }
@@ -234,29 +234,29 @@ func registerPosition(w http.ResponseWriter, r *http.Request) {
 func registerAgent(w http.ResponseWriter, r *http.Request) {
 	// get all parameters in array
 	err := r.ParseForm()
-	checkErrPanicHTTP(w, http.StatusServiceUnavailable, "Extracting parameters failed: %s\n", err)
+	checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Extracting parameters failed: %s\n", err)
 	
 	if r.Header.Get("X-Secondlife-Object-Key") == "" {
 		// fmt.Printf("Got '%s'\n", r.Header["X-Secondlife-Object-Key"])
-		logErrHTTP(w, http.StatusForbidden, "Only in-world requests allowed.")
+		logErrHTTP(w, http.StatusForbidden, funcName() + ": Only in-world requests allowed.")
 		return		
 	}
 	
 	if r.Form.Get("signature") == "" {
-		logErrHTTP(w, http.StatusForbidden, "Signature not found") 
+		logErrHTTP(w, http.StatusForbidden, funcName() + ": Signature not found") 
 		return
 	}
 	
 	signature := GetMD5Hash(r.Header.Get("X-Secondlife-Object-Key") + r.Form.Get("timestamp") + ":" + LSLSignaturePIN)
 						
 	if signature != r.Form.Get("signature") {
-		logErrHTTP(w, http.StatusForbidden, "Signature does not match - hack attempt?")
+		logErrHTTP(w, http.StatusForbidden, funcName() + ": Signature does not match - hack attempt?")
 		return
 	}
 	
 	// open database connection and see if we can update the inventory for this object
 	db, err := sql.Open(PDO_Prefix, SQLiteDBFilename)
-	checkErrPanicHTTP(w, http.StatusServiceUnavailable, "Connect failed: %s\n", err)
+	checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Connect failed: %s\n", err)
 	
 	defer db.Close()
 
@@ -283,7 +283,7 @@ func registerAgent(w http.ResponseWriter, r *http.Request) {
 			r.Form.Get("subtype"),
 			r.Form.Get("timestamp"),
 		)
-		checkErrPanicHTTP(w, http.StatusServiceUnavailable, "Replace exec failed: %s\n", err)
+		checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Replace exec failed: %s\n", err)
 
 		w.WriteHeader(http.StatusOK)
 		w.Header().Set("Content-type", "text/plain; charset=utf-8")
@@ -301,12 +301,12 @@ func registerAgent(w http.ResponseWriter, r *http.Request) {
 		// log.Printf(replyText) // debug
 	} else if r.Form.Get("request") == "delete" { // other requests, currently only deletion		
 		stmt, err := db.Prepare("DELETE FROM Agents WHERE UUID=?")
-		checkErrPanicHTTP(w, http.StatusServiceUnavailable, "Delete agent prepare failed: %s\n", err)
+		checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Delete agent prepare failed: %s\n", err)
 
 		defer stmt.Close()
 		
 		_, err = stmt.Exec(r.Form.Get("npc"))
-		checkErrPanicHTTP(w, http.StatusServiceUnavailable, "Delete agent exec failed: %s\n", err)
+		checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Delete agent exec failed: %s\n", err)
 		
 		w.WriteHeader(http.StatusOK)
 		w.Header().Set("Content-type", "text/plain; charset=utf-8")
@@ -319,6 +319,6 @@ func registerAgent(w http.ResponseWriter, r *http.Request) {
 //	This basically gives the lists of options (e.g. energy, happiness; classes of NPCs, etc.) so
 //	that we don't need to hardcode them
 func configureCube(w http.ResponseWriter, r *http.Request) {
-	logErrHTTP(w, http.StatusNotImplemented, "configureCube not implemented") 
+	logErrHTTP(w, http.StatusNotImplemented, funcName() + ": configureCube not implemented") 
 	return
 }
