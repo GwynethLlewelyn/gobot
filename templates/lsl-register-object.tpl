@@ -121,9 +121,6 @@ default
          // save to description
             llSetObjectDesc(type + ";" + class + ";" + (string)rateEnergy + ";" + (string)rateMoney
                 + ";" + (string)rateHappiness);
-            llInstantMessage(llDetectedKey(0), "Updating information...");
-                        
-            string myTimestamp = llGetTimestamp();
             
             // if permURL is empty, do a full registration
             if (externalURL == "")
@@ -132,6 +129,8 @@ default
             }
             else 
             {
+	            llInstantMessage(llDetectedKey(0), "Updating information...");
+				string myTimestamp = llGetTimestamp();
                 updateRequest = llHTTPRequest(registrationURL, [HTTP_METHOD, "POST", HTTP_MIMETYPE, "application/x-www-form-urlencoded"],
                 "permURL=" + llEscapeURL(externalURL)
                     + "&objecttype=" + llEscapeURL(type)
@@ -139,7 +138,7 @@ default
                     + "&rateenergy=" + llEscapeURL((string)rateEnergy)
                     + "&ratemoney=" + llEscapeURL((string)rateMoney)
                     + "&ratehappiness=" + llEscapeURL((string)rateHappiness)
-                    + "&timestamp=" + myTimestamp
+                    + "&amp;timestamp=" + myTimestamp
                     + "&signature=" + llMD5String((string)llGetKey() + myTimestamp, LSLSignaturePIN));
             }
         }           
@@ -179,7 +178,7 @@ default
                 + "&rateenergy=" + llEscapeURL((string)rateEnergy)
                 + "&ratemoney=" + llEscapeURL((string)rateMoney)
                 + "&ratehappiness=" + llEscapeURL((string)rateHappiness)
-                + "&timestamp=" + myTimestamp
+                + "&amp;timestamp=" + myTimestamp
                 + "&signature=" + llMD5String((string)llGetKey() + myTimestamp, LSLSignaturePIN));
             
             llSetTimerEvent(3600.0);    // if the registration fails, try later
@@ -301,7 +300,7 @@ state read_inventory
                 myTimeStamp = llGetTimestamp();
                 
                 httpBody =  "name=" + llEscapeURL(itemName) + 
-                            "&timestamp=" + myTimeStamp +
+                            "&amp;timestamp=" + myTimeStamp +
                             "&permissions=" + (string) llGetInventoryPermMask(itemName, MASK_NEXT) +
                             "&itemType=" + (string) llGetInventoryType(itemName) +
                             "&signature=" + llMD5String((string)serverKey + myTimeStamp, LSLSignaturePIN);
