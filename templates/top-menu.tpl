@@ -79,8 +79,8 @@
 		                <li>
 		                    <a href="{{.URLPathPrefix}}/admin/lsl-register-object/">Register Object</a>
 		                </li>
-		                <li disabled>
-		                    <a href="{{.URLPathPrefix}}/admin/">Another LSL script</a>
+		                <li>
+		                    <a href="{{.URLPathPrefix}}/admin/lsl-bot-controller/">Bot Controller</a>
 		                </li>
                     </ul> <!-- /.dropdown-menu -->
                 </li> <!-- /.dropdown (LSL scripts) -->

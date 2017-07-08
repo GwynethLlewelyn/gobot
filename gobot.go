@@ -162,6 +162,7 @@ func main() {
 	http.HandleFunc(URLPathPrefix + "/admin/engine/",					backofficeEngine)
 	// LSL Template Generator
 	http.HandleFunc(URLPathPrefix + "/admin/lsl-register-object/",		backofficeLSLRegisterObject)	
+	http.HandleFunc(URLPathPrefix + "/admin/lsl-bot-controller/",		backofficeLSLBotController)	
 	// fallthrough for admin
 	http.HandleFunc(URLPathPrefix + "/admin/",							backofficeMain)
 	

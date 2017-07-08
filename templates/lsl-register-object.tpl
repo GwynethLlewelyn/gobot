@@ -189,6 +189,9 @@ default
         }
         else if (method == "POST" || method == "GET")
         {
+	        // The code below is allegedly recycled from other purposes and is not necessary at all!!
+	        //  It is just kept here for the purpose of being reused at some point if necessary (20170708)
+	        
             // incoming request for refunds or IMs
             //llOwnerSay(body);
             
