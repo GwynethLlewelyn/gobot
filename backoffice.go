@@ -556,6 +556,7 @@ func backofficeCommandsExec(w http.ResponseWriter, r *http.Request) {
 	}
 	
 	tplParams := templateParameters{ "Title": "Gobot Administrator Panel - Commands Exec Result",
+		"Preamble": "<p>Results coming from in-world object:</p>",
 		"Content": template.HTML(content),
 		"URLPathPrefix": URLPathPrefix,
 		"ButtonText": "Another command",
@@ -665,6 +666,7 @@ func backofficeControllerCommandsExec(w http.ResponseWriter, r *http.Request) {
 	}
 	
 	tplParams := templateParameters{ "Title": "Gobot Administrator Panel - Controller Commands Exec Result",
+		"Preamble": "<p>Results coming from in-world object:</p>",
 		"Content": template.HTML(content),
 		"URLPathPrefix": URLPathPrefix,
 		"ButtonText": "Another controller command",

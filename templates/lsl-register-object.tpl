@@ -132,7 +132,7 @@ default
 	            llInstantMessage(llDetectedKey(0), "Updating information...");
 				string myTimestamp = llGetTimestamp();
                 updateRequest = llHTTPRequest(registrationURL, [HTTP_METHOD, "POST", HTTP_MIMETYPE, "application/x-www-form-urlencoded"],
-                "permURL=" + llEscapeURL(externalURL)
+                	"permURL=" + llEscapeURL(externalURL)
                     + "&objecttype=" + llEscapeURL(type)
                     + "&objectclass=" + llEscapeURL(class)
                     + "&rateenergy=" + llEscapeURL((string)rateEnergy)

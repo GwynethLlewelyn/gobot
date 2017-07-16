@@ -10,7 +10,7 @@ import (
 	"strings"
 	"crypto/md5"
 	"encoding/hex"
-	//"log"
+	"log"
 )
 
 // GetMD5Hash takes a string which is to be encoded using MD5 and returns a string with the hex-encoded MD5 sum.
@@ -160,6 +160,8 @@ func registerPosition(w http.ResponseWriter, r *http.Request) {
 	// get all parameters in array
 	err := r.ParseForm()
 	checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Extracting parameters failed: %s\n", err)
+	log.Println("Received: ", r)
+	
 	
 	if r.Header.Get("X-Secondlife-Object-Key") == "" {
 		// fmt.Printf("Got '%s'\n", r.Header["X-Secondlife-Object-Key"])

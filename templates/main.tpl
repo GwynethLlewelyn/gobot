@@ -48,7 +48,7 @@
 							{{ end }}
 						</div> <!-- ./col-lg-6 -->
 						<div class="col-lg-6">
-							{{ if and .SetCookie (not .LSL) }}
+							{{ if and .SetCookie (not .LSL) (not .Preamble) }}
 							<div class="panel panel-default">
 								<div class="panel-heading">
 									User
@@ -156,6 +156,9 @@
 							<!-- /.panel -->		
 							{{ end }}
 						</div> <!-- ./col-lg-6 -->
+						{{ if .Preamble }}
+						{{ .Preamble }}
+						{{ end }}
 						{{ if .Content }}
 						{{ .Content }}
 						{{ end }}
