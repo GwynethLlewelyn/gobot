@@ -82,6 +82,9 @@
 		                <li>
 		                    <a href="{{.URLPathPrefix}}/admin/lsl-bot-controller/">Bot Controller</a>
 		                </li>
+		                <li>
+		                    <a href="{{.URLPathPrefix}}/admin/lsl-agent-scripts/">Scripts for Agents</a>
+		                </li>
                     </ul> <!-- /.dropdown-menu -->
                 </li> <!-- /.dropdown (LSL scripts) -->
                 <li class="dropdown">

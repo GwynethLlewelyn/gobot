@@ -169,6 +169,9 @@
 							{{ if eq .LSL "lsl-bot-controller" }}
 							{{ template "lsl-bot-controller" . }}
 							{{ end }}					
+							{{ if eq .LSL "lsl-agent-scripts" }}
+							{{ template "lsl-agent-scripts" . }}
+							{{ end }}					
 							<script>hljs.initHighlightingOnLoad();</script>
 						{{ end }}
 						{{ if .ButtonText }}

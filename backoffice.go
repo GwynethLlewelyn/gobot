@@ -556,7 +556,7 @@ func backofficeCommandsExec(w http.ResponseWriter, r *http.Request) {
 	}
 	
 	tplParams := templateParameters{ "Title": "Gobot Administrator Panel - Commands Exec Result",
-		"Preamble": "<p>Results coming from in-world object:</p>",
+		"Preamble": template.HTML("<p>Results coming from in-world object:</p>"),
 		"Content": template.HTML(content),
 		"URLPathPrefix": URLPathPrefix,
 		"ButtonText": "Another command",
@@ -666,7 +666,7 @@ func backofficeControllerCommandsExec(w http.ResponseWriter, r *http.Request) {
 	}
 	
 	tplParams := templateParameters{ "Title": "Gobot Administrator Panel - Controller Commands Exec Result",
-		"Preamble": "<p>Results coming from in-world object:</p>",
+		"Preamble": template.HTML("<p>Results coming from in-world object:</p>"),
 		"Content": template.HTML(content),
 		"URLPathPrefix": URLPathPrefix,
 		"ButtonText": "Another controller command",
@@ -684,8 +684,9 @@ func backofficeLSLRegisterObject(w http.ResponseWriter, r *http.Request) {
 	checkSession(w, r)
 	tplParams := templateParameters{ "Title": "Gobot LSL Generator - register object.lsl",
 			"URLPathPrefix": URLPathPrefix,
-			"LSLRegisterObject": true,
+//			"LSLRegisterObject": true,
 			"Host": Host,
+			"ServerPort": ServerPort,
 			"LSLSignaturePIN": LSLSignaturePIN,
 			"LSL": "lsl-register-object", // this will change some formatting on the 'main' template (20170706)
 	}
@@ -699,16 +700,37 @@ func backofficeLSLRegisterObject(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
-// backofficeLSLBotController creates a LSL script for the Bot Controller.
+// backofficeLSLBotController creates a LSL script for the Master Bot Controller.
 //  Note that it will also deal with deleting agents
 func backofficeLSLBotController(w http.ResponseWriter, r *http.Request) {
 	checkSession(w, r)
 	tplParams := templateParameters{ "Title": "Gobot LSL Generator - bot controller.lsl",
 			"URLPathPrefix": URLPathPrefix,
-			"LSLBotController": true,
+//			"LSLBotController": true,
 			"Host": Host,
+			"ServerPort": ServerPort,
 			"LSLSignaturePIN": LSLSignaturePIN,
 			"LSL": "lsl-bot-controller",
+	}
+	if FrontEnd == "" {
+		tplParams["ServerPort"] = ServerPort
+	}
+	err := GobotTemplates.gobotRenderer(w, r, "main", tplParams)
+	checkErr(err)
+	return
+}
+
+// backofficeLSLAgentScripts creates 3 scripts to be placed inside a transparent box attached to the agent's avatar.
+//  These will be used to register the avatar, allow the agent to receive commands, and deal with sensors and llCastRay() detection.
+func backofficeLSLAgentScripts(w http.ResponseWriter, r *http.Request) {
+	checkSession(w, r)
+	tplParams := templateParameters{ "Title": "Gobot LSL Generator - Agent scripts",
+			"URLPathPrefix": URLPathPrefix,
+//			"LSLAgentScripts": true,
+			"Host": Host,
+			"ServerPort": ServerPort,
+			"LSLSignaturePIN": LSLSignaturePIN,
+			"LSL": "lsl-agent-scripts",
 	}
 	if FrontEnd == "" {
 		tplParams["ServerPort"] = ServerPort
