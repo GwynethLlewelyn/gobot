@@ -17,6 +17,7 @@ import (
 	"github.com/Pallinder/go-randomdata"
 )
 
+
 var (
 	// Default configurations, hopefully exported to other files and packages
 	// we probably should have a struct for this
