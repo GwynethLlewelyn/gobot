@@ -181,7 +181,7 @@ func engine() {
 	engineRunning.Store(true) // we start by running the engine; note that this may very well happen before we even have WebSockets up (20170704)
 	
 	fmt.Println("this is the engine starting")
-	sendMessageToBrowser("status", "", "this is the engine <b>starting</b><br />", "")
+	sendMessageToBrowser("status", "", "this is the engine <b>starting</b><br />", "") // browser might not even know we're sending messages to it, so this will just gracefully timeout and be ignored
 	
 	// Now, this is a message handler to receive messages while inside the engine, we
 	//  block on a message and run a goroutine in the background, so we can safely continue
@@ -268,28 +268,167 @@ func engine() {
 	
 	// We continue with engine. Things may happen in the background, and theoretically we
 	//  will be able to catch them. (20170703)
-	for {
-		if engineRunning.Load().(bool) {
-			// do stuff while it runs, e.g. open databases, search for agents and so forth
-		    fmt.Print("\b|")
-		    time.Sleep(1000 * time.Millisecond)
-		    fmt.Print("\b/")
-		    time.Sleep(1000 * time.Millisecond)
-		    fmt.Print("\b-")
-		    time.Sleep(1000 * time.Millisecond)
-		    fmt.Print("\b\\")
-		    time.Sleep(1000 * time.Millisecond)
+	
+	// load whole database in memory. Really. It's so much faster that way! (20170722)
+	var (
+		Agent AgentType // temporary way to store what comes from database
+		Agents []AgentType // we OUGHT to have a type without those strange zero.String, but it's tough to keep two structs in perfect sync (20170722); and this might even become a map, indexed by Agent UUID?
+		Position PositionType
+		Cubes []PositionType // name to be compatible with PHP version
+		Object ObjectType
+		Objects []ObjectType
+		masterController PositionType // we will need the most recent Bot Master Controller to send commands! (name is the same as in former PHP code).
+	)
+	
+	// Open database
+	db, err := sql.Open(PDO_Prefix, SQLiteDBFilename)
+	checkErr(err)
+	
+	// load in Agents!
+	rows, err := db.Query("SELECT * FROM Agents SORTED BY Name") // can't hurt much to let the DB engine sort it
+	checkErr(err)
+
+	for rows.Next() {
+		err = rows.Scan(
+			&Agent.UUID,
+			&Agent.Name,
+			&Agent.OwnerName,
+			&Agent.OwnerKey,
+			&Agent.Location,
+			&Agent.Position,
+			&Agent.Rotation,
+			&Agent.Velocity,
+			&Agent.Energy,
+			&Agent.Money,
+			&Agent.Happiness,
+			&Agent.Class,
+			&Agent.SubType,
+			&Agent.PermURL,
+			&Agent.LastUpdate,
+			&Agent.BestPath,
+			&Agent.SecondBestPath,
+			&Agent.CurrentTarget,
+		)		
+		// do the magic to extract the actual coords		
+		Agent.Coords_xyz = strings.Split(strings.Trim(*Agent.Position.Ptr(), "() \t\n\r"), ",")
+		// we should extract the region name from Agent.Location, but I'm lazy!
+		Agents = append(Agents, Agent)
+	}
+
+	// Load in the 'special' objects (cubes). Because the Master Controllers can be somewhere in here, to save code.
+	//  and a database query, we simply skip all the Master Controllers until we get the most recent one, which gets saved
+	//  The rest of the objects are cubes, so we will need them in the ObjectType array (20170722).
+	// BUG(gwyneth): Does not work across regions! We will probably need a map of bot controllers for that and check which one to call depending on the region of the current agent; simple, but I'm lazy (20170722).
+	
+	rows, err = db.Query("SELECT * FROM Positions ORDER BY LastUpdate ASC")
+	checkErr(err)
+
+	for rows.Next() {
+		err = rows.Scan(
+			&Position.PermURL,
+			&Position.UUID,
+			&Position.Name,
+			&Position.OwnerName,
+			&Position.Location,
+			&Position.Position,
+			&Position.Rotation,
+			&Position.Velocity,
+			&Position.LastUpdate,
+			&Position.OwnerKey,
+			&Position.ObjectType,
+			&Position.ObjectClass,
+			&Position.RateEnergy,
+			&Position.RateMoney,
+			&Position.RateHappiness,
+		)
+		Position.Coords_xyz = strings.Split(strings.Trim(*Position.Position.Ptr(), "() \t\n\r"), ",")
+		
+		// check if we got a Master Bot Controller!
+		if (*Position.ObjectType.Ptr() == "Bot Controller") {
+			masterController = Position // this will get overwritten until we get the last, most recent one
 		} else {
-			// stop everything!!!
-			// in theory this is used to deal with reconfigurations etc.
-		    fmt.Print("\b𝔷")
-		    time.Sleep(1000 * time.Millisecond)
-		    fmt.Print("\bz")
-		    time.Sleep(1000 * time.Millisecond)
-		    fmt.Print("\bZ")
-		    time.Sleep(1000 * time.Millisecond)
-		    fmt.Print("\bℤ")
-		    time.Sleep(1000 * time.Millisecond)			
+			Cubes = append(Cubes, Position) // if not a controller, it must be a cube! add it to array!
+		}
+	}
+	
+	// load in everything we found out so far on our region(s) but ignore phantom objects
+	// end-users ought to set their cubes to phantom as well, or else the agents will think of them as obstacles!
+	rows, err = db.Query("SELECT * FROM Obstacles WHERE Phantom = 0")
+	checkErr(err)
+
+	for rows.Next() {
+		err = rows.Scan(
+			&Object.UUID,
+			&Object.Name,
+			&Object.BotKey,
+			&Object.BotName,
+			&Object.Type,
+			&Object.Position,
+			&Object.Rotation,
+			&Object.Velocity,
+			&Object.LastUpdate,
+			&Object.Origin,
+			&Object.Phantom,
+			&Object.Prims,
+			&Object.BBHi,
+			&Object.BBLo,
+		)
+		Object.Coords_xyz = strings.Split(strings.Trim(*Object.Position.Ptr(), "() \t\n\r"), ",")
+		
+		Objects = append(Objects, Object)
+	}
+	
+	// Debug stuff. Delete it after usage.
+	var marshalled []byte = []byte("Kablooie! JSON blew up everything! No data available...")
+	marshalled, err = json.MarshalIndent(Objects, "", " ")
+	checkErr(err)
+	log.Println("Objects", marshalled)
+	sendMessageToBrowser("status", "info", fmt.Sprintf("Objects: %s<br />", marshalled), "")
+	marshalled, err = json.MarshalIndent(Agents, "", " ")
+	checkErr(err)
+	log.Println("Agents", marshalled)
+	sendMessageToBrowser("status", "info", fmt.Sprintf("Agents: %s<br />", marshalled ), "")
+	marshalled, err = json.MarshalIndent(Cubes, "", " ")
+	checkErr(err)
+	log.Println("Cubes", marshalled)
+	sendMessageToBrowser("status", "info", fmt.Sprintf("Cubes: %s<br />", marshalled), "")
+	marshalled, err = json.MarshalIndent(masterController, "", " ")
+	checkErr(err)
+	log.Println("Master Bot Controller", marshalled)
+	sendMessageToBrowser("status", "info", fmt.Sprintf("Master Bot Controller: %s<br />", marshalled), "")
+
+	// debugging stuff ends here
+	
+	// release DB resources before we start our job
+	rows.Close()
+	db.Close()
+	
+	for {
+		for i, Agent := range Agents {
+			log.Println("Starting to manipulate Agent", i, "-", *Agent.Name.Ptr())
+			
+			if engineRunning.Load().(bool) {
+				// do stuff while it runs, e.g. open databases, search for agents and so forth
+			    fmt.Print("\r|")
+			    time.Sleep(1000 * time.Millisecond)
+			    fmt.Print("\r/")
+			    time.Sleep(1000 * time.Millisecond)
+			    fmt.Print("\r-")
+			    time.Sleep(1000 * time.Millisecond)
+			    fmt.Print("\r\\")
+			    time.Sleep(1000 * time.Millisecond)
+			} else {
+				// stop everything!!!
+				// in theory this is used to deal with reconfigurations etc.
+			    fmt.Print("\r𝔷")
+			    time.Sleep(1000 * time.Millisecond)
+			    fmt.Print("\rz")
+			    time.Sleep(1000 * time.Millisecond)
+			    fmt.Print("\rZ")
+			    time.Sleep(1000 * time.Millisecond)
+			    fmt.Print("\rℤ")
+			    time.Sleep(1000 * time.Millisecond)			
+			}
 		}
     }
     
@@ -304,13 +443,6 @@ func sendMessageToBrowser(msgType string, msgSubType string, msgText string, msg
 	
 	msgToSend.New(msgType, msgSubType, msgText, msgId)
 	
-/*	msgToSend.Type = zero.StringFrom(msgType)
-	msgToSend.SubType = zero.StringFrom(msgSubType)
-	msgToSend.Text = zero.StringFrom(msgText)
-	msgToSend.Id = zero.StringFrom(msgId)
-*/
-	
-
 	marshalled, err := json.MarshalIndent(msgToSend, "", " ") // debug line just to show msgToSend's structure
 	checkErr(err)
 	
