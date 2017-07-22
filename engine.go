@@ -285,7 +285,7 @@ func engine() {
 	checkErr(err)
 	
 	// load in Agents!
-	rows, err := db.Query("SELECT * FROM Agents SORTED BY Name") // can't hurt much to let the DB engine sort it
+	rows, err := db.Query("SELECT * FROM Agents ORDER BY Name") // can't hurt much to let the DB engine sort it
 	checkErr(err)
 
 	for rows.Next() {
