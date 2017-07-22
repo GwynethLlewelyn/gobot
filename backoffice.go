@@ -210,6 +210,8 @@ func backofficeMain(w http.ResponseWriter, r *http.Request) {
 	
 	rows, err := db.Query("SELECT * FROM Agents")
 	checkErr(err)
+	
+	defer rows.Close()
 
 	for rows.Next() {
 		err = rows.Scan(
