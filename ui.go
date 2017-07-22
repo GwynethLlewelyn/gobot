@@ -65,6 +65,8 @@ type ObjectType struct {
 	Prims zero.String // `json:"string"`
 	BBHi zero.String
 	BBLo zero.String
+	Coords_region string // These two are not on the database but calculated on demand (20170722)
+	Coords_xyz []string //  can be a string since it will never be deJSONified
 }
 
 // uiObjects creates a JSON representation of the Obstacles table and spews it out.
@@ -187,6 +189,8 @@ type AgentType struct {
 	BestPath zero.String
 	SecondBestPath zero.String
 	CurrentTarget zero.String
+	Coords_region string
+	Coords_xyz []string
 }
 
 // uiAgents creates a JSON representation of the Agents table and spews it out.
@@ -298,6 +302,8 @@ type PositionType struct {
 	RateEnergy zero.String
 	RateMoney zero.String
 	RateHappiness zero.String
+	Coords_region string
+	Coords_xyz []string
 }
 
 // uiPositions creates a JSON representation of the Positions table and spews it out.
