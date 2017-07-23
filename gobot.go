@@ -2,19 +2,19 @@
 package main
 
 import (
+	_ "github.com/mattn/go-sqlite3"
 	"database/sql"
 	"fmt"
-	_ "github.com/mattn/go-sqlite3"
+	"github.com/Pallinder/go-randomdata"
 	"github.com/spf13/viper" // to read config files
-	"net/http"
+	"golang.org/x/net/websocket"
 	"log"
-	"os/user"
-	"path/filepath"
+	"net/http"
 	"os"
 	"os/signal"
+	"os/user"
+	"path/filepath"
 	"syscall"
-	"golang.org/x/net/websocket"
-	"github.com/Pallinder/go-randomdata"
 )
 
 

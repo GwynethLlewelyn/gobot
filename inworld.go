@@ -162,7 +162,6 @@ func registerPosition(w http.ResponseWriter, r *http.Request) {
 	checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Extracting parameters failed: %s\n", err)
 	log.Println("Received: ", r)
 	
-	
 	if r.Header.Get("X-Secondlife-Object-Key") == "" {
 		// fmt.Printf("Got '%s'\n", r.Header["X-Secondlife-Object-Key"])
 		logErrHTTP(w, http.StatusForbidden, funcName() + ": Not called from within the virtual world.") 

@@ -535,13 +535,20 @@ func backofficeCommandsExec(w http.ResponseWriter, r *http.Request) {
 	content += "<p></p><h3>In-world results:</h3>"
 	
 	// prepare the call to the agent (OpenSimulator NPC)
-	//  HTTP request as per http://moazzam-khan.com/blog/golang-make-http-requests/
-    body := []byte("command=" + r.Form.Get("command") + "&" + 
+    body := "command=" + r.Form.Get("command") + "&" + 
     	r.Form.Get("param1") + "=" + r.Form.Get("data1") + "&" +
-    	r.Form.Get("param2") + "=" + r.Form.Get("data2"))
+    	r.Form.Get("param2") + "=" + r.Form.Get("data2")
+    	
+    rsBody, err := callURL(r.Form.Get("PermURL"), body)
+    if (err != nil) {
+	    content += "<p class=\"text-danger\">" + rsBody + "</p>"
+    } else {
+	    content += "<p class=\"text-success\">" + rsBody + "</p>"
+    }
     
     log.Printf("Sending to in-world object %s ... %s\n", r.Form.Get("PermURL"), body) // debug
     
+    /*
     rs, err := http.Post(r.Form.Get("PermURL"), "body/type", bytes.NewBuffer(body))
     // Code to process response (written in Get request snippet) goes here
 
@@ -556,6 +563,7 @@ func backofficeCommandsExec(w http.ResponseWriter, r *http.Request) {
 	    log.Printf("Reply from in-world object %s\n", rsBody)
 		content += "<p class=\"text-success\">" + string(rsBody) + "</p>"
 	}
+	*/
 	
 	tplParams := templateParameters{ "Title": "Gobot Administrator Panel - Commands Exec Result",
 		"Preamble": template.HTML("<p>Results coming from in-world object:</p>"),

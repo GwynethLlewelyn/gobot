@@ -2,18 +2,20 @@
 package main
 
 import (
-	"database/sql"
-	"fmt"
 	_ "github.com/mattn/go-sqlite3"
+	"bytes"	
+	"database/sql"
+	"encoding/json"
+	"fmt"
+	"golang.org/x/net/websocket"
+	"gopkg.in/guregu/null.v3/zero"
+	"html/template"
+	"io/ioutil"
 	"log"
 	"net/http"
-	"time"
-	"html/template"
-	"golang.org/x/net/websocket"
 	"strings"
-	"encoding/json"
-	"gopkg.in/guregu/null.v3/zero"
 	"sync/atomic" // used for sync'ing values across goroutines at a low level
+	"time"
 )
 
 // Define a communications procotol with the client, so that we can selectively
@@ -158,7 +160,7 @@ func backofficeEngine(w http.ResponseWriter, r *http.Request) {
 	rows, err = db.Query("SELECT Name, OwnerKey, Location, Position FROM Agents ORDER BY Name")
 	checkErr(err)
 	
-	defer rows.Close()
+	// defer rows.Close() // already deferred above
  	
 	var ownerKey, agentNames = "", ""
 	
@@ -172,6 +174,7 @@ func backofficeEngine(w http.ResponseWriter, r *http.Request) {
 		agentNames += fmt.Sprintf("\t\t\t\t\t\t\t\t\t\t\t\t\t<option value=\"%s\">%s  (%s) [%s (%s,%s,%s)]</option>\n", ownerKey, name, ownerKey, regionName, xyz)
 	}
 	
+	rows.Close() // closing after deferring to close is probably not good, but I'll try it anyway (20170723)
 	db.Close()
 
 	tplParams := templateParameters{ "Title": "Gobot Administrator Panel - engine",
@@ -301,10 +304,14 @@ func engine() {
 	db, err := sql.Open(PDO_Prefix, SQLiteDBFilename)
 	checkErr(err)
 	
+	defer db.Close() // needed?
+	
 	// load in Agents! We need them to call the movement algorithm for each one
 	// BUG(gwyneth): what if the number of agents _change_ while we're running the engine? We need a way to reset the engine somehow. We have a hack at the moment: send a SIGCONT, it will try to restart the engine in a new goroutine
 	rows, err := db.Query("SELECT * FROM Agents ORDER BY Name") // can't hurt much to let the DB engine sort it, that way we humans have an idea on how far we've progressed when adding agents
 	checkErr(err)
+
+	defer rows.Close() // needed?
 
 	for rows.Next() {
 		err = rows.Scan(
@@ -352,13 +359,14 @@ func engine() {
 				// We need to refresh all the data about cubes and positions again!
 
 				// do stuff while it runs, e.g. open databases, search for agents and so forth
-				
+/*				
 				log.Println("Reloading database for Cubes (Positions) and Obstacles...")
 				
 				// Open database
 				db, err = sql.Open(PDO_Prefix, SQLiteDBFilename)
 				checkErr(err)
 				
+				defer db.Close() // needed?
 				
 				// Load in the 'special' objects (cubes). Because the Master Controllers can be somewhere in here, to save code.
 				//  and a database query, we simply skip all the Master Controllers until we get the most recent one, which gets saved
@@ -368,6 +376,8 @@ func engine() {
 				Cubes = nil // clear array, let the Go garbage collector deal with the memory (20170723)
 				rows, err = db.Query("SELECT * FROM Positions ORDER BY LastUpdate ASC")
 				checkErr(err)
+						
+				defer rows.Close() // needed?
 						
 				for rows.Next() {
 					err = rows.Scan(
@@ -425,35 +435,17 @@ func engine() {
 					Objects = append(Objects, Object)
 				}
 				
-				// Debug stuff. Delete it after usage.
-				/*
-				var marshalled []byte = []byte("Kablooie! JSON blew up everything! No data available...")
-				marshalled, err = json.MarshalIndent(Objects, "", " ")
-				checkErr(err)
-				log.Println("Objects", marshalled)
-				sendMessageToBrowser("status", "info", fmt.Sprintf("Objects: %s<br />", marshalled), "")
-				marshalled, err = json.MarshalIndent(Agents, "", " ")
-				checkErr(err)
-				log.Println("Agents", marshalled)
-				sendMessageToBrowser("status", "info", fmt.Sprintf("Agents: %s<br />", marshalled ), "")
-				marshalled, err = json.MarshalIndent(Cubes, "", " ")
-				checkErr(err)
-				log.Println("Cubes", marshalled)
-				sendMessageToBrowser("status", "info", fmt.Sprintf("Cubes: %s<br />", marshalled), "")
-				marshalled, err = json.MarshalIndent(masterController, "", " ")
-				checkErr(err)
-				log.Println("Master Bot Controller", marshalled)
-				sendMessageToBrowser("status", "info", fmt.Sprintf("Master Bot Controller: %s<br />", marshalled), "")
-				*/
-				// debugging stuff ends here
-				
 				// release DB resources before we start our job
 				rows.Close()
 				db.Close()
 				
 				// Do not trust the database with the exact Agent position: ask the master controller directly
-				log.Println(*masterController.PermURL.Ptr())
-				
+				// log.Println(*masterController.PermURL.Ptr())
+*/				
+				log.Println(masterController, Position, Cubes, Object, Objects)
+				//curposResult, _ := callURL(*masterController.PermURL.Ptr(), "npc=" + *Agent.OwnerKey.Ptr() + "&command=osNpcGetPos");
+				//sendMessageToBrowser("status", "info", "<p class='box'>Grid reports that agent " + *Agent.Name.Ptr() + " is at position: " + curposResult + "</p>\n", "") 
+				//log.Println("Grid reports that agent", *Agent.Name.Ptr(), "is at position:", curposResult)
 				
 				// output something to console so that we know this is being run in parallel
 			    fmt.Print("\r|")
@@ -499,4 +491,25 @@ func sendMessageToBrowser(msgType string, msgSubType string, msgText string, msg
 	    case <-time.After(time.Second * 10):
 	        fmt.Println("timeout after 10 seconds; coudn't send:", string(marshalled))
 	}
+}
+
+// callURL encapsulates a call to an URL. It exists as an analogy to the PHP version (20170723).
+func callURL(url string, encodedRequest string) (string, error) {
+	//  HTTP request as per http://moazzam-khan.com/blog/golang-make-http-requests/
+	body := []byte(encodedRequest)
+    
+    rs, err := http.Post(url, "body/type", bytes.NewBuffer(body))
+    // Code to process response (written in Get request snippet) goes here
+
+	defer rs.Body.Close()
+	
+	rsBody, err := ioutil.ReadAll(rs.Body)
+	if (err != nil) {
+		errMsg := fmt.Sprintf("Error response from in-world object: %s", err)
+		log.Println(errMsg)
+		return errMsg, err
+	} else {
+	    log.Printf("Reply from in-world object %s\n", rsBody)
+		return string(rsBody), err
+	}	
 }

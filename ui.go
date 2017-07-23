@@ -106,6 +106,7 @@ func uiObjects(w http.ResponseWriter, r *http.Request) {
 		rowArr = append(rowArr, Object)
 	}
 	checkErr(err)
+	defer rows.Close()
 
 	// produces neatly indented output; see https://blog.golang.org/json-and-go but especially http://stackoverflow.com/a/37084385/1035977
 	if data, err := json.MarshalIndent(rowArr, "", " "); err != nil {
@@ -232,6 +233,7 @@ func uiAgents(w http.ResponseWriter, r *http.Request) {
 		rowArr = append(rowArr, Agent)
 	}
 	checkErr(err)
+	defer rows.Close()
 
 	if data, err := json.MarshalIndent(rowArr, "", " "); err != nil {
 		checkErr(err)
@@ -343,6 +345,7 @@ func uiPositions(w http.ResponseWriter, r *http.Request) {
 		rowArr = append(rowArr, Position)
 	}
 	checkErr(err)
+	defer rows.Close()
 
 	if data, err := json.MarshalIndent(rowArr, "", " "); err != nil {
 		checkErr(err)
@@ -432,6 +435,7 @@ func uiInventory(w http.ResponseWriter, r *http.Request) {
 		rowArr = append(rowArr, Inventory)
 	}
 	checkErr(err)
+	defer rows.Close()
 
 	if data, err := json.MarshalIndent(rowArr, "", " "); err != nil {
 		checkErr(err)
@@ -514,6 +518,7 @@ func uiUserManagement(w http.ResponseWriter, r *http.Request) {
 		rowArr = append(rowArr, UserManagement)
 	}
 	checkErr(err)
+	defer rows.Close()
 
 	if data, err := json.MarshalIndent(rowArr, "", " "); err != nil {
 		checkErr(err)
