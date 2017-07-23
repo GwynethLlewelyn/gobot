@@ -173,8 +173,8 @@
 													msg.text + "'<br />";
 												break;
 										};
-										console.log('Received from server: (' + msg.type + '): "' +
-											msg.text + '"; writing on log: "' + logTxt + '"');
+										// console.log('Received from server: (' + msg.type + '): "' +
+										//	msg.text + '"; writing on log: "' + logTxt + '"');
 										log.innerHTML += logTxt;
 										log.scrollTop = log.scrollHeight;
 									}
