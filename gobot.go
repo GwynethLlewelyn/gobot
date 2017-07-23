@@ -86,6 +86,11 @@ func main() {
 		        	sendMessageToBrowser("status", "", randomdata.FullName(randomdata.Female) + "<br />", "") // defined on engine.go for now
 		        case syscall.SIGUSR2:
 		        	sendMessageToBrowser("status", "", randomdata.Country(randomdata.FullCountry) + "<br />", "") // defined on engine.go for now
+		        case syscall.SIGCONT:
+		        	// HACK(gwyneth): if the engine dies, send a SIGCONT to get it running again (20170723).
+		        	log.Println("SIGCONT caught; trying to launch the engine again")
+		        	sendMessageToBrowser("status", "restart", "<code>SIGCONT</code> caught; trying to launch the engine again<br />", "")
+		        	go engine() // is this a good idea? Maybe we ought to have a flag saying if we're running or not! (20170723)
 		        default:
 		        	log.Println("Unknown UNIX signal caught!! Ignoring...")
 	        }

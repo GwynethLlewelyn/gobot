@@ -44,6 +44,23 @@ func (wsM *WsMessageType) New(msgType string, msgSubType string, msgText string,
 //	running bool
 //}
 
+// Constants for movement algorithm. Names are retained from the PHP version.
+// TODO(gwyneth): Have these constants as variables which are read from the configuration file.
+
+const OS_NPC_SIT_NOW = 0
+// for genetic algorithm
+const RADIUS = 10 // this is the size of the grid that is thrown around the avatar
+const POPULATION_SIZE = 50 // was 50
+const GENERATIONS = 20 // was 20 for 20x20 grid
+const CHROMOSOMES = 7 // was 28 for 20x20 grid
+const CROSSOVER_RATE = 90.0 // = 90%, we use a random number generator for 0-100
+const MUTATION_RATE = 5.0   // = 0.005%, we use a random number generator for 0-1000 - TODO(gwyneth): try later with 0.01
+const WALKING_SPEED = 3.19 // avatar walking speed in meters per second)
+// Weights for Shi & Cui
+const W1 = 1.0 // Sub-function of Path Length
+const W2 = 10.0 // Sub-function of Path Security
+const W3 = 5.0 // Sub-function of Smoothness
+
 // Go is tricky. While we send and receive WebSocket messages as it would be expected on a 'normal' 
 //  programming language, we actually have an insane amount of goroutines all in parallel. So what we do is to 
 //  send messages to a 'channel' (Go's version of a semaphore) and receive them from a different one; two sets
@@ -284,8 +301,9 @@ func engine() {
 	db, err := sql.Open(PDO_Prefix, SQLiteDBFilename)
 	checkErr(err)
 	
-	// load in Agents!
-	rows, err := db.Query("SELECT * FROM Agents ORDER BY Name") // can't hurt much to let the DB engine sort it
+	// load in Agents! We need them to call the movement algorithm for each one
+	// BUG(gwyneth): what if the number of agents _change_ while we're running the engine? We need a way to reset the engine somehow. We have a hack at the moment: send a SIGCONT, it will try to restart the engine in a new goroutine
+	rows, err := db.Query("SELECT * FROM Agents ORDER BY Name") // can't hurt much to let the DB engine sort it, that way we humans have an idea on how far we've progressed when adding agents
 	checkErr(err)
 
 	for rows.Next() {
@@ -314,101 +332,130 @@ func engine() {
 		// we should extract the region name from Agent.Location, but I'm lazy!
 		Agents = append(Agents, Agent)
 	}
-
-	// Load in the 'special' objects (cubes). Because the Master Controllers can be somewhere in here, to save code.
-	//  and a database query, we simply skip all the Master Controllers until we get the most recent one, which gets saved
-	//  The rest of the objects are cubes, so we will need them in the ObjectType array (20170722).
-	// BUG(gwyneth): Does not work across regions! We will probably need a map of bot controllers for that and check which one to call depending on the region of the current agent; simple, but I'm lazy (20170722).
-	
-	rows, err = db.Query("SELECT * FROM Positions ORDER BY LastUpdate ASC")
-	checkErr(err)
-
-	for rows.Next() {
-		err = rows.Scan(
-			&Position.PermURL,
-			&Position.UUID,
-			&Position.Name,
-			&Position.OwnerName,
-			&Position.Location,
-			&Position.Position,
-			&Position.Rotation,
-			&Position.Velocity,
-			&Position.LastUpdate,
-			&Position.OwnerKey,
-			&Position.ObjectType,
-			&Position.ObjectClass,
-			&Position.RateEnergy,
-			&Position.RateMoney,
-			&Position.RateHappiness,
-		)
-		Position.Coords_xyz = strings.Split(strings.Trim(*Position.Position.Ptr(), "() \t\n\r"), ",")
-		
-		// check if we got a Master Bot Controller!
-		if (*Position.ObjectType.Ptr() == "Bot Controller") {
-			masterController = Position // this will get overwritten until we get the last, most recent one
-		} else {
-			Cubes = append(Cubes, Position) // if not a controller, it must be a cube! add it to array!
-		}
-	}
-	
-	// load in everything we found out so far on our region(s) but ignore phantom objects
-	// end-users ought to set their cubes to phantom as well, or else the agents will think of them as obstacles!
-	rows, err = db.Query("SELECT * FROM Obstacles WHERE Phantom = 0")
-	checkErr(err)
-
-	for rows.Next() {
-		err = rows.Scan(
-			&Object.UUID,
-			&Object.Name,
-			&Object.BotKey,
-			&Object.BotName,
-			&Object.Type,
-			&Object.Position,
-			&Object.Rotation,
-			&Object.Velocity,
-			&Object.LastUpdate,
-			&Object.Origin,
-			&Object.Phantom,
-			&Object.Prims,
-			&Object.BBHi,
-			&Object.BBLo,
-		)
-		Object.Coords_xyz = strings.Split(strings.Trim(*Object.Position.Ptr(), "() \t\n\r"), ",")
-		
-		Objects = append(Objects, Object)
-	}
-	
-	// Debug stuff. Delete it after usage.
-	var marshalled []byte = []byte("Kablooie! JSON blew up everything! No data available...")
-	marshalled, err = json.MarshalIndent(Objects, "", " ")
-	checkErr(err)
-	log.Println("Objects", marshalled)
-	sendMessageToBrowser("status", "info", fmt.Sprintf("Objects: %s<br />", marshalled), "")
-	marshalled, err = json.MarshalIndent(Agents, "", " ")
-	checkErr(err)
-	log.Println("Agents", marshalled)
-	sendMessageToBrowser("status", "info", fmt.Sprintf("Agents: %s<br />", marshalled ), "")
-	marshalled, err = json.MarshalIndent(Cubes, "", " ")
-	checkErr(err)
-	log.Println("Cubes", marshalled)
-	sendMessageToBrowser("status", "info", fmt.Sprintf("Cubes: %s<br />", marshalled), "")
-	marshalled, err = json.MarshalIndent(masterController, "", " ")
-	checkErr(err)
-	log.Println("Master Bot Controller", marshalled)
-	sendMessageToBrowser("status", "info", fmt.Sprintf("Master Bot Controller: %s<br />", marshalled), "")
-
-	// debugging stuff ends here
-	
 	// release DB resources before we start our job
 	rows.Close()
 	db.Close()
-	
+			
+	// if we have zero agents, we cannot go on!
+	// TODO(gwyneth): be more graceful handling this, because the engine will stop forever this way
+	if len(Agents) == 0 {
+		log.Println("Error: no Agents found. Engine cannot run. Aborted. Add an Agent and try sending a SIGCONT to restart engine again")
+		sendMessageToBrowser("status", "restart", "Error: no Agents found. Engine cannot run. Aborted. Add an Agent and try sending a <code>SIGCONT</code> to restart engine again<br />"," ")
+		return
+	}
+			
 	for {
 		for i, Agent := range Agents {
-			log.Println("Starting to manipulate Agent", i, "-", *Agent.Name.Ptr())
-			
+			// check if we should be running or not
 			if engineRunning.Load().(bool) {
+				log.Println("Starting to manipulate Agent", i, "-", *Agent.Name.Ptr())
+				// We need to refresh all the data about cubes and positions again!
+
 				// do stuff while it runs, e.g. open databases, search for agents and so forth
+				
+				log.Println("Reloading database for Cubes (Positions) and Obstacles...")
+				
+				// Open database
+				db, err = sql.Open(PDO_Prefix, SQLiteDBFilename)
+				checkErr(err)
+				
+				
+				// Load in the 'special' objects (cubes). Because the Master Controllers can be somewhere in here, to save code.
+				//  and a database query, we simply skip all the Master Controllers until we get the most recent one, which gets saved
+				//  The rest of the objects are cubes, so we will need them in the ObjectType array (20170722).
+				// BUG(gwyneth): Does not work across regions! We will probably need a map of bot controllers for that and check which one to call depending on the region of the current agent; simple, but I'm lazy (20170722).
+				
+				Cubes = nil // clear array, let the Go garbage collector deal with the memory (20170723)
+				rows, err = db.Query("SELECT * FROM Positions ORDER BY LastUpdate ASC")
+				checkErr(err)
+						
+				for rows.Next() {
+					err = rows.Scan(
+						&Position.PermURL,
+						&Position.UUID,
+						&Position.Name,
+						&Position.OwnerName,
+						&Position.Location,
+						&Position.Position,
+						&Position.Rotation,
+						&Position.Velocity,
+						&Position.LastUpdate,
+						&Position.OwnerKey,
+						&Position.ObjectType,
+						&Position.ObjectClass,
+						&Position.RateEnergy,
+						&Position.RateMoney,
+						&Position.RateHappiness,
+					)
+					Position.Coords_xyz = strings.Split(strings.Trim(*Position.Position.Ptr(), "() \t\n\r"), ",")
+					
+					// check if we got a Master Bot Controller!
+					if (*Position.ObjectType.Ptr() == "Bot Controller") {
+						masterController = Position // this will get overwritten until we get the last, most recent one
+					} else {
+						Cubes = append(Cubes, Position) // if not a controller, it must be a cube! add it to array!
+					}
+				}
+				
+				// load in everything we found out so far on our region(s) but ignore phantom objects
+				// end-users ought to set their cubes to phantom as well, or else the agents will think of them as obstacles!
+				Objects = nil
+				rows, err = db.Query("SELECT * FROM Obstacles WHERE Phantom = 0")
+				checkErr(err)
+						
+				for rows.Next() {
+					err = rows.Scan(
+						&Object.UUID,
+						&Object.Name,
+						&Object.BotKey,
+						&Object.BotName,
+						&Object.Type,
+						&Object.Position,
+						&Object.Rotation,
+						&Object.Velocity,
+						&Object.LastUpdate,
+						&Object.Origin,
+						&Object.Phantom,
+						&Object.Prims,
+						&Object.BBHi,
+						&Object.BBLo,
+					)
+					Object.Coords_xyz = strings.Split(strings.Trim(*Object.Position.Ptr(), "() \t\n\r"), ",")
+					
+					Objects = append(Objects, Object)
+				}
+				
+				// Debug stuff. Delete it after usage.
+				/*
+				var marshalled []byte = []byte("Kablooie! JSON blew up everything! No data available...")
+				marshalled, err = json.MarshalIndent(Objects, "", " ")
+				checkErr(err)
+				log.Println("Objects", marshalled)
+				sendMessageToBrowser("status", "info", fmt.Sprintf("Objects: %s<br />", marshalled), "")
+				marshalled, err = json.MarshalIndent(Agents, "", " ")
+				checkErr(err)
+				log.Println("Agents", marshalled)
+				sendMessageToBrowser("status", "info", fmt.Sprintf("Agents: %s<br />", marshalled ), "")
+				marshalled, err = json.MarshalIndent(Cubes, "", " ")
+				checkErr(err)
+				log.Println("Cubes", marshalled)
+				sendMessageToBrowser("status", "info", fmt.Sprintf("Cubes: %s<br />", marshalled), "")
+				marshalled, err = json.MarshalIndent(masterController, "", " ")
+				checkErr(err)
+				log.Println("Master Bot Controller", marshalled)
+				sendMessageToBrowser("status", "info", fmt.Sprintf("Master Bot Controller: %s<br />", marshalled), "")
+				*/
+				// debugging stuff ends here
+				
+				// release DB resources before we start our job
+				rows.Close()
+				db.Close()
+				
+				// Do not trust the database with the exact Agent position: ask the master controller directly
+				log.Println(*masterController.PermURL.Ptr())
+				
+				
+				// output something to console so that we know this is being run in parallel
 			    fmt.Print("\r|")
 			    time.Sleep(1000 * time.Millisecond)
 			    fmt.Print("\r/")
