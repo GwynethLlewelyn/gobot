@@ -6,7 +6,7 @@ URLPathPrefix = "/go" # leave empty if you serve from the root URL above; no sla
 PathToStaticFiles = "~/go/src/gobot" # where the lib/ and template/ dirs are; change as needed, no slash at end
 
 # SQLite Database filename
-SQLiteDBFilename = "/var/www/bot.betatechnologies.info/web/database/botmover.db"
+SQLiteDBFilename = "/var/www/bot.betatechnologies.info/web/database/botmover.db?cache=shared&mode=rwc"
 PDO_Prefix = "sqlite3"
 
 [opensim]
