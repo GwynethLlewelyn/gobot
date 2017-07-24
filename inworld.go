@@ -5,7 +5,7 @@ package main
 import (
 	"database/sql"
 	"fmt"
-	_ "github.com/mattn/go-sqlite3"
+	_ "github.com/go-sql-driver/mysql"
 	"net/http"
 	"strings"
 	"crypto/md5"
@@ -36,7 +36,7 @@ func updateInventory(w http.ResponseWriter, r *http.Request) {
 		}
 		
 		// open database connection and see if we can update the inventory for this object
-		db, err := sql.Open(PDO_Prefix, SQLiteDBFilename)
+		db, err := sql.Open(PDO_Prefix, GoBotDSN)
 		checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Connect failed: %s\n", err)
 		
 		defer db.Close()		
@@ -98,7 +98,7 @@ func updateSensor(w http.ResponseWriter, r *http.Request) {
 		checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Extracting parameters failed: %s\n", err)
 		
 		// open database connection and see if we can update the inventory for this object
-		db, err := sql.Open(PDO_Prefix, SQLiteDBFilename)
+		db, err := sql.Open(PDO_Prefix, GoBotDSN)
 		checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Connect failed: %s\n", err)
 		
 		defer db.Close()
@@ -189,7 +189,7 @@ func registerPosition(w http.ResponseWriter, r *http.Request) {
 		}
 		
 		// open database connection and see if we can update the inventory for this object
-		db, err := sql.Open(PDO_Prefix, SQLiteDBFilename)
+		db, err := sql.Open(PDO_Prefix, GoBotDSN)
 		checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Connect failed: %s\n", err)
 		
 		defer db.Close()
@@ -262,7 +262,7 @@ func registerAgent(w http.ResponseWriter, r *http.Request) {
 	}
 	
 	// open database connection and see if we can update the inventory for this object
-	db, err := sql.Open(PDO_Prefix, SQLiteDBFilename)
+	db, err := sql.Open(PDO_Prefix, GoBotDSN)
 	checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Connect failed: %s\n", err)
 	
 	defer db.Close()

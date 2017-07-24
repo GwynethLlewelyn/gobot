@@ -2,7 +2,7 @@
 package main
 
 import (
-	_ "github.com/mattn/go-sqlite3"
+	_ "github.com/go-sql-driver/mysql"
 	"database/sql"
 	"fmt"
 	"github.com/Pallinder/go-randomdata"
@@ -21,7 +21,7 @@ import (
 var (
 	// Default configurations, hopefully exported to other files and packages
 	// we probably should have a struct for this
-	Host, SQLiteDBFilename, URLPathPrefix, PDO_Prefix, PathToStaticFiles,
+	Host, GoBotDSN, URLPathPrefix, PDO_Prefix, PathToStaticFiles,
 	ServerPort, FrontEnd, MapURL, LSLSignaturePIN string
 )
 
@@ -47,7 +47,7 @@ func loadConfiguration() {
 	viper.SetDefault("gobot.Host", "localhost") // to prevent bombing out with panics
 	Host = viper.GetString("gobot.Host"); fmt.Print(".")
 	URLPathPrefix = viper.GetString("gobot.URLPathPrefix"); fmt.Print(".")
-	SQLiteDBFilename = viper.GetString("gobot.SQLiteDBFilename"); fmt.Print(".")
+	GoBotDSN = viper.GetString("gobot.GoBotDSN"); fmt.Print(".")
 	PDO_Prefix = viper.GetString("gobot.PDO_Prefix"); fmt.Print(".")
 	viper.SetDefault("gobot.PathToStaticFiles", "~/go/src/gobot")
 	path, err := expandPath(viper.GetString("gobot.PathToStaticFiles")); fmt.Print(".")
@@ -99,9 +99,9 @@ func main() {
 	
 	// do some database tests. If it fails, it means the database is broken or corrupted and it's worthless
 	//  to run this application anyway!
-	log.Println("\nTesting opening database connection at ", SQLiteDBFilename, "\nPath to static files is:", PathToStaticFiles)
+	log.Println("\nTesting opening database connection at ", GoBotDSN, "\nPath to static files is:", PathToStaticFiles)
 	
-	db, err := sql.Open(PDO_Prefix, SQLiteDBFilename) // presumes sqlite3 for now
+	db, err := sql.Open(PDO_Prefix, GoBotDSN) // presumes sqlite3 for now
 	checkErr(err) // abort if it cannot even open the database
 
 	// query

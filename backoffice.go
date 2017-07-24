@@ -4,7 +4,7 @@ package main
 import (
 	"database/sql"
 	"fmt"
-	_ "github.com/mattn/go-sqlite3"
+	_ "github.com/go-sql-driver/mysql"
 	"net/http"
 	"html/template"
 	"github.com/gorilla/securecookie"
@@ -146,7 +146,7 @@ func backofficeMain(w http.ResponseWriter, r *http.Request) {
 	// let's load the main template for now, just to make sure this works
 	
 	// Open database just to gather some statistics
-	db, err := sql.Open(PDO_Prefix, SQLiteDBFilename) // presumes sqlite3 for now
+	db, err := sql.Open(PDO_Prefix, GoBotDSN) // presumes sqlite3 for now
 	checkErr(err)
 	
 	defer db.Close()
@@ -430,7 +430,7 @@ func backofficeLogin(w http.ResponseWriter, r *http.Request) {
         }
         
         // Check username on database
-        db, err := sql.Open(PDO_Prefix, SQLiteDBFilename)
+        db, err := sql.Open(PDO_Prefix, GoBotDSN)
 		checkErr(err)
 		
 		defer db.Close()
@@ -487,7 +487,7 @@ func backofficeCommands(w http.ResponseWriter, r *http.Request) {
 	checkSession(w, r)
 	// Collect a list of existing bots and their PermURLs for the form
 	
-	db, err := sql.Open(PDO_Prefix, SQLiteDBFilename)
+	db, err := sql.Open(PDO_Prefix, GoBotDSN)
 	checkErr(err)
 
 	// query
@@ -582,7 +582,7 @@ func backofficeControllerCommands(w http.ResponseWriter, r *http.Request) {
 	checkSession(w, r)
 	// Collect a list of existing bots and their PermURLs for the form
 	
-	db, err := sql.Open(PDO_Prefix, SQLiteDBFilename)
+	db, err := sql.Open(PDO_Prefix, GoBotDSN)
 	checkErr(err)
 
 	// query for in-world objects that are Bot Controllers
@@ -609,7 +609,7 @@ func backofficeControllerCommands(w http.ResponseWriter, r *http.Request) {
 	rows, err = db.Query("SELECT Name, OwnerKey FROM Agents ORDER BY Name")
 	checkErr(err)
 	
-	defer rows.Close()
+	// defer rows.Close()
  	
 	var ownerKey, AgentNames = "", "" // we're reusing 'name' from above
 

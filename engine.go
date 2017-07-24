@@ -2,7 +2,7 @@
 package main
 
 import (
-	_ "github.com/mattn/go-sqlite3"
+	_ "github.com/go-sql-driver/mysql"
 	"bytes"	
 	"database/sql"
 	"encoding/json"
@@ -132,7 +132,7 @@ func backofficeEngine(w http.ResponseWriter, r *http.Request) {
 	checkSession(w, r)
 	// Collect a list of existing bots and their PermURLs for the form
 	
-	db, err := sql.Open(PDO_Prefix, SQLiteDBFilename)
+	db, err := sql.Open(PDO_Prefix, GoBotDSN)
 	checkErr(err)
 
 	// query for in-world objects that are cubes (i.e. not Bot Controllers)
@@ -301,7 +301,7 @@ func engine() {
 	)
 	
 	// Open database
-	db, err := sql.Open(PDO_Prefix, SQLiteDBFilename)
+	db, err := sql.Open(PDO_Prefix, GoBotDSN)
 	checkErr(err)
 	
 	defer db.Close() // needed?
@@ -359,11 +359,11 @@ func engine() {
 				// We need to refresh all the data about cubes and positions again!
 
 				// do stuff while it runs, e.g. open databases, search for agents and so forth
-/*				
+				
 				log.Println("Reloading database for Cubes (Positions) and Obstacles...")
 				
 				// Open database
-				db, err = sql.Open(PDO_Prefix, SQLiteDBFilename)
+				db, err = sql.Open(PDO_Prefix, GoBotDSN)
 				checkErr(err)
 				
 				defer db.Close() // needed?
@@ -441,11 +441,11 @@ func engine() {
 				
 				// Do not trust the database with the exact Agent position: ask the master controller directly
 				// log.Println(*masterController.PermURL.Ptr())
-*/				
-				log.Println(masterController, Position, Cubes, Object, Objects)
-				//curposResult, _ := callURL(*masterController.PermURL.Ptr(), "npc=" + *Agent.OwnerKey.Ptr() + "&command=osNpcGetPos");
-				//sendMessageToBrowser("status", "info", "<p class='box'>Grid reports that agent " + *Agent.Name.Ptr() + " is at position: " + curposResult + "</p>\n", "") 
-				//log.Println("Grid reports that agent", *Agent.Name.Ptr(), "is at position:", curposResult)
+				
+				//log.Println(masterController, Position, Cubes, Object, Objects)
+				curposResult, _ := callURL(*masterController.PermURL.Ptr(), "npc=" + *Agent.OwnerKey.Ptr() + "&command=osNpcGetPos");
+				sendMessageToBrowser("status", "info", "<p class='box'>Grid reports that agent " + *Agent.Name.Ptr() + " is at position: " + curposResult + "</p>\n", "") 
+				log.Println("Grid reports that agent", *Agent.Name.Ptr(), "is at position:", curposResult)
 				
 				// output something to console so that we know this is being run in parallel
 			    fmt.Print("\r|")

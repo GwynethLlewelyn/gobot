@@ -76,7 +76,7 @@ func uiObjects(w http.ResponseWriter, r *http.Request) {
 		Object ObjectType
 	)
 
-	db, err := sql.Open(PDO_Prefix, SQLiteDBFilename)
+	db, err := sql.Open(PDO_Prefix, GoBotDSN)
 	checkErrPanic(err)
 
 	defer db.Close()
@@ -132,7 +132,7 @@ func uiObjectsUpdate(w http.ResponseWriter, r *http.Request) {
     
     // update database
     // open database connection and see if we can update the inventory for this object
-	db, err := sql.Open(PDO_Prefix, SQLiteDBFilename)
+	db, err := sql.Open(PDO_Prefix, GoBotDSN)
 	checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Connect failed: %s\n", err)
 	
 	defer db.Close()
@@ -159,7 +159,7 @@ func uiObjectsRemove(w http.ResponseWriter, r *http.Request) {
 	// log.Println("\nObjects body is >>", string(body), "<<")
 	    
     // open database connection and see if we can remove the object UUIDs we got
-	db, err := sql.Open(PDO_Prefix, SQLiteDBFilename)
+	db, err := sql.Open(PDO_Prefix, GoBotDSN)
 	checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Connect failed: %s\n", err)
 	
 	defer db.Close()
@@ -201,7 +201,7 @@ func uiAgents(w http.ResponseWriter, r *http.Request) {
 		Agent AgentType
 	)
 
-	db, err := sql.Open(PDO_Prefix, SQLiteDBFilename)
+	db, err := sql.Open(PDO_Prefix, GoBotDSN)
 	checkErrPanic(err)
 
 	defer db.Close()
@@ -252,7 +252,7 @@ func uiAgentsUpdate(w http.ResponseWriter, r *http.Request) {
     err = json.Unmarshal(body, &ag)
     checkErrPanic(err)
     
-    db, err := sql.Open(PDO_Prefix, SQLiteDBFilename)
+    db, err := sql.Open(PDO_Prefix, GoBotDSN)
 	checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Connect failed: %s\n", err)
 	
 	defer db.Close()
@@ -276,7 +276,7 @@ func uiAgentsRemove(w http.ResponseWriter, r *http.Request) {
     checkErrPanic(err)
 	// fmt.Println("\nAgents Body is >>", string(body), "<<")
 	    
-	db, err := sql.Open(PDO_Prefix, SQLiteDBFilename)
+	db, err := sql.Open(PDO_Prefix, GoBotDSN)
 	checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Connect failed: %s\n", err)
 	
 	defer db.Close()
@@ -315,7 +315,7 @@ func uiPositions(w http.ResponseWriter, r *http.Request) {
 		Position PositionType
 	)
 
-	db, err := sql.Open(PDO_Prefix, SQLiteDBFilename)
+	db, err := sql.Open(PDO_Prefix, GoBotDSN)
 	checkErrPanic(err)
 
 	defer db.Close()
@@ -364,7 +364,7 @@ func uiPositionsUpdate(w http.ResponseWriter, r *http.Request) {
     err = json.Unmarshal(body, &pos)
     checkErrPanic(err)
     
-	db, err := sql.Open(PDO_Prefix, SQLiteDBFilename)
+	db, err := sql.Open(PDO_Prefix, GoBotDSN)
 	checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Connect failed: %s\n", err)
 
 	defer db.Close()
@@ -388,7 +388,7 @@ func uiPositionsRemove(w http.ResponseWriter, r *http.Request) {
     checkErrPanic(err)
 	// log.Println("\nPositions Body is >>", string(body), "<<")
 	    
-	db, err := sql.Open(PDO_Prefix, SQLiteDBFilename)
+	db, err := sql.Open(PDO_Prefix, GoBotDSN)
 	checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Connect failed: %s\n", err)
 	
 	defer db.Close()
@@ -415,7 +415,7 @@ func uiInventory(w http.ResponseWriter, r *http.Request) {
 		Inventory inventoryType
 	)
 
-	db, err := sql.Open(PDO_Prefix, SQLiteDBFilename)
+	db, err := sql.Open(PDO_Prefix, GoBotDSN)
 	checkErrPanic(err)
 
 	defer db.Close()
@@ -454,7 +454,7 @@ func uiInventoryUpdate(w http.ResponseWriter, r *http.Request) {
     err = json.Unmarshal(body, &inv)
     checkErrPanic(err)
     
-    db, err := sql.Open(PDO_Prefix, SQLiteDBFilename)
+    db, err := sql.Open(PDO_Prefix, GoBotDSN)
 	checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Connect failed: %s\n", err)
 	
 	defer db.Close()
@@ -476,7 +476,7 @@ func uiInventoryRemove(w http.ResponseWriter, r *http.Request) {
     checkErrPanic(err)
 	// fmt.Println("\nInventory Body is >>", string(body), "<<")
 	    
-	db, err := sql.Open(PDO_Prefix, SQLiteDBFilename)
+	db, err := sql.Open(PDO_Prefix, GoBotDSN)
 	checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Connect failed: %s\n", err)
 	
 	defer db.Close()
@@ -501,7 +501,7 @@ func uiUserManagement(w http.ResponseWriter, r *http.Request) {
 		UserManagement userManagementType
 	)
 
-	db, err := sql.Open(PDO_Prefix, SQLiteDBFilename)
+	db, err := sql.Open(PDO_Prefix, GoBotDSN)
 	checkErrPanic(err)
 
 	defer db.Close()
@@ -537,7 +537,7 @@ func uiUserManagementUpdate(w http.ResponseWriter, r *http.Request) {
     err = json.Unmarshal(body, &user)
     checkErrPanic(err)
     
-    db, err := sql.Open(PDO_Prefix, SQLiteDBFilename)
+    db, err := sql.Open(PDO_Prefix, GoBotDSN)
 	checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Connect failed: %s\n", err)
 	
 	defer db.Close()
@@ -559,7 +559,7 @@ func uiUserManagementRemove(w http.ResponseWriter, r *http.Request) {
     checkErrPanic(err)
 	// fmt.Println("\nInventory Body is >>", string(body), "<<")
 	    
-	db, err := sql.Open(PDO_Prefix, SQLiteDBFilename)
+	db, err := sql.Open(PDO_Prefix, GoBotDSN)
 	checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Connect failed: %s\n", err)
 	
 	defer db.Close()

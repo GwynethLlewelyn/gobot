@@ -5,9 +5,11 @@ FrontEnd = "nginx" # leave empty if you don't have a frontend, will use ServerPo
 URLPathPrefix = "/go" # leave empty if you serve from the root URL above; no slash at end
 PathToStaticFiles = "~/go/src/gobot" # where the lib/ and template/ dirs are; change as needed, no slash at end
 
-# SQLite Database filename
-SQLiteDBFilename = "/var/www/bot.betatechnologies.info/web/database/botmover.db?cache=shared&mode=rwc"
-PDO_Prefix = "sqlite3"
+# Database filename
+# GoBotDSN = "/var/www/bot.betatechnologies.info/web/database/botmover.db?cache=shared&mode=rwc"
+GoBotDSN = "btopensim:betaopenmv2008!@/gobot"
+
+PDO_Prefix = "mysql"
 
 [opensim]
 MapURL = "http://opensim.betatechnologies.info:8002/map-1-3646-3645-objects.jpg" # get a map tile
