@@ -13,11 +13,12 @@ For now, all you need to know is that this works only on [OpenSimulator](http://
 ## Server-Side Configuration
 
 - Install `gobot` as any other Go application (`go get github.com/GwynethLlewelyn/gobot` should do the trick)
-- Create a database in SQLite3 using `database/schema.sql`
-- Create a new user in SQLite3 with an email address and a MD5-hashed password (something like `insert into Users (Email, Password) Values ('valid@email.address', '4405c5984441a1b86bec717dc063ca46');`), you'll need at least one user to login to the backoffice; use `echo "password"|md5sum` or an online MD5 generator to get a valid password hash; afterwards, you can add more users manually 
+- Create a database in MySQL using `database/schema.sql`
+- Create a new user in MySQL with an email address and a MD5-hashed password (something like `insert into Users (Email, Password) Values ('valid@email.address', '4405c5984441a1b86bec717dc063ca46');`), you'll need at least one user to login to the backoffice; use `echo "password"|md5sum` or an online MD5 generator to get a valid password hash; afterwards, you can add more users manually 
 - Remember the installation path and change `config.toml` accordingly! (you should also set an URL to grab a map tile from your OpenSimulator environment)
 - Note:
  - The directories `lib/` and `templates/` only have static content, so either you configure `config.toml` to  point to the right directories (if running `gobot` as a standalone Go application) or you get these directories directly served by your webserver/reverse proxy/whatever
+ - There has been a move from sqlite3 to MySQL and currently there are some bugs
 - Point your browser to the URL of the `gobot` appplication, login with the email/password, and try things out on the menus
 
 If you're placing `gobot` behind a nginx server, [this is the configuration you'll need](nginx-config.md). Note that Go is wonderful as it includes its own webserver, so running it behind a 'real' web server is not necessary, although a real web server should be able to provide things like caching and direct serving of static content (images, JS, CSS...) for the backoffice, to make it even faster.
