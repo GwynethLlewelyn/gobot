@@ -12,6 +12,7 @@ import (
 	"html/template"
 	"io/ioutil"
 	"log"
+	"math"
 	"net/http"
 	"strings"
 	"sync/atomic" // used for sync'ing values across goroutines at a low level
@@ -124,6 +125,14 @@ func convertLocPos(location string, position string) (regionName string, xyz []s
 	coords := strings.Trim(position, "() \t\n\r")
 	xyz = strings.Split(coords, ",")
 	return regionName, xyz
+}
+
+// calcDistance calculates the distance between two points, which are actually arrays of x,y,z string coordinates.
+//  TODO(gwyneth): Now that we have a strongly-typed language, we should create real objects for this.
+func calcDistance(vec1, vec2 []float64) float64 {
+	return math.Sqrt(math.Pow(vec2[0] - vec1[0], 2) +
+		math.Pow(vec2[1] - vec1[1], 2) +
+		math.Pow(vec2[2] - vec1[2], 2))
 }
 
 // engineHandler is still being implemented, it uses the old Go websockets interface to try to keep the page updated.
@@ -296,7 +305,7 @@ func engine() {
 		Position PositionType
 		Cubes []PositionType // name to be compatible with PHP version
 		Object ObjectType
-		Objects []ObjectType
+		Obstacles []ObjectType
 		masterController PositionType // we will need the most recent Bot Master Controller to send commands! (name is the same as in former PHP code).
 	)
 	
@@ -409,7 +418,7 @@ func engine() {
 				
 				// load in everything we found out so far on our region(s) but ignore phantom objects
 				// end-users ought to set their cubes to phantom as well, or else the agents will think of them as obstacles!
-				Objects = nil
+				Obstacles = nil
 				rows, err = db.Query("SELECT * FROM Obstacles WHERE Phantom = 0")
 				checkErr(err)
 						
@@ -432,20 +441,60 @@ func engine() {
 					)
 					Object.Coords_xyz = strings.Split(strings.Trim(*Object.Position.Ptr(), "() \t\n\r"), ",")
 					
-					Objects = append(Objects, Object)
+					Obstacles = append(Obstacles, Object)
 				}
 				
-				// release DB resources before we start our job
 				rows.Close()
-				db.Close()
-				
+								
 				// Do not trust the database with the exact Agent position: ask the master controller directly
 				// log.Println(*masterController.PermURL.Ptr())
 				
-				//log.Println(masterController, Position, Cubes, Object, Objects)
-				curposResult, _ := callURL(*masterController.PermURL.Ptr(), "npc=" + *Agent.OwnerKey.Ptr() + "&command=osNpcGetPos");
-				sendMessageToBrowser("status", "info", "<p class='box'>Grid reports that agent " + *Agent.Name.Ptr() + " is at position: " + curposResult + "</p>\n", "") 
-				log.Println("Grid reports that agent", *Agent.Name.Ptr(), "is at position:", curposResult)
+				//log.Println(masterController, Position, Cubes, Object, Obstacles)
+				curPos_raw, _ := callURL(*masterController.PermURL.Ptr(), "npc=" + *Agent.OwnerKey.Ptr() + "&command=osNpcGetPos");
+				sendMessageToBrowser("status", "info", "<p class='box'>Grid reports that agent " + *Agent.Name.Ptr() + " is at position: " + curPos_raw + "...</p>\n", "") 
+				log.Println("Grid reports that agent", *Agent.Name.Ptr(), "is at position:", curPos_raw, "...")
+				
+				// update database with new position
+				_, err = db.Exec("UPDATE Agents SET Position = '" + strings.Trim(curPos_raw, " ()<>") +
+					"' WHERE OwnerKey = '" + *Agent.OwnerKey.Ptr() + "'")
+				checkErr(err)
+				
+				// sanitize
+				Agent.Coords_xyz = strings.Split(strings.Trim(curPos_raw, " <>()\t\n\r"), ",")
+				curPos := make([]float64, 3) // to be more similar to the PHP version
+				_, err = fmt.Sscanf(curPos_raw, "<%f, %f, %f>", &curPos[0], &curPos[1], &curPos[2])
+				checkErr(err)
+				
+				log.Println("Avatar", *Agent.Name.Ptr(), "is at recalculated vectorised position:", curPos)
+				// calculate distances to nearest obstacles
+					
+				// TODO(gwyneth): these might become globals, outside the loop, so we don't need to declare them
+				var smallestDistanceToObstacle = 1024.0 // will be used later on
+				var nearestObstacle ObjectType
+//				var smallestDistanceToCube = 1024.0 // will be used later on
+//				var nearestCube PositionType
+				obstaclePosition := make([]float64, 3)
+				var distance float64
+				
+				for k, point := range Obstacles {
+					_, err = fmt.Sscanf(*point.Position.Ptr(), "%f, %f, %f", &obstaclePosition[0], &obstaclePosition[1], &obstaclePosition[2])
+					checkErr(err)
+					
+					distance = calcDistance(curPos, obstaclePosition)
+					
+					fmt.Println("Obstacle", k, " - ", *point.Name.Ptr(), " - ", *point.Position.Ptr(), "- Distance:", distance)
+					
+					if distance < smallestDistanceToObstacle {
+						smallestDistanceToObstacle = distance
+						nearestObstacle = point
+					}
+				}
+				fmt.Println("<b>Nearest obstacle:</b> ", *nearestObstacle.Name.Ptr(), " (at ", smallestDistanceToObstacle, ")")
+							
+				
+				// release DB resources before we start our job
+				
+				db.Close()
 				
 				// output something to console so that we know this is being run in parallel
 			    fmt.Print("\r|")
