@@ -130,9 +130,11 @@ func convertLocPos(location string, position string) (regionName string, xyz []s
 // calcDistance calculates the distance between two points, which are actually arrays of x,y,z string coordinates.
 //  TODO(gwyneth): Now that we have a strongly-typed language, we should create real objects for this.
 func calcDistance(vec1, vec2 []float64) float64 {
-	return math.Sqrt(math.Pow(vec2[0] - vec1[0], 2) +
-		math.Pow(vec2[1] - vec1[1], 2) +
-		math.Pow(vec2[2] - vec1[2], 2))
+	deltaX := vec2[0] - vec1[0] // using extra variables because multiplication is probably
+	deltaY := vec2[1] - vec1[1] //  simpler than calling the math.Pow() function (20170725)
+	deltaZ := vec2[2] - vec1[2]
+	
+	return math.Sqrt(deltaX * deltaX + deltaY * deltaY + deltaZ * deltaZ)
 }
 
 // engineHandler is still being implemented, it uses the old Go websockets interface to try to keep the page updated.
