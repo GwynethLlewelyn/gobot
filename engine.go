@@ -207,9 +207,13 @@ func engine() {
 	var (
 		receiveMessage WsMessageType
 		engineRunning atomic.Value // using sync/atomic to make values consistent among goroutines (20170704)
+		userDestCube atomic.Value
+		curAgent atomic.Value
 	)
 	
 	engineRunning.Store(true) // we start by running the engine; note that this may very well happen before we even have WebSockets up (20170704)
+	userDestCube.Store(NullUUID) // we start to nullify these atomic values, either they will be changed by the user,
+	curAgent.Store(NullUUID)	//  or the engine will simply go through all agents (20170725)
 	
 	fmt.Println("this is the engine starting")
 	sendMessageToBrowser("status", "", "this is the engine <b>starting</b><br />", "") // browser might not even know we're sending messages to it, so this will just gracefully timeout and be ignored
@@ -269,11 +273,11 @@ func engine() {
 						messageText = NullUUID + "|" + NullUUID // a bit stupid, we could skip this and do direct assigns, but this way we do a bit more effort wasting CPU cycles for the sake of code clarity (20170704)
 					}
 					returnValues := strings.Split(messageText, "|")
-					Destination := returnValues[0]
-					Agent := returnValues[1]
+					userDestCube.Store(returnValues[0])
+					curAgent.Store(returnValues[1])
 					
-					log.Println("Destination: ", Destination, "Agent:", Agent)
-					sendMessageToBrowser("status", "info", "Received '" + Destination + "|" + Agent + "'<br />", "")
+					log.Println("Destination: ", userDestCube.Load().(string), "Agent:", curAgent.Load().(string))
+					sendMessageToBrowser("status", "info", "Received '" + userDestCube.Load().(string) + "|" + curAgent.Load().(string) + "'<br />", "")
 				case "engineControl":
 					switch messageSubType {
 						case "start":
@@ -303,13 +307,16 @@ func engine() {
 	// load whole database in memory. Really. It's so much faster that way! (20170722)
 	var (
 		Agent AgentType // temporary way to store what comes from database
-		Agents []AgentType // we OUGHT to have a type without those strange zero.String, but it's tough to keep two structs in perfect sync (20170722); and this might even become a map, indexed by Agent UUID?
+		Agents map[string]AgentType // we OUGHT to have a type without those strange zero.String, but it's tough to keep two structs in perfect sync (20170722); this is mapped by Agent UUID (20170725)
 		Position PositionType
-		Cubes []PositionType // name to be compatible with PHP version
+		Cubes map[string]PositionType // name to be compatible with PHP version; mapped by UUID (20170725)
 		Object ObjectType
 		Obstacles []ObjectType
 		masterController PositionType // we will need the most recent Bot Master Controller to send commands! (name is the same as in former PHP code).
 	)
+	// NOTE(gwyneth): The reason why we use maps and not slices (slices may be faster) is just because that way we can
+    //  directly address the element by UUID, instead of doing array searches (20170725)
+	
 	
 	// Open database
 	db, err := sql.Open(PDO_Prefix, GoBotDSN)
@@ -319,11 +326,12 @@ func engine() {
 	
 	// load in Agents! We need them to call the movement algorithm for each one
 	// BUG(gwyneth): what if the number of agents _change_ while we're running the engine? We need a way to reset the engine somehow. We have a hack at the moment: send a SIGCONT, it will try to restart the engine in a new goroutine
-	rows, err := db.Query("SELECT * FROM Agents ORDER BY Name") // can't hurt much to let the DB engine sort it, that way we humans have an idea on how far we've progressed when adding agents
+	rows, err := db.Query("SELECT * FROM Agents ORDER BY Name") // can't hurt much to let the DB engine sort it, that way we humans have an idea on how far we've progressed when adding agents; also, we index it by UUID
 	checkErr(err)
 
 	defer rows.Close() // needed?
 
+	Agents = make(map[string]AgentType) // initialise our Agents map (20170725)
 	for rows.Next() {
 		err = rows.Scan(
 			&Agent.UUID,
@@ -348,7 +356,8 @@ func engine() {
 		// do the magic to extract the actual coords		
 		Agent.Coords_xyz = strings.Split(strings.Trim(*Agent.Position.Ptr(), "() \t\n\r"), ",")
 		// we should extract the region name from Agent.Location, but I'm lazy!
-		Agents = append(Agents, Agent)
+		log.Println("Agent UUID is", *Agent.UUID.Ptr())
+		Agents[*Agent.UUID.Ptr()] = Agent // mwahahahaha (20170725)
 	}
 	// release DB resources before we start our job
 	rows.Close()
@@ -363,9 +372,17 @@ func engine() {
 	}
 			
 	for {
-		for i, Agent := range Agents {
+		for i, possibleAgent := range Agents {
 			// check if we should be running or not
 			if engineRunning.Load().(bool) {
+				// let's mess this all up, shall we? If the user submits an agent, we'll simply use it instead
+				if curAgent.Load().(string) != NullUUID {
+					Agent = Agents[curAgent.Load().(string)] // this is EVIL. EVIL!!! I love it (20170725)
+				} else {
+					Agent = possibleAgent	// we may skip one agent or two, but who cares?? Eventually we'll get back to
+											//  that agent again, and we might do all this in parallel anyway (20170725)
+				}
+				
 				log.Println("Starting to manipulate Agent", i, "-", *Agent.Name.Ptr())
 				// We need to refresh all the data about cubes and positions again!
 
@@ -384,7 +401,7 @@ func engine() {
 				//  The rest of the objects are cubes, so we will need them in the ObjectType array (20170722).
 				// BUG(gwyneth): Does not work across regions! We will probably need a map of bot controllers for that and check which one to call depending on the region of the current agent; simple, but I'm lazy (20170722).
 				
-				Cubes = nil // clear array, let the Go garbage collector deal with the memory (20170723)
+				Cubes = make(map[string]PositionType) // clear array, let the Go garbage collector deal with the memory (20170723)
 				rows, err = db.Query("SELECT * FROM Positions ORDER BY LastUpdate ASC")
 				checkErr(err)
 						
@@ -414,7 +431,7 @@ func engine() {
 					if (*Position.ObjectType.Ptr() == "Bot Controller") {
 						masterController = Position // this will get overwritten until we get the last, most recent one
 					} else {
-						Cubes = append(Cubes, Position) // if not a controller, it must be a cube! add it to array!
+						Cubes[*Position.UUID.Ptr()] = Position // if not a controller, it must be a cube! add it to array!
 					}
 				}
 				
@@ -461,6 +478,8 @@ func engine() {
 					"' WHERE OwnerKey = '" + *Agent.OwnerKey.Ptr() + "'")
 				checkErr(err)
 				
+				db.Close()
+				
 				// sanitize
 				Agent.Coords_xyz = strings.Split(strings.Trim(curPos_raw, " <>()\t\n\r"), ",")
 				curPos := make([]float64, 3) // to be more similar to the PHP version
@@ -473,9 +492,10 @@ func engine() {
 				// TODO(gwyneth): these might become globals, outside the loop, so we don't need to declare them
 				var smallestDistanceToObstacle = 1024.0 // will be used later on
 				var nearestObstacle ObjectType
-//				var smallestDistanceToCube = 1024.0 // will be used later on
-//				var nearestCube PositionType
+				var smallestDistanceToCube = 1024.0 // will be used later on
+				var nearestCube PositionType
 				obstaclePosition := make([]float64, 3)
+				cubePosition := make([]float64, 3)
 				var distance float64
 				
 				for k, point := range Obstacles {
@@ -491,12 +511,83 @@ func engine() {
 						nearestObstacle = point
 					}
 				}
-				fmt.Println("<b>Nearest obstacle:</b> ", *nearestObstacle.Name.Ptr(), " (at ", smallestDistanceToObstacle, ")")
-							
+				statusMessage := fmt.Sprintf("Nearest obstacle: '%s' (at %f)", *nearestObstacle.Name.Ptr(), smallestDistanceToObstacle)
+				fmt.Println(statusMessage)
+				sendMessageToBrowser("status", "info", statusMessage + "<br />", "")				
+								
+				for k, point := range Cubes {
+					_, err = fmt.Sscanf(*point.Position.Ptr(), "%f, %f, %f", &cubePosition[0], &cubePosition[1], &cubePosition[2])
+					checkErr(err)
+					
+					distance = calcDistance(curPos, cubePosition)
+					
+					fmt.Println("Cube", k, " - ", *point.Name.Ptr(), " - ", *point.Position.Ptr(), "- Distance:", distance)
+					
+					if distance < smallestDistanceToCube {
+						smallestDistanceToCube = distance
+						nearestCube = point
+					}
+				}			
+				statusMessage = fmt.Sprintf("Nearest cube: '%s' (at %f)", *nearestCube.Name.Ptr(), smallestDistanceToCube)
+				fmt.Println(statusMessage)
+				sendMessageToBrowser("status", "info", statusMessage + "<br />", "")	
 				
-				// release DB resources before we start our job
 				
-				db.Close()
+				/* Idea for the GA
+				
+				1. Start with a 20x20 matrix (based loosely on Cosío and Castañeda) around the bot, which contain sensor data (we just sense up to 10 m around the bot). This might need adjustment (i.e. smaller size). 
+				This represents the space of possible solutions
+				Active cube will determine attraction point (see later)
+				Chromosomes: randomly generated points (inside the 20x20 matrix) that the robot has to travel. Start perhaps with 50 with a length of 28 (Castañeda use 7 for 10x10 matrix). Points are bounded within the 20x20 matrix
+				Now evaluate each chromosome with fitness function:
+				- for each point: see if it's "too near" to an obstacle (potential collision)
+					- ray casts are more precise, so give it a highest weight (not implemented yet)
+					- normal sensor data give lower weigth
+					- we can add modifiers: see number of prims of each obstacle (more prims, more weight, because object might be bigger than predicted); see if the obstacle is an agent (initially: agents might act as deflectors; later: interaction matrix will see if the bot goes nearer to the agent or avoids it)
+				- for each point: see if it's closest to the cube. Lowest distance reduces weight. In theory, we wish to find the path with the least distance (less energy wasted)
+				- sort chromosomes according to fitness
+				- do 20 generations and find next expected point. Move bot to it. Reduce energy calculation on bot. See if it dies!
+				- repeat for next bot position
+				
+				20130520 — Results don't converge. It's hard to get the 'bot in less than a 10m radius.
+				Attempt #2 - use a 10x10 matrix, just 7 points, like Castañeda
+				Gotshall & Rylander (2002) suggest a population size of about 100-200 for 7 chromosomes
+				Attempt #3 - Algorithm from Ismail & Sheta was badly implemented!! 
+				Attempt #4 - (to-do) implement Shi & Cui (2010) algorithm for fitness function
+				Attempt #5 - Shi & Cui (2010) use a strange way to calculate path smoothness. Attempting Qu, Xing & Alexander (2013) which use angles. Modified mutation function, instead of the classical approach (switching two elements in the path), add random ±x, ±y to point
+				André Neubauer (circular schema theorem, cited by Qu et al.) suggest two-point crossover
+				Qu et al. suggest sorting path points, after crossover/mutation
+				
+				*/
+				
+				/*		goal/target/attractor: where the 'bot is going to go next
+						at some point, this ought to be included in the chromosome as well
+						for now, we'll hard-code it (walk to the nearest cube)
+						on stage two, we'll do a simple check:
+							- see what attributes are lowest
+							- go to the nearest cube that replenishes the attribute
+							- since this will be iterated every time the 'bot moves, we hope it won't die from starvation,
+								as moving elsewhere becomes prioritary
+				*/
+						
+				// nearestCube is where we go (20140526 changing it to selected cube by user, named destCube)
+				var destCube PositionType;
+				
+				if userDestCube.Load().(string) != NullUUID {
+					destCube = Cubes[userDestCube.Load().(string)]
+					log.Println("User has supplied us with a destination cube named:", *destCube.Name.Ptr())
+				} else {
+					destCube = nearestCube
+					log.Println("Automatically selecting nearest cube to go:", *destCube.Name.Ptr())
+				}
+				sendMessageToBrowser("status", "info", "GA will attempt to move agent '" + *Agent.Name.Ptr() + "' to cube '" + *destCube.Name.Ptr() + "' at position " + *destCube.Position.Ptr(), "")
+				
+				// Genetic algorithm for movement
+				// generate 50 strings (= individuals in the population) with 28 random points (= 1 chromosome) at curpos ± 10m
+				
+				// If the user had set agent + cube, clean them up for now
+				userDestCube.Store(NullUUID)
+				curAgent.Store(NullUUID)
 				
 				// output something to console so that we know this is being run in parallel
 			    fmt.Print("\r|")
