@@ -168,21 +168,21 @@ func backofficeEngine(w http.ResponseWriter, r *http.Request) {
 		cubes += fmt.Sprintf("\t\t\t\t\t\t\t\t\t\t\t\t\t<option value=\"%s\">%s (%s/%s) [%s (%s,%s,%s)]</option>\n", uuid, name, objType, objClass, regionName, xyz[0], xyz[1], xyz[2])
 	}
 
-	rows, err = db.Query("SELECT Name, OwnerKey, Location, Position FROM Agents ORDER BY Name")
+	rows, err = db.Query("SELECT Name, UUID, Location, Position FROM Agents ORDER BY Name")
 	checkErr(err)
 	
 	// defer rows.Close() // already deferred above
  	
-	var ownerKey, agentNames = "", ""
+	var uuidAgent, agentNames = "", ""
 	
 	// To-Do: Agent options should also have location etc.
 
 	// find all Names and OwnerKeys and create select options for each of them
 	for rows.Next() {
-		err = rows.Scan(&name, &ownerKey, &location, &position)
+		err = rows.Scan(&name, &uuidAgent, &location, &position)
 		checkErr(err)
 		regionName, xyz = convertLocPos(location, position)
-		agentNames += fmt.Sprintf("\t\t\t\t\t\t\t\t\t\t\t\t\t<option value=\"%s\">%s  (%s) [%s (%s,%s,%s)]</option>\n", ownerKey, name, ownerKey, regionName, xyz)
+		agentNames += fmt.Sprintf("\t\t\t\t\t\t\t\t\t\t\t\t\t<option value=\"%s\">%s  (%s) [%s (%s,%s,%s)]</option>\n", uuidAgent, name, uuidAgent, regionName, xyz)
 	}
 	
 	rows.Close() // closing after deferring to close is probably not good, but I'll try it anyway (20170723)
@@ -356,7 +356,7 @@ func engine() {
 		// do the magic to extract the actual coords		
 		Agent.Coords_xyz = strings.Split(strings.Trim(*Agent.Position.Ptr(), "() \t\n\r"), ",")
 		// we should extract the region name from Agent.Location, but I'm lazy!
-		log.Println("Agent UUID is", *Agent.UUID.Ptr())
+		//log.Println("Agent UUID is", *Agent.UUID.Ptr())
 		Agents[*Agent.UUID.Ptr()] = Agent // mwahahahaha (20170725)
 	}
 	// release DB resources before we start our job
@@ -376,8 +376,11 @@ func engine() {
 			// check if we should be running or not
 			if engineRunning.Load().(bool) {
 				// let's mess this all up, shall we? If the user submits an agent, we'll simply use it instead
-				if curAgent.Load().(string) != NullUUID {
-					Agent = Agents[curAgent.Load().(string)] // this is EVIL. EVIL!!! I love it (20170725)
+				userSetAgent := curAgent.Load().(string)
+				// log.Println("userSetAgent is", userSetAgent)
+				if userSetAgent != NullUUID {
+					Agent = Agents[userSetAgent] // this is EVIL. EVIL!!! I love it (20170725)
+					log.Println("Agent got from user: ", Agent)
 				} else {
 					Agent = possibleAgent	// we may skip one agent or two, but who cares?? Eventually we'll get back to
 											//  that agent again, and we might do all this in parallel anyway (20170725)
@@ -469,7 +472,7 @@ func engine() {
 				// log.Println(*masterController.PermURL.Ptr())
 				
 				//log.Println(masterController, Position, Cubes, Object, Obstacles)
-				curPos_raw, _ := callURL(*masterController.PermURL.Ptr(), "npc=" + *Agent.OwnerKey.Ptr() + "&command=osNpcGetPos");
+				curPos_raw, _ := callURL(*masterController.PermURL.Ptr(), "npc=" + *Agent.OwnerKey.Ptr() + "&command=osNpcGetPos")
 				sendMessageToBrowser("status", "info", "<p class='box'>Grid reports that agent " + *Agent.Name.Ptr() + " is at position: " + curPos_raw + "...</p>\n", "") 
 				log.Println("Grid reports that agent", *Agent.Name.Ptr(), "is at position:", curPos_raw, "...")
 				
@@ -580,14 +583,23 @@ func engine() {
 					destCube = nearestCube
 					log.Println("Automatically selecting nearest cube to go:", *destCube.Name.Ptr())
 				}
+
+				// This is just a test without the GA (20170725)
 				sendMessageToBrowser("status", "info", "GA will attempt to move agent '" + *Agent.Name.Ptr() + "' to cube '" + *destCube.Name.Ptr() + "' at position " + *destCube.Position.Ptr(), "")
+				_, _ = callURL(*masterController.PermURL.Ptr(), "npc=" + *Agent.OwnerKey.Ptr() + "&command=osNpcMoveToTarget&vector=<" + *destCube.Position.Ptr() + ">&integer=1")
 				
 				// Genetic algorithm for movement
 				// generate 50 strings (= individuals in the population) with 28 random points (= 1 chromosome) at curpos ± 10m
 				
+				time_start := time.Now()
+				
 				// If the user had set agent + cube, clean them up for now
 				userDestCube.Store(NullUUID)
 				curAgent.Store(NullUUID)
+				
+				time_end := time.Now()
+				diffTime := time_end.Sub(time_start)
+				sendMessageToBrowser("status", "info", fmt.Sprintf("<p>CPU time used: %v</p>", diffTime), "")
 				
 				// output something to console so that we know this is being run in parallel
 			    fmt.Print("\r|")
@@ -598,6 +610,8 @@ func engine() {
 			    time.Sleep(1000 * time.Millisecond)
 			    fmt.Print("\r\\")
 			    time.Sleep(1000 * time.Millisecond)
+	
+			
 			} else {
 				// stop everything!!!
 				// in theory this is used to deal with reconfigurations etc.
