@@ -15,6 +15,7 @@ import (
 	"math"
 	"math/rand"
 	"net/http"
+	//"sort"
 	"strings"
 	"sync/atomic" // used for sync'ing values across goroutines at a low level
 	"time"
@@ -599,13 +600,13 @@ func engine() {
 				
 				// chromosomeType is just a point in a path, really.
 				type chromosomeType struct {
-					x, y, z float64
+					x, y, z, distance, obstacle, angle, smoothness float64
 				}
 				
 				// popType represents each population as a list of points (= chromosomes) indicating a possible path; it also includes the fitness for this particular path.
 				type popType struct {
 					fitness float64
-					chromosomes []chromosomeType
+					chromosomes [CHROMOSOMES]chromosomeType
 				}
 				
 				population := make([]popType, POPULATION_SIZE) // create a population; unlike PHP, Go has to have a few clues about what is being created (20170726)
@@ -678,10 +679,134 @@ func engine() {
 							
 							population[i].chromosomes[y].z = math.Trunc(CenterPoint.z) // will work for flat terrain but not more
 						}
-					} // for y
-				} // for i
+						
+						// To implement Shi & Cui (2010) or Qu et al. (2013) we add these distances to obstacles together
+						//  If there are no obstacles in our radius, then we keep it clear
+	
+						population[i].chromosomes[y].obstacle = RADIUS // anything beyond that we don't care
+						var point ObjectType
+						for _, point = range Obstacles {
+							_, err = fmt.Sscanf(*point.Position.Ptr(), "%f, %f, %f", &obstaclePosition[0], &obstaclePosition[1], &obstaclePosition[2])
+							checkErr(err)
+							distance = calcDistance([]float64 {population[i].chromosomes[y].x,
+													population[i].chromosomes[y].y,
+													population[i].chromosomes[y].z },
+													obstaclePosition)
+
+								
+							// Shi & Cui and Qu et al. apparently just uses the distance to the nearest obstacle
+							if distance < population[i].chromosomes[y].obstacle {
+								 population[i].chromosomes[y].obstacle = 1/distance
+								// we use the inverse here, because if we have many distant obstacles it's
+								//  better than a single one that is close by
+							}
+							// TODO(gwyneth): obstacles flagged as ray-casting are far more precise, so they ought to be
+							//  more weighted.
+							
+							// TODO(gwyneth): obstacles could also have bounding box calculations: bigger objects should
+							//  be more weighted. However, HUGE objects might have holes in it. We ought to
+							//  include the bounding box only for ray-casting, or else navigation would be impossible!
+							//  Note that probably OpenSim raycasts only via bounding boxes (need confirmation)
+							//  so maybe this is never a good approach. Lots of tests to be done here!
+						}
+						if (population[i].chromosomes[y].obstacle == RADIUS) {// we might have to use a delta here, because of rounding errors
+							population[i].chromosomes[y].obstacle = 0.0
+						}
+						
+						// calculate, for this point, its distance to the destination, currently $destCube
+						// (exploded to array $cubePosition)
+						// might not need this 
+						
+						population[i].chromosomes[y].distance = calcDistance([]float64 { population[i].chromosomes[y].x,
+													population[i].chromosomes[y].y,
+													population[i].chromosomes[y].z},
+													cubePosition)						
+							
+						// abandoned: initialize smoothness for Shi & Cui
+						// adopted (20140523): smoothness using angles, like Qu et al.
+						population[i].chromosomes[y].smoothness = 0.0
+						population[i].chromosomes[y].angle = 0.0 // maybe initialize it here
+					} // endfor y
+					
+					// now sort this path. According to Qu et al. (2013) this gets us a smoother path
+					// hope it's true, because it's computationally intensive
+					// (20140523) we're using Ruhe's algorithm for sorting according to angle, hope it works
+					// (20140524) Abandoned Ruhe, using a simple comparison like Qu et al.
+					//echo "Before sorting, point $i is: "; var_dump($population[$i]); echo "<br />\n";
+					/*
+					$popsort = substr($population[$i], 1, -1);
+					$first_individual = $population[$i][0];
+					$last_individual  = $population[$i][CHROMOSOMES - 1];
+					usort($popsort, 'point_cmp');
+					$population[$i] = 	array_merge((array)$first_individual, $popsort, (array)$last_individual);
+					*/
+					
+					/********* DEAL WITH SORT *****/
+					
+					//sort.Slice(population[i], func(a, b int) bool {
+						// NOTE(gwyneth): this is still the old PHP code, kept here for historical reasons
+						// global $centerPoint;
+						
+					
+						/* Attempt #1: Ruhe's algorithm
+					
+						$theta_a = atan2($a["y"] - $centerPoint["y"], $a["x"] - $centerPoint["x"]);
+					    $angle_a = fmod(M_PI - M_PI_4 + $theta_a, 2 * M_PI);
+					
+						$theta_b = atan2($b["y"] - $centerPoint["y"], $b["x"] - $centerPoint["x"]);
+					    $angle_b = fmod(M_PI - M_PI_4 + $theta_a, 2 * M_PI);
+					
+						if ($angle_a == $angle_b)
+							return 0;
+					
+						return ($angle_a < $angle_b) ? -1 : 1;
+					*/
+					
+						/*
+						// Attempt #2: just angles
+					
+						if ($a["angle"] == $b["angle"])
+							return 0;
+					
+						return (abs($a["angle"]) < abs($b["angle"])) ? -1 : 1;
+					*/
+						// Attempt #3: Just compare x,y! This is a terrible solution but better than nothing
+						// using algorithm from Anonymous on http://www.php.net/manual/en/function.usort.php
+						/*
+						if ($a["x"] == $b["x"])
+						{
+							if ($a["y"] == $b["y"])
+							{
+								return 0;
+							}
+							elseif ($a["y"] > $b["y"])
+							{
+								return 1;
+							}
+							elseif ($a["y"] < $b["y"])
+							{
+								return -1;
+							}
+						}
+						elseif ($a["x"] > $b["x"])
+						{
+							return 1;
+						}
+						elseif ($a["x"] < $b["x"])
+						{
+							return -1;
+						}
+						*/
+						
+						// Attempt #4: order by shortest distance to the target?
+						
+						//return population[i].chromosomes[a].distance < population[i].chromosomes[b].distance
+						//})
+				} // endfor i
 				
-				log.Println("Population", population)
+				marshalled, err := json.MarshalIndent(population, "", "  ") // debug line just to show population's structure
+				checkErr(err)
+				log.Println("Population", marshalled)
 				
 				// If the user had set agent + cube, clean them up for now
 				userDestCube.Store(NullUUID)
