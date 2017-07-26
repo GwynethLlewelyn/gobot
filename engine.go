@@ -13,6 +13,7 @@ import (
 	"io/ioutil"
 	"log"
 	"math"
+	"math/rand"
 	"net/http"
 	"strings"
 	"sync/atomic" // used for sync'ing values across goroutines at a low level
@@ -52,7 +53,7 @@ func (wsM *WsMessageType) New(msgType string, msgSubType string, msgText string,
 
 const OS_NPC_SIT_NOW = 0
 // for genetic algorithm
-const RADIUS = 10 // this is the size of the grid that is thrown around the avatar
+const RADIUS = 10.0 // this is the size of the grid that is thrown around the avatar
 const POPULATION_SIZE = 50 // was 50
 const GENERATIONS = 20 // was 20 for 20x20 grid
 const CHROMOSOMES = 7 // was 28 for 20x20 grid
@@ -574,7 +575,7 @@ func engine() {
 				*/
 						
 				// nearestCube is where we go (20140526 changing it to selected cube by user, named destCube)
-				var destCube PositionType;
+				var destCube PositionType
 				
 				if userDestCube.Load().(string) != NullUUID {
 					destCube = Cubes[userDestCube.Load().(string)]
@@ -588,10 +589,99 @@ func engine() {
 				sendMessageToBrowser("status", "info", "GA will attempt to move agent '" + *Agent.Name.Ptr() + "' to cube '" + *destCube.Name.Ptr() + "' at position " + *destCube.Position.Ptr(), "")
 				_, _ = callURL(*masterController.PermURL.Ptr(), "npc=" + *Agent.OwnerKey.Ptr() + "&command=osNpcMoveToTarget&vector=<" + *destCube.Position.Ptr() + ">&integer=1")
 				
+				time_start := time.Now()
+				
 				// Genetic algorithm for movement
 				// generate 50 strings (= individuals in the population) with 28 random points (= 1 chromosome) at curpos ± 10m
 				
-				time_start := time.Now()
+				// When transposing from the PHP version, we now cannot avoid having a few structs and types, since Go
+				//  is a strongly-typed language (20170726)
+				
+				// chromosomeType is just a point in a path, really.
+				type chromosomeType struct {
+					x, y, z float64
+				}
+				
+				// popType represents each population as a list of points (= chromosomes) indicating a possible path; it also includes the fitness for this particular path.
+				type popType struct {
+					fitness float64
+					chromosomes []chromosomeType
+				}
+				
+				population := make([]popType, POPULATION_SIZE) // create a population; unlike PHP, Go has to have a few clues about what is being created (20170726)
+				
+				// We calculate now the distance from each point to the destination
+				//  Because this is computationally intensive, we will not repeat it every time during each generation
+				//  Works well unless the destination moves! Then our calculations might be wrong
+				//  But we will catch up on the _next_ iteration (hopefully, unless it moves too fast)
+				//  We also use the best and second best path from a previous run of the GA		
+			
+				// get from the database the last two 'best paths' (if it makes sense)
+				
+				start_pop := 0 // if we have no best paths, we will generate everything from scratch
+				
+				// Maybe it makes sense to keep around the last best paths if we're still moving towards the same
+				//  cube; so check for this first, and discard the last best paths if the destination changed
+				
+				// NOTE(gwyneth): Unlike the PHP version, the Go version deals simultaneously with an automated choice of path as well as manual
+				//  setting of destination, through user input; so the code here is slightly different. We *already* have the
+				//  destination cube in destCube (20170726).
+				// We already have the cubePosition with the correct data (array of 3 float64 values for x,y,z).
+				
+				// NOTE(gwyneth): I have a doubt here, when the algorithm runs again, should the agent keep the CurrentTarget in mind? (20170726)
+				//  The PHP code seems to assume that, but it wasn't ready yet for automated runs...
+				
+				// calculate the center point between current position and target
+				// needs to be global for path sorting function (Ruhe's algorithm)
+				// NOTE(gwyneth): in PHP we had a global $centerPoint; Go uses capital letters to designate globality (20170726).
+				CenterPoint := struct {
+					x, y, z float64
+				}{
+					x: 0.5 * (cubePosition[0] + curPos[0]),
+					y: 0.5 * (cubePosition[1] + curPos[1]),
+					z: 0.5 * (cubePosition[2] + curPos[2]),
+				}
+				
+				// Now generate from scratch the remaining population
+							 
+				for i := start_pop; i < POPULATION_SIZE; i++ {
+					population[i].fitness = 0.0
+		
+					for y := 0; y < CHROMOSOMES; y++ {
+						// Ismail & Sheta recommend to use the distance between points as part of the fitness
+						// edge cases: first point, which is the distance to the current position of the agent
+						// and last point, which is the distance between the last point and the target
+						// that's why the first and last point have been inserted differently in the population
+					
+						if y == 0 { // first point is (approx.) current position
+							population[i].chromosomes[y].x = math.Trunc(curPos[0])
+							population[i].chromosomes[y].y = math.Trunc(curPos[1])
+							population[i].chromosomes[y].z = math.Trunc(curPos[2])
+						} else if y == (CHROMOSOMES - 1) { // last point is (approx.) position of target
+							population[i].chromosomes[y].x = math.Trunc(cubePosition[0])
+							population[i].chromosomes[y].y = math.Trunc(cubePosition[1])
+							population[i].chromosomes[y].z = math.Trunc(cubePosition[2])				
+						} else { // others are scattered around the current position
+							population[i].chromosomes[y].x = math.Trunc(curPos[0] + (rand.Float64() * 2)*RADIUS - RADIUS)			
+							if population[i].chromosomes[y].x < 0.0 { 
+								population[i].chromosomes[y].x = 0.0
+							} else if population[i].chromosomes[y].x > 255.0 {
+								population[i].chromosomes[y].x = 255.0
+							}
+							
+							population[i].chromosomes[y].y = math.Trunc(curPos[1] + (rand.Float64() * 2)*RADIUS - RADIUS)
+							if population[i].chromosomes[y].y < 0.0 {
+								population[i].chromosomes[y].y = 0.0
+							} else if population[i].chromosomes[y].y > 255.0 {
+								population[i].chromosomes[y].y = 255.0
+							}
+							
+							population[i].chromosomes[y].z = math.Trunc(CenterPoint.z) // will work for flat terrain but not more
+						}
+					} // for y
+				} // for i
+				
+				log.Println("Population", population)
 				
 				// If the user had set agent + cube, clean them up for now
 				userDestCube.Store(NullUUID)
