@@ -15,7 +15,7 @@ import (
 	"math"
 	"math/rand"
 	"net/http"
-	//"sort"
+	"sort"
 	"strings"
 	"sync/atomic" // used for sync'ing values across goroutines at a low level
 	"time"
@@ -49,7 +49,7 @@ func (wsM *WsMessageType) New(msgType string, msgSubType string, msgText string,
 //	running bool
 //}
 
-// Constants for movement algorithm. Names are retained from the PHP version.
+// Constants for genetic algorithm. Names are retained from the PHP version.
 // TODO(gwyneth): Have these constants as variables which are read from the configuration file.
 
 const OS_NPC_SIT_NOW = 0
@@ -65,6 +65,21 @@ const WALKING_SPEED = 3.19 // avatar walking speed in meters per second)
 const W1 = 1.0 // Sub-function of Path Length
 const W2 = 10.0 // Sub-function of Path Security
 const W3 = 5.0 // Sub-function of Smoothness
+
+// When transposing from the PHP version, we now cannot avoid having a few structs and types, since Go
+//  is a strongly-typed language (20170726)
+//  This was moved out of the GA code body because some external functions need those types (20170727)
+
+// chromosomeType is just a point in a path, really.
+type chromosomeType struct {
+	x, y, z, distance, obstacle, angle, smoothness float64
+}
+
+// popType represents each population as a list of points (= chromosomes) indicating a possible path; it also includes the fitness for this particular path.
+type popType struct {
+	fitness float64
+	chromosomes []chromosomeType
+}
 
 // Go is tricky. While we send and receive WebSocket messages as it would be expected on a 'normal' 
 //  programming language, we actually have an insane amount of goroutines all in parallel. So what we do is to 
@@ -595,21 +610,13 @@ func engine() {
 				// Genetic algorithm for movement
 				// generate 50 strings (= individuals in the population) with 28 random points (= 1 chromosome) at curpos ± 10m
 				
-				// When transposing from the PHP version, we now cannot avoid having a few structs and types, since Go
-				//  is a strongly-typed language (20170726)
-				
-				// chromosomeType is just a point in a path, really.
-				type chromosomeType struct {
-					x, y, z, distance, obstacle, angle, smoothness float64
-				}
-				
-				// popType represents each population as a list of points (= chromosomes) indicating a possible path; it also includes the fitness for this particular path.
-				type popType struct {
-					fitness float64
-					chromosomes [CHROMOSOMES]chromosomeType
-				}
-				
 				population := make([]popType, POPULATION_SIZE) // create a population; unlike PHP, Go has to have a few clues about what is being created (20170726)
+				// fmt.Println("population len", len(population))
+				// initialise the slices of chromosomes; Go needs this to know how much memory to allocate (unlike PHP)
+				for k := range population {
+					population[k].chromosomes = make([]chromosomeType, CHROMOSOMES)
+					//fmt.Println("Chromosome", k, "population len", len(population[k].chromosomes))
+				}				
 				
 				// We calculate now the distance from each point to the destination
 				//  Because this is computationally intensive, we will not repeat it every time during each generation
@@ -653,7 +660,7 @@ func engine() {
 						// edge cases: first point, which is the distance to the current position of the agent
 						// and last point, which is the distance between the last point and the target
 						// that's why the first and last point have been inserted differently in the population
-					
+						// fmt.Println("i", i, "y", y)
 						if y == 0 { // first point is (approx.) current position
 							population[i].chromosomes[y].x = math.Trunc(curPos[0])
 							population[i].chromosomes[y].y = math.Trunc(curPos[1])
@@ -732,67 +739,67 @@ func engine() {
 					// hope it's true, because it's computationally intensive
 					// (20140523) we're using Ruhe's algorithm for sorting according to angle, hope it works
 					// (20140524) Abandoned Ruhe, using a simple comparison like Qu et al.
-					//echo "Before sorting, point $i is: "; var_dump($population[$i]); echo "<br />\n";
+					//echo "Before sorting, point i is: "; var_dump(population[i]); echo "<br />\n";
 					/*
-					$popsort = substr($population[$i], 1, -1);
-					$first_individual = $population[$i][0];
-					$last_individual  = $population[$i][CHROMOSOMES - 1];
+					$popsort = substr(population[i], 1, -1);
+					$first_individual = population[i][0];
+					$last_individual  = population[i][CHROMOSOMES - 1];
 					usort($popsort, 'point_cmp');
-					$population[$i] = 	array_merge((array)$first_individual, $popsort, (array)$last_individual);
+					population[i] = 	array_merge((array)$first_individual, $popsort, (array)$last_individual);
 					*/
 					
-					/********* DEAL WITH SORT *****/
+					pop := population[i].chromosomes
 					
-					//sort.Slice(population[i], func(a, b int) bool {
-						// NOTE(gwyneth): this is still the old PHP code, kept here for historical reasons
+					sort.Slice(pop, func(a, b int) bool {
+						// NOTE(gwyneth): these is still the old PHP comments, kept here for historical reasons
 						// global $centerPoint;
 						
 					
 						/* Attempt #1: Ruhe's algorithm
 					
-						$theta_a = atan2($a["y"] - $centerPoint["y"], $a["x"] - $centerPoint["x"]);
+						$theta_a = atan2($a.y - $centerPoint.y, $a.x - $centerPoint.x);
 					    $angle_a = fmod(M_PI - M_PI_4 + $theta_a, 2 * M_PI);
 					
-						$theta_b = atan2($b["y"] - $centerPoint["y"], $b["x"] - $centerPoint["x"]);
+						$theta_b = atan2($b.y - $centerPoint.y, $b.x - $centerPoint.x);
 					    $angle_b = fmod(M_PI - M_PI_4 + $theta_a, 2 * M_PI);
 					
 						if ($angle_a == $angle_b)
 							return 0;
 					
 						return ($angle_a < $angle_b) ? -1 : 1;
-					*/
+						*/
 					
 						/*
 						// Attempt #2: just angles
 					
-						if ($a["angle"] == $b["angle"])
+						if ($a.angle == $b.angle)
 							return 0;
 					
-						return (abs($a["angle"]) < abs($b["angle"])) ? -1 : 1;
-					*/
+						return (abs($a.angle) < abs($b.angle)) ? -1 : 1;
+						*/
 						// Attempt #3: Just compare x,y! This is a terrible solution but better than nothing
 						// using algorithm from Anonymous on http://www.php.net/manual/en/function.usort.php
 						/*
-						if ($a["x"] == $b["x"])
+						if ($a.x == $b.x)
 						{
-							if ($a["y"] == $b["y"])
+							if ($a.y == $b.y)
 							{
 								return 0;
 							}
-							elseif ($a["y"] > $b["y"])
+							elseif ($a.y > $b.y)
 							{
 								return 1;
 							}
-							elseif ($a["y"] < $b["y"])
+							elseif ($a.y < $b.y)
 							{
 								return -1;
 							}
 						}
-						elseif ($a["x"] > $b["x"])
+						elseif ($a.x > $b.x)
 						{
 							return 1;
 						}
-						elseif ($a["x"] < $b["x"])
+						elseif ($a.x < $b.x)
 						{
 							return -1;
 						}
@@ -800,13 +807,320 @@ func engine() {
 						
 						// Attempt #4: order by shortest distance to the target?
 						
-						//return population[i].chromosomes[a].distance < population[i].chromosomes[b].distance
-						//})
+						return pop[a].distance < pop[b].distance
+					})
 				} // endfor i
 				
-				marshalled, err := json.MarshalIndent(population, "", "  ") // debug line just to show population's structure
-				checkErr(err)
-				log.Println("Population", marshalled)
+				// testing printing the current population (with json we get strange results!)
+				showPopulation(population)
+				
+				//marshalled, err := json.MarshalIndent(population, "", "  ") // debug line just to show population's structure
+				//checkErr(err)
+				//log.Println("Population", string(marshalled))
+				
+				// We're not finished yet! We need to calculate angles between all points (duh!) to establish smoothness
+				// Let's do it from scratch:		
+				
+				for i := 0; i < POPULATION_SIZE; i++ {
+					population[i].chromosomes[0].angle = 0.0 // curPos has (obviously) angle 0
+					
+					for j := 1; j < CHROMOSOMES; j++ {
+						population[i].chromosomes[j].angle = math.Abs(
+							math.Atan2(population[i].chromosomes[j].y - population[i].chromosomes[j-1].y, 
+							population[i].chromosomes[j].x - population[i].chromosomes[j-1].x))
+					}
+				}
+
+			// Initial population done; now loop over generations
+			
+			for generation := 0; generation < GENERATIONS; generation++	{
+				// Calculate fitness
+				log.Println("Generating fitness for generation ", generation, " (out of ", GENERATIONS, ") ...")
+				
+				// When calculating a new population, each element will have its chromosomes reordered
+				//  So we have no choice but to calculate fitness for all population elements _again_
+				for i := 0; i < POPULATION_SIZE; i++	{
+					fitnessW1 := 0.0
+					fitnessW2 := 0.0
+					fitnessW3 := 0.0
+					
+					// note that first point is current location; we start from the second point onwards
+					for y := 1; y < CHROMOSOMES; y++ {
+						// Sub-function of Path Length (using Shi & Cui)
+						
+						distLastPoint := calcDistance([]float64 {
+									population[i].chromosomes[y].x,
+									population[i].chromosomes[y].y,
+									population[i].chromosomes[y].z,
+								},
+								[]float64 {
+									population[i].chromosomes[y-1].x,
+									population[i].chromosomes[y-1].y,
+									population[i].chromosomes[y-1].z,
+								})
+								
+						// Eduardo: suggests using square distance, means path will have more
+						//  distributed points. (20140704 - 2004)
+												
+						fitnessW1 += distLastPoint * distLastPoint
+						
+						// Sub-function of Path Security (using Shi & Cui) — obstacle proximity
+						
+						fitnessW2 += population[i].chromosomes[y].obstacle
+						
+						// Sub-function of Smoothness (using Shi & Cui)
+						// This measures how zig-zaggy the path is, namely, if points are pointing back etc.
+						// We want a smooth path towards the goal
+						// Possibly here is where the weight will be added
+						// Attempt #5: Qu et al. suggest the angle between line segments
+						// used http://stackoverflow.com/questions/20395547/sorting-an-array-of-x-and-y-vertice-points-ios-objective-c
+						
+						/* Shi & Cui; abandoned
+						population[i][$y]["smoothness"] =
+							(
+								(population[i][$y-1].y - population[i][$y].y) /
+								(population[i][$y-1].x - population[i][$y].x)
+							)
+							-
+							(
+								(population[i][$y].y - population[i][$y-1].y) /
+								(population[i][$y].x - population[i][$y-1].x)
+							);
+						*/
+						
+						fitnessW3 += math.Abs(population[i].chromosomes[y].angle) // clever, huh? check if abs makes sense
+						
+						// and we'll also use the overall distance to the attractor
+						//population[i]["fitness"] += population[i][$y]["distance"];
+					} // end for y
+					population[i].fitness = W1 * fitnessW1 + W2 * fitnessW2 + W3 * fitnessW3
+					
+				} // end for i
+				
+				// note that the most critical point is the first: it's the one the 'bot will try to walk to. But we need
+				//  to calculate the rest of the path, too, which is "the best path so far which the bot plans to travel"
+				//  even if at every iteration, it will get calculated over and over again
+				
+				/*
+				$time_end = microtime(true);
+				$time = $time_end - $time_start;
+		
+				echo "<p>CPU time used after fitness calculations for generation " . $generation . ": " . $time
+					. " seconds</p>\n";
+				
+				
+				echo "Generation " . $generation . " - Before ordering: <br />\n";
+				showPopulation(population);
+				echo "<br />\n";
+				*/
+
+				// Now we do genetics!
+		
+				// To pick the 'best' population elements, we need to sort this by fitness, so that the best
+				//  elements are at the top
+				
+				// order by fitness
+				sort.Slice(population, func(a, b int) bool {
+						return population[a].fitness < population[b].fitness
+					})
+				
+				// TODO(gwyneth): to comment out later (20170727)
+				log.Println("Generation ", generation, " - After ordering by fitness:")
+				showPopulation(population);
+				
+				time_end := time.Now()
+				diffTime := time_end.Sub(time_start)
+				log.Println("CPU time used after sorting this generation:", diffTime)		
+
+				// Selection step. We're using fitness rank
+				
+				newPopulation := make([]popType, POPULATION_SIZE) // create a new population; see comments above
+				for k := range newPopulation {
+					newPopulation[k].chromosomes = make([]chromosomeType, CHROMOSOMES)
+				}					
+				
+				// To introduce elitism, we will move the first 2 elements to the new population:
+				newPopulation[0] = population[0]
+				newPopulation[1] = population[1]
+				// we could also delete the remaining two
+						
+				// for the remaining population:
+				for i := 2; i < POPULATION_SIZE; i += 2 {
+					// establish if we do crossover
+					if rand.Float64() * 100 < CROSSOVER_RATE {		
+						// find a crossover point; according to André Neubauer, we might need two crossover points
+						crossover_point := int(math.Trunc(rand.Float64() * CHROMOSOMES))
+						child0 := make([]chromosomeType, CHROMOSOMES)
+						child1 := make([]chromosomeType, CHROMOSOMES)
+					
+						// echo "Generation " . $generation . " - Crossover for " . i . " and " . (i + 1) . " happening at crossover point: " . $crossover_point . "</br>\n";
+						
+						// now copy the chromosomes from the first parent, up to the crossover point, to child0
+						//  and the remaining chromosomes go to the second child
+						// simultaneously, do the reverse for the second parent
+						
+						// there are probably better/faster string manipulation techniques but this is easy to debug
+						for chromosome := 0; chromosome < CHROMOSOMES; chromosome++ {
+							if chromosome <= crossover_point {
+								child0[chromosome] = population[i].chromosomes[chromosome]
+								child1[chromosome] = population[i+1].chromosomes[chromosome]
+							} else {
+								child0[chromosome] = population[i+1].chromosomes[chromosome]
+								child1[chromosome] = population[i].chromosomes[chromosome]
+							}
+							/* 
+							echo "Pop " . i . ", chromosome: " . $chromosome . " Original chromosome: ";
+							print_r(population[i][$chromosome]);
+							echo " Child 0 chromosome: ";
+							print_r(child0[$chromosome]);
+							echo "<br />\n";
+							*/
+						} // endif chromosomes
+						
+						// test for mutation; note that this is permille and not percent
+						if rand.Float64() * 1000 < MUTATION_RATE {
+							/*
+								Abandoned mutation implementation, which was a classical formulation
+								for value-based GA (as opposed to bit-based)
+								
+							// pick two chromosomes for first child, two for second child
+							//  see http://obitko.com/tutorials/genetic-algorithms/crossover-mutation.php
+							
+							first_chromosome = mt_rand(0, CHROMOSOMES-1);
+							second_chromosome = mt_rand(0, CHROMOSOMES-1);
+							// exchange them, by using a temporary holder (this is mostly because
+							//  the exchange might be for the same chromosome!
+							$temp_first_chromosome = child0[first_chromosome];
+							$temp_second_chromosome = child0[second_chromosome];
+							
+							child0[first_chromosome] = $temp_second_chromosome;
+							child0[second_chromosome] = $temp_first_chromosome;
+	
+							// echo "Generation " . $generation . " - Mutation happening for child " . i . " — exchanging chromosomes " . first_chromosome . " and " . second_chromosome . "</br>\n";
+							
+							// same for second child
+	
+							first_chromosome = mt_rand(0, CHROMOSOMES-1);
+							second_chromosome = mt_rand(0, CHROMOSOMES-1);
+							// exchange them, by using a temporary holder (this is mostly because
+							//  the exchange might be for the same chromosome!
+							$temp_first_chromosome = child1[first_chromosome];
+							$temp_second_chromosome = child1[second_chromosome];
+							
+							child1[first_chromosome] = $temp_second_chromosome;
+							child1[second_chromosome] = $temp_first_chromosome;
+	
+							// echo "Generation " . $generation . " - Mutation happening for child " . (i + 1) . " — exchanging chromosomes " . first_chromosome . " and " . second_chromosome . "</br>\n";
+							
+							*/
+							
+							/*
+								(20140523) Instead, as Qu et al. do, just pick a point and add some 
+								random distance to it
+							*/
+							first_chromosome  := int(math.Trunc(rand.Float64() * (CHROMOSOMES-1)))
+							second_chromosome := int(math.Trunc(rand.Float64() * (CHROMOSOMES-1)))
+														
+							child0[first_chromosome].x += (rand.Float64() * 2)*RADIUS/2 - RADIUS/2
+							if child0[first_chromosome].x < 0 {
+								child0[first_chromosome].x = 0
+							} else if child0[first_chromosome].x > 255 {
+								child0[first_chromosome].x = 255
+							}
+							child0[first_chromosome].y += (rand.Float64() * 2)*RADIUS/2 - RADIUS/2
+							if child0[first_chromosome].y < 0 {
+								child0[first_chromosome].y = 0
+							} else if child0[first_chromosome].y > 255 {
+								child0[first_chromosome].y = 255
+							}
+							child1[second_chromosome].x += (rand.Float64() * 2)*RADIUS/2 - RADIUS/2
+							if child1[second_chromosome].x < 0 {
+								child1[second_chromosome].x = 0
+							} else if child1[second_chromosome].x > 255 {
+								child1[second_chromosome].x = 255
+							}
+							child1[second_chromosome].y += (rand.Float64() * 2)*RADIUS/2 - RADIUS/2
+							if child1[second_chromosome].y < 0 {
+								child1[second_chromosome].y = 0
+							} else if child1[second_chromosome].y > 255 {
+								child1[second_chromosome].y = 255
+							}
+						} // endif mutation	
+						
+						/*						
+						echo "Generation " . $generation . " - New children for population " . i . ": ";
+						print_r(child0);
+						echo " and " . (i + 1) . ": ";
+						print_r(child1);
+						echo "</br>\n";
+						*/
+						
+						/* we need to sort the points on the two childs AGAIN. Duh. And recalculate the angles.
+							Duh, duh, duh */
+						/*
+						child0sort = substr(child0, 1, -1);
+						child1sort = substr(child1, 1, -1);
+						
+						$first_individual_child0 = child0[0];
+						$first_individual_child1 = child1[0];
+						
+						$last_individual_child0 = child0[CHROMOSOMES - 1];
+						$last_individual_child1 = child1[CHROMOSOMES - 1];
+						
+						usort(child0sort, 'point_cmp');
+						usort(child1sort, 'point_cmp');
+						
+						child0 = array_merge((array)$first_individual_child0, child0sort, 
+							(array)$last_individual_child0);
+						child1 = array_merge((array)$first_individual_child1, child1sort, 
+							(array)$last_individual_child1);
+						*/
+						
+						sort.Slice(child0, func(a, b int) bool {
+							return child0[a].distance < child0[b].distance
+							})
+						sort.Slice(child1, func(a, b int) bool {
+							return child1[a].distance < child1[b].distance
+							})
+						
+						child0[0].angle = 0.0;
+						child0[1].angle = 0.0;
+			
+						for j := 1; j < CHROMOSOMES; j++ {
+							child0[j].angle = math.Atan2(child0[j].y - child0[j-1].y, 
+									child0[j].x - child0[j-1].x)
+							child1[j].angle = math.Atan2(child1[j].y - child1[j-1].y, 
+									child1[j].x - child1[j-1].x)
+						}
+						// add the two children to the new population; fitness will be calculated on next iteration
+						newPopulation[i].chromosomes	= child0
+						newPopulation[i+1].chromosomes	= child1
+						
+						// endif crossover
+					} else {
+						// no crossover, just move them directly
+						newPopulation[i].chromosomes	= population[i].chromosomes
+						newPopulation[i+1].chromosomes	= population[i+1].chromosomes
+						// echo "No crossover for " . i . " and " . (i + 1) . " - moving parents to new population<br />\n"; 
+					}
+					// echo "<hr />\n<p>Pop " . i . " finished</p><hr />\n";
+					
+				}
+	/*
+				echo "<hr />\n<p>Generation " . $generation . " finished</p><hr />\n";
+					
+				population = newPopulation; // prepare population
+					
+				$time_end = microtime(true);
+				$time = $time_end - $time_start;
+		
+				echo "<p>CPU time used after crossover and mutation up to generation " . $generation  . ": "  . $time ." seconds</p>\n<hr />\n";
+	*/
+			}  // for generation
+	
+			fmt.Println("Final result (", GENERATIONS, " generation(s)):")
+			showPopulation(population)
+
 				
 				// If the user had set agent + cube, clean them up for now
 				userDestCube.Store(NullUUID)
@@ -814,6 +1128,7 @@ func engine() {
 				
 				time_end := time.Now()
 				diffTime := time_end.Sub(time_start)
+				log.Println("CPU time used", diffTime)
 				sendMessageToBrowser("status", "info", fmt.Sprintf("<p>CPU time used: %v</p>", diffTime), "")
 				
 				// output something to console so that we know this is being run in parallel
@@ -882,5 +1197,18 @@ func callURL(url string, encodedRequest string) (string, error) {
 	} else {
 	    log.Printf("Reply from in-world object %s\n", rsBody)
 		return string(rsBody), err
+	}	
+}
+
+// showPopulation is adapted from the PHP code to pretty-print a whole population
+func showPopulation(popul []popType) {
+fmt.Println("Population")
+	for p, pop := range popul {
+		fmt.Print("pop:", p, " - Fitness: ", pop.fitness, " Chromosomes: ")					
+		for c, chr := range pop.chromosomes {
+			fmt.Printf("[%v] { %v, %v, %v } Distance: %v Obstacle: %v Angle: %v Smoothness %v;\t",
+				c, chr.x, chr.y, chr.z, chr.distance, chr.obstacle, chr.angle, chr.smoothness)
+		}
+		fmt.Println("\n---")
 	}	
 }
