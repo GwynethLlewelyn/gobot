@@ -55,8 +55,6 @@
                 </div>
 				<div class="row">
 					<div class="col-lg-12">
-						Results from the engine:
-						<hr />
 						<style type="text/css">
 						#log {
 						    background: white;

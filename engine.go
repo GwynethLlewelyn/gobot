@@ -52,7 +52,7 @@ func (wsM *WsMessageType) New(msgType string, msgSubType string, msgText string,
 // Constants for genetic algorithm. Names are retained from the PHP version.
 // TODO(gwyneth): Have these constants as variables which are read from the configuration file.
 
-const OS_NPC_SIT_NOW = 0
+const OS_NPC_SIT_NOW = "0"
 // for genetic algorithm
 const RADIUS = 10.0 // this is the size of the grid that is thrown around the avatar
 const POPULATION_SIZE = 50 // was 50
@@ -387,6 +387,9 @@ func engine() {
 		sendMessageToBrowser("status", "restart", "Error: no Agents found. Engine cannot run. Aborted. Add an Agent and try sending a <code>SIGCONT</code> to restart engine again<br />"," ")
 		return
 	}
+	
+	// prepare data to be saved as a CSV/XML file for later import into Excel and do nice graphics
+	var export_rows []string // we place it here because of potential scope issues later on...
 			
 	for {
 		for i, possibleAgent := range Agents {
@@ -503,7 +506,7 @@ func engine() {
 				// sanitize
 				Agent.Coords_xyz = strings.Split(strings.Trim(curPos_raw, " <>()\t\n\r"), ",")
 				curPos := make([]float64, 3) // to be more similar to the PHP version
-				_, err = fmt.Sscanf(curPos_raw, "<%f, %f, %f>", &curPos[0], &curPos[1], &curPos[2])
+				_, err = fmt.Sscanf(curPos_raw, "<%f, %f, %f>", &curPos[0], &curPos[1], &curPos[2]) // best way to convert strings to floats! (20170728)
 				checkErr(err)
 				
 				log.Println("Avatar", *Agent.Name.Ptr(), "is at recalculated vectorised position:", curPos)
@@ -550,8 +553,7 @@ func engine() {
 				}			
 				statusMessage = fmt.Sprintf("Nearest cube: '%s' (at %f)", *nearestCube.Name.Ptr(), smallestDistanceToCube)
 				fmt.Println(statusMessage)
-				sendMessageToBrowser("status", "info", statusMessage + "<br />", "")	
-				
+				sendMessageToBrowser("status", "info", statusMessage + "<br />", "")				
 				
 				/* Idea for the GA
 				
@@ -893,8 +895,7 @@ func engine() {
 						// and we'll also use the overall distance to the attractor
 						//population[i]["fitness"] += population[i][$y]["distance"];
 					} // end for y
-					population[i].fitness = W1 * fitnessW1 + W2 * fitnessW2 + W3 * fitnessW3
-					
+					population[i].fitness = W1 * fitnessW1 + W2 * fitnessW2 + W3 * fitnessW3					
 				} // end for i
 				
 				// note that the most critical point is the first: it's the one the 'bot will try to walk to. But we need
@@ -1121,6 +1122,148 @@ func engine() {
 			fmt.Println("Final result (", GENERATIONS, " generation(s)):")
 			showPopulation(population)
 
+				// at the end, the first point (after the current position) for the last population should give us the nearest point to move to
+			//  ideally, the remaining points should also have converged
+			//  obviously, as the avatar moves and finds about new obstacles etc. the population will change
+	 		
+	
+			// move to target; integer=1 means "walking" (never "flying")
+			// 
+			
+			// Solution by Eduardo 20140704 — if we're close to the destination, within its radius, then we should
+			//  move to the last point — which is our current destination!
+			
+			// Calculate where we are before we move
+			distanceToTarget := calcDistance(curPos, cubePosition)
+			
+			var target int // declared here for scope issues (PHP has the ternary operator for dealing with that, Go hasn't)
+			
+			if distanceToTarget < RADIUS {
+				target = CHROMOSOMES
+			} else {
+				target = CHROMOSOMES -1
+			}
+			
+			sendMessageToBrowser("status", "info", fmt.Sprintf("<p class='box'>Solution: move this agent to %v and following %v points. Distance is %v m</p>\n", population[0].chromosomes[1], target - 1, distanceToTarget), "")
+			
+			for p := 1; p < target; p++ { // (skip first point — current location)
+				moveResult, err := callURL(*masterController.PermURL.Ptr(), 
+					fmt.Sprintf("npc=%s&command=osNpcMoveToTarget&vector=<%v,%v,%v>&integer=1",
+					*Agent.OwnerKey.Ptr(), population[0].chromosomes[p].x, population[0].chromosomes[p].y, population[0].chromosomes[p].z))
+				checkErr(err)
+				
+				export_rows = append(export_rows, fmt.Sprintf("%f,%f,%f", population[0].chromosomes[p].x, population[0].chromosomes[p].y, population[0].chromosomes[p].z))
+				sendMessageToBrowser("status", "info", fmt.Sprintf("<p class='box'>%v: Result from moving to (%v, %v, %v): %s</p>\n",
+					p, population[0].chromosomes[p].x, population[0].chromosomes[p].y, population[0].chromosomes[p].z, moveResult), "")
+				
+				/*
+				// How much should we wait? Well, we calculate the distance to the next point
+				
+				// ask the avatar where he is
+				$curposResult = callURL($masterController['PermURL'], "npc=" . $agent['OwnerKey'] . "&command=osNpcGetPos");
+				$curPos = explode(",", trim($curPos_raw, " <>()\t\n\r\0\x0B")); // sanitize
+				
+				
+				$walkingDistance = distance(
+					$curPos,
+					array(
+						$population[0][$p]["x"],
+						$population[0][$p]["y"],
+					)
+				);
+				$timeToTravel = ($walkingDistance / WALKING_SPEED) - 1.0; // assume the calls took 1 sec so far
+				// do not wait too long, though!
+				if ($timeToTravel > 2.0)
+					$timeToTravel = 2.0;
+				
+				echo "Next point at $walkingDistance metres; waiting $timeToTravel secs for avatar to go to next point...<\br>";
+				sleep($timeToTravel);*/
+			}
+			
+	 		// Save two best solutions for next iteration; attempts to avoid to recalculate always from scratch
+	 		// We do it after moving because the avatar needs a few seconds to reach destination 		
+	 		
+	 		// now update our database with the best paths and the target
+	 		/*$SQL = "UPDATE Agents SET BestPath='" . base64_encode(serialize($population[0])) 
+	 			. "', SecondBestPath='" . base64_encode(serialize($population[1]))
+	 			. "', CurrentTarget='" . strtr($destCube['Position'], " ", "")
+				. "' WHERE UUID='" . $agent['UUID'] . "'";
+				*/
+				
+	//		echo "Updating database with best path, second best path, and current target for this agent...<br />";
+
+			// Reopen database, we need to write out the new Agent data
+			db, err := sql.Open(PDO_Prefix, GoBotDSN)
+			checkErr(err)
+			
+			stmt, err := db.Prepare("UPDATE Agents SET BestPath=?, SecondBestPath=?, CurrentTarget=? WHERE UUID=?")
+			checkErr(err)
+			if (err != nil) {
+				sendMessageToBrowser("status", "error", fmt.Sprintf("<p class='box danger'>%v: Update agents prepare failed: %s</p>\n", 
+					funcName(), err), "")
+				log.Println(funcName(), "Update agents prepare failed:", err)
+			}
+
+			marshalled0, err := json.Marshal(population[0])
+			checkErr(err)
+			marshalled1, err := json.Marshal(population[1])
+			checkErr(err)
+
+			_, err = stmt.Exec(marshalled0,
+						marshalled1,
+						strings.Trim(*destCube.Position.Ptr(), " \t"),
+						*Agent.UUID.Ptr())
+			checkErr(err)
+			
+			stmt.Close()
+			db.Close()
+
+			// See if we're close to the target; absolute precision might be impossible
+			
+			curposResult, _ := callURL(*masterController.PermURL.Ptr(), "npc=" + *Agent.OwnerKey.Ptr() + "&command=osNpcGetPos")
+			sendMessageToBrowser("status", "info",
+				fmt.Sprintf("<p class='box'>Grid reports that agent is at position: %v</p>\n", curposResult), "")
+			
+			// first, read position again, just to see what we get
+	
+	/*
+			echo "This is how Destination Cube looks like: <br \>\n";
+			var_dump($destCube);
+			echo "<br />\n";
+	*/		
+			currentPosition := make([]float64, 3) // see comment above for doing the same to curPos (20170728)
+			
+			_, err = fmt.Sscanf(strings.Trim(curposResult, " ()<>"), "%f,%f,%f", &currentPosition[0], &currentPosition[1], &currentPosition[2])
+			checkErr(err)			
+	
+	/*
+			echo "Distance comparison: Current Position:<br />\n";
+			var_dump($currentPosition);
+			echo "Target Cube<br />\n";
+			var_dump($targetCube);
+			echo "<br />\n";
+	*/		
+			distance = calcDistance(cubePosition, currentPosition);
+							
+			if distance < 1.1 { // we might never get closer than this due to rounding errors
+				sendMessageToBrowser("status", "info", fmt.Sprintf("p class='box success'>Within rounding errors of %s , distance is merely %v m; let's sit down</p>\n", *destCube.Name.Ptr(), distance), "")
+
+				// if we're close enough, sit on it
+				sitResult, _ := callURL(*masterController.PermURL.Ptr(), "npc=" + *Agent.OwnerKey.Ptr() + "&command=osNpcSit&key=" + *destCube.UUID.Ptr() + "&integer=" + OS_NPC_SIT_NOW)
+				sendMessageToBrowser("status", "info", "Result from sitting: " + sitResult + "<br />\n", "")
+			} else if distance < 2.5 {
+				sendMessageToBrowser("status", "info", fmt.Sprintf("<p class='box warning'>Very close to %s, distance is now %v m</p>\n", *destCube.Name.Ptr(), distance), "")
+			} else {
+				sendMessageToBrowser("status", "info", fmt.Sprintf("<p class='box warning'>Still %v m away from %s (%v, %v, %v)</p>\n",
+					distance,
+					*destCube.Name.Ptr(),
+					cubePosition[0],
+					cubePosition[1],
+					cubePosition[2]), "")
+			}
+			
+			// Now place a button to save/export to CSV or XML
+			// TODO(gwyneth): this was on the original code but no button was there; need to see where it is (20170728)
 				
 				// If the user had set agent + cube, clean them up for now
 				userDestCube.Store(NullUUID)
@@ -1140,8 +1283,6 @@ func engine() {
 			    time.Sleep(1000 * time.Millisecond)
 			    fmt.Print("\r\\")
 			    time.Sleep(1000 * time.Millisecond)
-	
-			
 			} else {
 				// stop everything!!!
 				// in theory this is used to deal with reconfigurations etc.
