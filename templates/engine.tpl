@@ -68,7 +68,7 @@
 						    overflow: auto;
 						}
 						</style>
-						<div id="engineResponse" name="engineResponse" contenteditable="true"></div>
+						<div id="engineResponse" name="engineResponse" contenteditable="false"></div>
 						<!-- websockets will fill this in -->
 						<script type="text/javascript">
 							const wsuri = "ws://{{.Host}}{{.ServerPort}}{{.URLPathPrefix}}/wsEngine/";
@@ -149,7 +149,24 @@
 										//    has been manually ran for one Agent/Destination pair)
 										switch (msg.type) {
 											case "status":
-												logTxt = msg.text;
+												switch (msg.subtype) {
+													case "info":
+														logTxt = "<div class='alert alert-info'>" + msg.text + "</div>";
+														break;
+													case "success":
+														logTxt = "<div class='alert alert-success'>" + msg.text + "</div>";
+														break;
+													case "warning":
+														logTxt = "<div class='alert alert-warning'>" + msg.text + "</p>";
+														break;
+													case "error":
+													case "danger":
+														logTxt = "<div class='alert alert-danger'>" + msg.text + "</p>";
+														break;
+													default:
+														logTxt = msg.text;
+														break;
+												};
 												break;
 											case "htmlControl":
 												switch (msg.subtype) {
@@ -196,7 +213,7 @@
 							window.onload = function () {
 								// Disable form if we have no destination cubes or active agents
 								if ("{{ .DestinationOptions }}" == "" || "{{ .AgentOptions }}" == "") {
-									formEngineConfig(true);
+									formEngineConfig(true); // inthis context, disabled = true
 									// we might give an explanation here, e.g. enable a hidden field
 									//  and put an answer there
 									document.getElementById("alertMessage").style.display = 'block';

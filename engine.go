@@ -42,13 +42,6 @@ func (wsM *WsMessageType) New(msgType string, msgSubType string, msgText string,
 	return wsM
 }
 
-// The following struct is used to hold status information across goroutines
-//  It uses the sync/atomic package to do this at a low level, we could have used mutexes (20170704)
-
-//type atomic.Value struct {
-//	running bool
-//}
-
 // Constants for genetic algorithm. Names are retained from the PHP version.
 // TODO(gwyneth): Have these constants as variables which are read from the configuration file.
 
@@ -90,24 +83,27 @@ type popType struct {
 //  us to build in other transfer mechanisms and make them abstract using Go channels (20170703)
 var wsSendMessage = make(chan WsMessageType)
 var wsReceiveMessage = make(chan WsMessageType)
+var webSocketActive atomic.Value // this is an attempt to check if we have an active WebSocket, to avoid too many timeouts (20170728)
 
 // serveWs - apparently this is what is 'called' from the outside, and I need to talk to a socket here.
 func serveWs(ws *websocket.Conn) {
 	// see also how it is implemented here: http://eli.thegreenplace.net/2016/go-websocket-server-sample/ (20170703)
-	var (
-		err error
-//		data []byte
-	)
+	var err error // to avoid constant redeclarations in tight loop below
 	
 	if ws == nil {
-		log.Panic("Received nil WebSocket — I have no idea why this happened!")
+		log.Panic("Received nil WebSocket — I have no idea why or how this happened!")
 	}
 	
+	/*
 	log.Printf("Client connected from %s", ws.RemoteAddr())
 	log.Println("entering serveWs with connection config:", ws.Config())
+	*/
+
+	webSocketActive.Store(true)
+	defer webSocketActive.Store(false)
 
 	go func() {
-		log.Println("entering send loop")
+	//	log.Println("entering send loop")
 
 		for {
 			sendMessage := <-wsSendMessage
@@ -119,7 +115,7 @@ func serveWs(ws *websocket.Conn) {
 		}
 	}()
 
-	log.Println("entering receive loop")
+	//log.Println("entering receive loop")
 	var receiveMessage WsMessageType
 
 	for {
@@ -127,7 +123,7 @@ func serveWs(ws *websocket.Conn) {
 			log.Println("Can't receive; error:", err)
 			break
 		}
-		log.Println("Received message", receiveMessage)
+		// log.Println("Received message", receiveMessage)
 		
 		// log.Printf("Received back from client: type '%s' subtype '%s' text '%s' id '%s'\n", *receiveMessage.Type.Ptr(), *receiveMessage.SubType.Ptr(), *receiveMessage.Text.Ptr(), *receiveMessage.Id.Ptr())
 		// To-Do Next: client will tell us when it's ready, and send us an agent and a destination cube
@@ -231,6 +227,7 @@ func engine() {
 	engineRunning.Store(true) // we start by running the engine; note that this may very well happen before we even have WebSockets up (20170704)
 	userDestCube.Store(NullUUID) // we start to nullify these atomic values, either they will be changed by the user,
 	curAgent.Store(NullUUID)	//  or the engine will simply go through all agents (20170725)
+	webSocketActive.Store(false)	// as soon as we know that we have a connection to the client, we set this to true (20170728) 
 	
 	fmt.Println("this is the engine starting")
 	sendMessageToBrowser("status", "", "this is the engine <b>starting</b><br />", "") // browser might not even know we're sending messages to it, so this will just gracefully timeout and be ignored
@@ -261,6 +258,7 @@ func engine() {
 				case "status":
 					switch messageSubType {
 						case "ready": // this is what we get when WebSockets are established on the client
+							webSocketActive.Store(true)
 							// check for engine running or not and set the controls
 							switch engineRunning.Load().(bool) {
 								case true:
@@ -275,6 +273,7 @@ func engine() {
 							}
 						case "gone": // The client has gone, we have no more websocket for this one (20170704)
 							fmt.Println("Client just told us that it went away, we continue on our own")
+							webSocketActive.Store(false)
 						default: // no other special functions for now, just echo what the client has sent...
 							//unknownMessage := *receiveMessage.Text.Ptr() // better not...
 							//fmt.Println("Received from client unknown status message with subtype",
@@ -294,7 +293,7 @@ func engine() {
 					curAgent.Store(returnValues[1])
 					
 					log.Println("Destination: ", userDestCube.Load().(string), "Agent:", curAgent.Load().(string))
-					sendMessageToBrowser("status", "info", "Received '" + userDestCube.Load().(string) + "|" + curAgent.Load().(string) + "'<br />", "")
+					sendMessageToBrowser("status", "", "Received '" + userDestCube.Load().(string) + "|" + curAgent.Load().(string) + "'<br />", "")
 				case "engineControl":
 					switch messageSubType {
 						case "start":
@@ -310,7 +309,7 @@ func engine() {
 							sendMessageToBrowser("htmlControl", "disable", "", "stopEngine")
 							engineRunning.Store(false)
 					}
-					sendMessageToBrowser("status", "info", "Engine " + messageSubType + "<br />", "")
+					sendMessageToBrowser("status", "", "Engine " + messageSubType + "<br />", "")
 							
 				default:
 					log.Println("Unknown message type", messageType)
@@ -384,7 +383,7 @@ func engine() {
 	// TODO(gwyneth): be more graceful handling this, because the engine will stop forever this way
 	if len(Agents) == 0 {
 		log.Println("Error: no Agents found. Engine cannot run. Aborted. Add an Agent and try sending a SIGCONT to restart engine again")
-		sendMessageToBrowser("status", "restart", "Error: no Agents found. Engine cannot run. Aborted. Add an Agent and try sending a <code>SIGCONT</code> to restart engine again<br />"," ")
+		sendMessageToBrowser("status", "error", "Error: no Agents found. Engine cannot run. Aborted. Add an Agent and try sending a <code>SIGCONT</code> to restart engine again<br />"," ")
 		return
 	}
 	
@@ -489,11 +488,15 @@ func engine() {
 				rows.Close()
 								
 				// Do not trust the database with the exact Agent position: ask the master controller directly
-				// log.Println(*masterController.PermURL.Ptr())
 				
 				//log.Println(masterController, Position, Cubes, Object, Obstacles)
+				if !masterController.PermURL.Valid || !Agent.OwnerKey.Valid {
+					log.Panic("Major error with database")
+				}
+				log.Println("master controller URL:", *masterController.PermURL.Ptr(), "Agent OwnerKey:", *Agent.OwnerKey.Ptr())
+				// WHY Agent.Ownerkey?!?! Why not Agent.UUID?!?!?
 				curPos_raw, _ := callURL(*masterController.PermURL.Ptr(), "npc=" + *Agent.OwnerKey.Ptr() + "&command=osNpcGetPos")
-				sendMessageToBrowser("status", "info", "<p class='box'>Grid reports that agent " + *Agent.Name.Ptr() + " is at position: " + curPos_raw + "...</p>\n", "") 
+				sendMessageToBrowser("status", "info", "Grid reports that agent " + *Agent.Name.Ptr() + " is at position: " + curPos_raw + "...</p>\n", "") 
 				log.Println("Grid reports that agent", *Agent.Name.Ptr(), "is at position:", curPos_raw, "...")
 				
 				// update database with new position
@@ -536,7 +539,7 @@ func engine() {
 				}
 				statusMessage := fmt.Sprintf("Nearest obstacle: '%s' (at %f)", *nearestObstacle.Name.Ptr(), smallestDistanceToObstacle)
 				fmt.Println(statusMessage)
-				sendMessageToBrowser("status", "info", statusMessage + "<br />", "")				
+				sendMessageToBrowser("status", "", statusMessage + "<br />", "")				
 								
 				for k, point := range Cubes {
 					_, err = fmt.Sscanf(*point.Position.Ptr(), "%f, %f, %f", &cubePosition[0], &cubePosition[1], &cubePosition[2])
@@ -553,7 +556,7 @@ func engine() {
 				}			
 				statusMessage = fmt.Sprintf("Nearest cube: '%s' (at %f)", *nearestCube.Name.Ptr(), smallestDistanceToCube)
 				fmt.Println(statusMessage)
-				sendMessageToBrowser("status", "info", statusMessage + "<br />", "")				
+				sendMessageToBrowser("status", "", statusMessage + "<br />", "")				
 				
 				/* Idea for the GA
 				
@@ -604,7 +607,7 @@ func engine() {
 				}
 
 				// This is just a test without the GA (20170725)
-				sendMessageToBrowser("status", "info", "GA will attempt to move agent '" + *Agent.Name.Ptr() + "' to cube '" + *destCube.Name.Ptr() + "' at position " + *destCube.Position.Ptr(), "")
+				sendMessageToBrowser("status", "", "GA will attempt to move agent '" + *Agent.Name.Ptr() + "' to cube '" + *destCube.Name.Ptr() + "' at position " + *destCube.Position.Ptr(), "")
 				_, _ = callURL(*masterController.PermURL.Ptr(), "npc=" + *Agent.OwnerKey.Ptr() + "&command=osNpcMoveToTarget&vector=<" + *destCube.Position.Ptr() + ">&integer=1")
 				
 				time_start := time.Now()
@@ -1144,7 +1147,7 @@ func engine() {
 				target = CHROMOSOMES -1
 			}
 			
-			sendMessageToBrowser("status", "info", fmt.Sprintf("<p class='box'>Solution: move this agent to %v and following %v points. Distance is %v m</p>\n", population[0].chromosomes[1], target - 1, distanceToTarget), "")
+			sendMessageToBrowser("status", "info", fmt.Sprintf("Solution: move this agent to (%v, %v, %v) and following %v points. Distance is %v m", population[0].chromosomes[1].x, population[0].chromosomes[1].y, population[0].chromosomes[1].z, target - 1, distanceToTarget), "")
 			
 			for p := 1; p < target; p++ { // (skip first point — current location)
 				moveResult, err := callURL(*masterController.PermURL.Ptr(), 
@@ -1153,7 +1156,7 @@ func engine() {
 				checkErr(err)
 				
 				export_rows = append(export_rows, fmt.Sprintf("%f,%f,%f", population[0].chromosomes[p].x, population[0].chromosomes[p].y, population[0].chromosomes[p].z))
-				sendMessageToBrowser("status", "info", fmt.Sprintf("<p class='box'>%v: Result from moving to (%v, %v, %v): %s</p>\n",
+				sendMessageToBrowser("status", "", fmt.Sprintf("%v: In-world result call from moving to (%v, %v, %v): %s<br />",
 					p, population[0].chromosomes[p].x, population[0].chromosomes[p].y, population[0].chromosomes[p].z, moveResult), "")
 				
 				/*
@@ -1199,7 +1202,7 @@ func engine() {
 			stmt, err := db.Prepare("UPDATE Agents SET BestPath=?, SecondBestPath=?, CurrentTarget=? WHERE UUID=?")
 			checkErr(err)
 			if (err != nil) {
-				sendMessageToBrowser("status", "error", fmt.Sprintf("<p class='box danger'>%v: Update agents prepare failed: %s</p>\n", 
+				sendMessageToBrowser("status", "error", fmt.Sprintf("%v: Update agents prepare failed: %s", 
 					funcName(), err), "")
 				log.Println(funcName(), "Update agents prepare failed:", err)
 			}
@@ -1221,8 +1224,7 @@ func engine() {
 			// See if we're close to the target; absolute precision might be impossible
 			
 			curposResult, _ := callURL(*masterController.PermURL.Ptr(), "npc=" + *Agent.OwnerKey.Ptr() + "&command=osNpcGetPos")
-			sendMessageToBrowser("status", "info",
-				fmt.Sprintf("<p class='box'>Grid reports that agent is at position: %v</p>\n", curposResult), "")
+			sendMessageToBrowser("status", "info", fmt.Sprintf("Grid reports that agent is at position: %v", curposResult), "")
 			
 			// first, read position again, just to see what we get
 	
@@ -1246,15 +1248,15 @@ func engine() {
 			distance = calcDistance(cubePosition, currentPosition);
 							
 			if distance < 1.1 { // we might never get closer than this due to rounding errors
-				sendMessageToBrowser("status", "info", fmt.Sprintf("p class='box success'>Within rounding errors of %s , distance is merely %v m; let's sit down</p>\n", *destCube.Name.Ptr(), distance), "")
+				sendMessageToBrowser("status", "info", fmt.Sprintf("Within rounding errors of %s , distance is merely %v m; let's sit down", *destCube.Name.Ptr(), distance), "")
 
 				// if we're close enough, sit on it
 				sitResult, _ := callURL(*masterController.PermURL.Ptr(), "npc=" + *Agent.OwnerKey.Ptr() + "&command=osNpcSit&key=" + *destCube.UUID.Ptr() + "&integer=" + OS_NPC_SIT_NOW)
 				sendMessageToBrowser("status", "info", "Result from sitting: " + sitResult + "<br />\n", "")
 			} else if distance < 2.5 {
-				sendMessageToBrowser("status", "info", fmt.Sprintf("<p class='box warning'>Very close to %s, distance is now %v m</p>\n", *destCube.Name.Ptr(), distance), "")
+				sendMessageToBrowser("status", "warning", fmt.Sprintf("Very close to %s, distance is now %v m", *destCube.Name.Ptr(), distance), "")
 			} else {
-				sendMessageToBrowser("status", "info", fmt.Sprintf("<p class='box warning'>Still %v m away from %s (%v, %v, %v)</p>\n",
+				sendMessageToBrowser("status", "warning", fmt.Sprintf("Still %v m away from %s (%v, %v, %v)",
 					distance,
 					*destCube.Name.Ptr(),
 					cubePosition[0],
@@ -1272,9 +1274,10 @@ func engine() {
 				time_end := time.Now()
 				diffTime := time_end.Sub(time_start)
 				log.Println("CPU time used", diffTime)
-				sendMessageToBrowser("status", "info", fmt.Sprintf("<p>CPU time used: %v</p>", diffTime), "")
+				sendMessageToBrowser("status", "info", fmt.Sprintf("CPU time used: %v", diffTime), "")
 				
 				// output something to console so that we know this is being run in parallel
+				/*
 			    fmt.Print("\r|")
 			    time.Sleep(1000 * time.Millisecond)
 			    fmt.Print("\r/")
@@ -1283,6 +1286,7 @@ func engine() {
 			    time.Sleep(1000 * time.Millisecond)
 			    fmt.Print("\r\\")
 			    time.Sleep(1000 * time.Millisecond)
+			    */
 			} else {
 				// stop everything!!!
 				// in theory this is used to deal with reconfigurations etc.
@@ -1305,18 +1309,22 @@ func engine() {
 
 // sendMessageToBrowser sends a string to the internal, global channel which is hopefully picked up by the websocket handling goroutine.
 func sendMessageToBrowser(msgType string, msgSubType string, msgText string, msgId string) {
-	var msgToSend WsMessageType
-	
-	msgToSend.New(msgType, msgSubType, msgText, msgId)
-	
-	marshalled, err := json.MarshalIndent(msgToSend, "", " ") // debug line just to show msgToSend's structure
-	checkErr(err)
-	
-	select {
-	    case wsSendMessage <- msgToSend:
-			fmt.Println("Sent: ", string(marshalled))
-	    case <-time.After(time.Second * 10):
-	        fmt.Println("timeout after 10 seconds; coudn't send:", string(marshalled))
+	if webSocketActive.Load().(bool) == true { // no point in sending if nobody is there to receive
+		var msgToSend WsMessageType
+		
+		msgToSend.New(msgType, msgSubType, msgText, msgId)
+		
+		marshalled, err := json.MarshalIndent(msgToSend, "", " ") // debug line just to show msgToSend's structure
+		checkErr(err)
+		
+		select {
+		    case wsSendMessage <- msgToSend:
+				// fmt.Println("Sent: ", string(marshalled))
+		    case <-time.After(time.Second * 10):
+		        fmt.Println("timeout after 10 seconds; coudn't send:", string(marshalled))
+		}
+	} else {
+		log.Println("(no WebSocket connection)", msgType, msgSubType, msgText, msgId)
 	}
 }
 
@@ -1327,18 +1335,22 @@ func callURL(url string, encodedRequest string) (string, error) {
     
     rs, err := http.Post(url, "body/type", bytes.NewBuffer(body))
     // Code to process response (written in Get request snippet) goes here
-
-	defer rs.Body.Close()
 	
-	rsBody, err := ioutil.ReadAll(rs.Body)
 	if (err != nil) {
-		errMsg := fmt.Sprintf("Error response from in-world object: %s", err)
-		log.Println(errMsg)
-		return errMsg, err
+		defer rs.Body.Close()
+		
+		rsBody, err := ioutil.ReadAll(rs.Body)
+		if (err != nil) {
+			errMsg := fmt.Sprintf("Error response from in-world object: %s", err)
+			log.Println(errMsg)
+			return errMsg, err
+		} else {
+		    // log.Printf("Reply from in-world object %s\n", rsBody)
+			return string(rsBody), err
+		}
 	} else {
-	    log.Printf("Reply from in-world object %s\n", rsBody)
-		return string(rsBody), err
-	}	
+		return "HTTP call to " + url + " failed", err
+	}
 }
 
 // showPopulation is adapted from the PHP code to pretty-print a whole population
