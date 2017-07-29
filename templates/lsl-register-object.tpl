@@ -191,58 +191,38 @@ default
         }
         else if (method == "POST" || method == "GET")
         {
-	        // The code below is allegedly recycled from other purposes and is not necessary at all!!
-	        //  It is just kept here for the purpose of being reused at some point if necessary (20170708)
-	        
-            // incoming request for refunds or IMs
-            //llOwnerSay(body);
-            
-            list params = llParseStringKeepNulls(body, ["&", "="], []);
-            string VoucherID;
-            string Type;
-            string AvatarName;
-            key AvatarUUID;
-            string ItemName;
-            string ItemRef;
-            integer Value;
-            
-            //llOwnerSay("List parsed: " + (string) params);
-            
-            if (llList2String(params, 0) == "VoucherID")
-                VoucherID = llList2String(params, 1);
-            if (llList2String(params, 2) == "Type")
-                Type = llList2String(params, 3);
-            if (llList2String(params, 4) == "AvatarName")
-                AvatarName = llUnescapeURL(llList2String(params, 5));
-            if (llList2String(params, 6) == "AvatarUUID")
-                AvatarUUID = llList2Key(params, 7);
-            if (llList2String(params, 8) == "ItemName")
-                ItemName = llUnescapeURL(llList2String(params, 9));
-            if (llList2String(params, 10) == "ItemRef")
-                ItemRef = llUnescapeURL(llList2String(params, 11));        
-            if (llList2String(params, 12) == "Value")
-                Value = llList2Integer(params, 13);
-                
-            //llOwnerSay("Incoming message: VoucherID=" + VoucherID
-            //    + ", Type=" + Type
-            //    + ", AvatarName=" + AvatarName
-            //    + ", AvatarUUID=" + (string)AvatarUUID
-            //    + ", ItemName=" + ItemName
-            //    + ", ItemRef=" + ItemRef
-            //    + ", Value=" + (string)Value + ".");
-            
-            if (Type == "STAMP-VENDOR")
-            {
-                // Process refund
-                llGiveMoney(AvatarUUID, Value);
-                llInstantMessage(AvatarUUID, AvatarName + ", here goes your refund of L$" +  (string)Value + " for item '" + ItemName + "' (ref #" + ItemRef + ")");
-                llOwnerSay("Processed refund for " + AvatarName + ". Amount of L$" +  (string)Value + " for item '" + ItemName + "' (ref #" + ItemRef + ")");
-                llHTTPResponse(id, 200, "OK");
-            }
-            else
-            {
-                llHTTPResponse(id, 405, "Unknown Type: " + Type);
-            }
+			// NOTE(gwyneth): This will allow the web-based interface to send commands to each and every object.
+			//  Right now, it's just used to see if the objects are alive; this is needed by the Garbage Collector,
+			//  it sends a 'command=ping' and expects a 'pong'; if not, it assumes that the object is 'dead' and cleans up. (20170729)
+
+			list params = llParseStringKeepNulls(llUnescapeURL(body), ["&", "="], []);
+			string response; // what we return
+
+			string commandTag = llList2String(params, 0);
+			string command = llList2String(params, 1);
+			
+			if (commandTag == "command")
+			{
+				if (command == "ping")
+				{
+					 response = "pong";
+				}
+				else
+				{
+					response = "";
+					llHTTPResponse(id, 405, "Unknown engine command " + command + ".");
+				}
+			}
+			
+			if (response) 
+			{
+				//llSay(0, "Sending back response for " + 
+				//	  command + " '" +
+				//	  response + "'...");
+				llHTTPResponse(id, 200, response);
+			}
+			else
+				llSay(0, "ERROR: No response or no command found!");
         }       
         else
         {
