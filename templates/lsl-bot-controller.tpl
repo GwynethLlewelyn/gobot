@@ -614,7 +614,7 @@ llSleep(1);
 				else if (command == "ping")
 				{
 					 response = "pong";
-				 }
+				}
 				else
 				{
 					response = "";
