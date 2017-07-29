@@ -39,7 +39,7 @@ default
 {
     state_entry()
     {
-        llOwnerSay("On state_entry");
+        //llOwnerSay("On state_entry");
         llListen(listenChannel,"",NULL_KEY,"");
         llSetText("Listening on " + listenChannel, &lt;0, 255, 0&gt;, 1);
         llOwnerSay("Say /" + (string)listenChannel + " help for commands");
@@ -48,13 +48,13 @@ default
     
     on_rez(integer what)
     {
-        llOwnerSay("On on_rez");
+        //llOwnerSay("On on_rez");
         init();
     }
 
     touch_start(integer total_number)
     {
-         llOwnerSay("On touch_start");
+		// llOwnerSay("On touch_start");
         // just re-register
         
         if (llDetectedKey(0) == llGetOwner() || llDetectedGroup(0))
@@ -451,7 +451,7 @@ default
     }
     http_request(key id, string method, string body)
     {
-        llOwnerSay("Entering http_request for registration...");
+        //llOwnerSay("Entering http_request for registration...");
         if (method == URL_REQUEST_GRANTED)
         {
             externalURL = body;
@@ -460,7 +460,7 @@ default
                 + "&objecttype=" + llEscapeURL("Bot Controller")
                 + "&amp;timestamp=" + myTimestamp
                 + "&signature=" + llMD5String((string)llGetKey() + myTimestamp, LSLSignaturePIN);
-            llOwnerSay("Registration URL is " + registrationURL + " Form request is: " + formRequest);
+            // llOwnerSay("Registration URL is " + registrationURL + " Form request is: " + formRequest);
             
             registrationRequest = llHTTPRequest(registrationURL, [HTTP_METHOD, "POST", HTTP_MIMETYPE, "application/x-www-form-urlencoded"], 
                 formRequest);
@@ -476,7 +476,7 @@ default
         else if (method == "POST" || method == "GET")
         {
             // incoming request for bot to do things
-            llSay(0, "[Request from server:] " + body);
+            //llSay(0, "[Request from server:] " + body);
             
             list params = llParseStringKeepNulls(llUnescapeURL(body), ["&", "="], []);
             string response; // what we return
@@ -484,10 +484,10 @@ default
             // first parameter will always be be npc=
             
             key NPC = llList2String(params, 1);
-            if (osIsNpc(NPC))
-                llSay(0, "Sanity check: This is an NPC with key " + (string)NPC);
-            else
-                llSay(0, "Sanity check failed: Key " + (string)NPC + " is NOT an NPC");
+            //if (osIsNpc(NPC))
+            //    llSay(0, "Sanity check: This is an NPC with key " + (string)NPC);
+            //else
+            //    llSay(0, "Sanity check failed: Key " + (string)NPC + " is NOT an NPC");
             
             // llOwnerSay("List parsed: " + (string) params);
             
@@ -611,6 +611,10 @@ llSleep(1);
                     osNpcRemove(NPC);
                     response = "Removing " + llKey2Name(NPC);
                 }
+                else if (command == "ping")
+                {
+	                response = "pong";
+	            }
                 else
                 {
                     response = "";
@@ -620,7 +624,7 @@ llSleep(1);
             
             if (response) 
             {
-                llSay(0, "Sending back response for " + 
+                //llSay(0, "Sending back response for " + 
                     command + " '" +
                     response + "'...");
                 llHTTPResponse(id, 200, response);
@@ -717,7 +721,7 @@ state read_inventory
             }
             else 
             {
-                llOwnerSay("Web-server reply: " + body); 
+                //llOwnerSay("Web-server reply: " + body); 
                 if (body == "closed")
                     state default;
                               
@@ -734,7 +738,7 @@ state read_inventory
     
     state_exit()
     {
-        llOwnerSay("state_exit inventory");
+        //llOwnerSay("state_exit inventory");
         llSetTimerEvent(0.0);
     }
 }
