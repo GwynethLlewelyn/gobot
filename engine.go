@@ -170,6 +170,7 @@ func backofficeEngine(w http.ResponseWriter, r *http.Request) {
 		uuid, name, objType, objClass, location, position = "", "", "", "", "", ""
 		xyz []string
 	)
+	cubes = "\t\t\t\t\t\t\t\t\t\t\t\t\t<option value=\"" + NullUUID + "\">Clean selection (let engine figure out next cube)</option>\n"
 
 	// As on backofficeCommands, but a little more complicated
 	for rows.Next() {
@@ -598,8 +599,10 @@ func engine() {
 				// nearestCube is where we go (20140526 changing it to selected cube by user, named destCube)
 				var destCube PositionType
 				
+				// BUG(gwyneth): Somehow, the code below will just be valid once! (20170728)
+				fmt.Println("Destination cube: ", userDestCube.Load().(string))
 				if userDestCube.Load().(string) != NullUUID {
-					destCube = Cubes[userDestCube.Load().(string)]
+					destCube = Cubes[userDestCube.Load().(string)] 
 					log.Println("User has supplied us with a destination cube named:", *destCube.Name.Ptr())
 				} else {
 					destCube = nearestCube
@@ -817,7 +820,7 @@ func engine() {
 				} // endfor i
 				
 				// testing printing the current population (with json we get strange results!)
-				showPopulation(population)
+				// showPopulation(population)
 				
 				//marshalled, err := json.MarshalIndent(population, "", "  ") // debug line just to show population's structure
 				//checkErr(err)
@@ -929,8 +932,8 @@ func engine() {
 					})
 				
 				// TODO(gwyneth): to comment out later (20170727)
-				log.Println("Generation ", generation, " - After ordering by fitness:")
-				showPopulation(population);
+				//log.Println("Generation ", generation, " - After ordering by fitness:")
+				//showPopulation(population);
 				
 				time_end := time.Now()
 				diffTime := time_end.Sub(time_start)
@@ -1122,8 +1125,8 @@ func engine() {
 	*/
 			}  // for generation
 	
-			fmt.Println("Final result (", GENERATIONS, " generation(s)):")
-			showPopulation(population)
+			//fmt.Println("Final result (", GENERATIONS, " generation(s)):")
+			//showPopulation(population)
 
 				// at the end, the first point (after the current position) for the last population should give us the nearest point to move to
 			//  ideally, the remaining points should also have converged
@@ -1268,8 +1271,9 @@ func engine() {
 			// TODO(gwyneth): this was on the original code but no button was there; need to see where it is (20170728)
 				
 				// If the user had set agent + cube, clean them up for now
-				userDestCube.Store(NullUUID)
-				curAgent.Store(NullUUID)
+				//  They never get cleaned! That's the whole point! Unless of course the user WANTS them cleaned (20170729)
+				//userDestCube.Store(NullUUID)
+				//curAgent.Store(NullUUID)
 				
 				time_end := time.Now()
 				diffTime := time_end.Sub(time_start)
@@ -1333,15 +1337,15 @@ func callURL(url string, encodedRequest string) (string, error) {
 	//  HTTP request as per http://moazzam-khan.com/blog/golang-make-http-requests/
 	body := []byte(encodedRequest)
     
-    rs, err := http.Post(url, "body/type", bytes.NewBuffer(body))
+    rs, err := http.Post(url, "application/x-www-form-urlencoded", bytes.NewBuffer(body))
     // Code to process response (written in Get request snippet) goes here
 	
-	if (err != nil) {
+	if err == nil {
 		defer rs.Body.Close()
 		
 		rsBody, err := ioutil.ReadAll(rs.Body)
-		if (err != nil) {
-			errMsg := fmt.Sprintf("Error response from in-world object: %s", err)
+		if err != nil {
+			errMsg := fmt.Sprintf("Error response from in-world object: '%v'", err)
 			log.Println(errMsg)
 			return errMsg, err
 		} else {
@@ -1349,7 +1353,8 @@ func callURL(url string, encodedRequest string) (string, error) {
 			return string(rsBody), err
 		}
 	} else {
-		return "HTTP call to " + url + " failed", err
+		log.Printf("HTTP call to %s failed; error was: '%v'", url, err)
+		return fmt.Sprintf("HTTP call to %s failed; error was: '%v'", url, err), err
 	}
 }
 
