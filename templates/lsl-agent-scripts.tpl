@@ -318,7 +318,7 @@ default
 				else
 				{
 					response = "";
-					llHTTPResponse(id, 405, "Register Agent:  Unknown engine command " + llList2String(params, 0) + ".");
+					llHTTPResponse(id, 405, "Register Agent:  Unknown engine command " + command + ".");
 				}
 			}
 			
@@ -330,11 +330,14 @@ default
 				llHTTPResponse(id, 200, response);
 			}
 			else
-				llSay(0, "Register Agent: ERROR: No response or no command found!");
+			{
+				llSay(0, "Register Agent: ERROR: No response or no command found!'" + command + "' found.");
+				llHTTPResponse(id, 404, "No response or no command '" + command + "' found.");
+			}	
 		}		
 		else
 		{
-			llHTTPResponse(id, 405, "Method unsupported");
+			llHTTPResponse(id, 405, "Method '" + method + "' unsupported.");
 		}
 	}
 		
