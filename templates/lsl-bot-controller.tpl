@@ -602,7 +602,9 @@ llSleep(1);
 					rotation npcCurrRot = osNpcGetRot(newNPC);
 					float angle = llAtan2( llVecMag(pos % (pos + &lt;xRand, yRand, 0&gt;)), pos * (pos + &lt;xRand, yRand, 0&gt;) );
 					rotation npcNewRot = npcCurrRot * llEuler2Rot(&lt;0.0, 0.0, angle&gt;);
-					osNpcSetRot(newNPC, npcNewRot);
+					osNpcSetRot(newNPC, npcNewRot);					
+					osNpcSetProfileImage(newNPC, "botimage"); // this texture MUST be inside the content for this to work!
+					osNpcSetProfileAbout(newNPC, "Hello! I'm just a friendly bot passing by! Please ignore me!");
 
 					response = "New NPC: " + (string)newNPC;
 				}
