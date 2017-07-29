@@ -80,6 +80,9 @@
 												<option value="setHome">setHome</option>
 												<option value="setClass">setClass</option>
 												<option value="setSubType">setSubType</option>
+											</optgroup>
+											<optgroup label="Testing">
+												<option value="ping">ping</option>
 											</optgroup>	
 										</select>
 									</div> <!-- /.form-group -->

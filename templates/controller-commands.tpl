@@ -95,7 +95,10 @@
 												<option value="setHome">setHome</option>
 												<option value="setClass">setClass</option>
 												<option value="setSubType">setSubType</option>
-											</optgroup>	
+											</optgroup>
+											<optgroup label="Testing">
+												<option value="ping">ping</option>
+											</optgroup>
 										</select>
 									</div> <!-- /.form-group -->
 								</div> <!-- /.col-lg.6 -->									  
