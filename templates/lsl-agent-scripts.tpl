@@ -2,8 +2,7 @@
 <p>These three scripts go inside a transparent box, worn by the agent's avatar.</p>
 <p>Copy the first code to a script called <code>register agent.lsl</code> and put it inside the transparent box. When the agent's avatar is rezzed, it will use this script to register with the engine, and be able to receive commands from it.</p>
 
-<pre><code class="language-javascript">
-// Handles agent registration with the external database
+<pre><code class="language-javascript">// Handles agent registration with the external database
 // Send current configuration for agent class, subtype, and energy/money/happiness
 // On the first version it will only work in OpenSimulator and call osNPC functions
 
