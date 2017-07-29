@@ -188,6 +188,7 @@ func backofficeEngine(w http.ResponseWriter, r *http.Request) {
 	// defer rows.Close() // already deferred above
  	
 	var uuidAgent, agentNames = "", ""
+	agentNames = "\t\t\t\t\t\t\t\t\t\t\t\t\t<option value=\"" + NullUUID + "\">Clean selection (let engine figure out next agent)</option>\n"
 	
 	// To-Do: Agent options should also have location etc.
 
