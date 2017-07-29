@@ -549,7 +549,7 @@ func backofficeCommandsExec(w http.ResponseWriter, r *http.Request) {
     log.Printf("Sending to in-world object %s ... %s\n", r.Form.Get("PermURL"), body) // debug
     
     /*
-    rs, err := http.Post(r.Form.Get("PermURL"), "body/type", bytes.NewBuffer(body))
+    rs, err := http.Post(r.Form.Get("PermURL"), "application/x-www-form-urlencoded", bytes.NewBuffer(body))
     // Code to process response (written in Get request snippet) goes here
 
 	defer rs.Body.Close()
@@ -660,7 +660,7 @@ func backofficeControllerCommandsExec(w http.ResponseWriter, r *http.Request) {
     fmt.Printf("Sending to agent %s via Bot Controller %s ... %s\n", r.Form.Get("NPC"),
     	r.Form.Get("PermURL"), body)
     
-    rs, err := http.Post(r.Form.Get("PermURL"), "body/type", bytes.NewBuffer(body))
+    rs, err := http.Post(r.Form.Get("PermURL"), "application/x-www-form-urlencoded", bytes.NewBuffer(body))
     // Code to process response (written in Get request snippet) goes here
 
 	defer rs.Body.Close()
