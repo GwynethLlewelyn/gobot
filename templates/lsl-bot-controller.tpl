@@ -88,6 +88,8 @@ default
 					npc = osNpcCreate(FirstName, LastName, llGetPos() + &lt;5, 5, 0&gt;, notecardName, OS_NPC_SENSE_AS_AGENT);
 					
 					npcNames += [npc];
+					osNpcSetProfileImage(npc, "botimage"); // this texture MUST be inside the content for this to work!
+					osNpcSetProfileAbout(npc, "Hello! I'm just a friendly bot passing by! Please ignore me!");
  
 					llOwnerSay("Created npc " + (string) npc + " from notecard " + notecardName);
 				}
