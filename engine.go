@@ -516,7 +516,7 @@ func engine() {
 				if !masterController.PermURL.Valid || !Agent.OwnerKey.Valid {
 					log.Panic(funcName() + ": Major error with database")
 				}
-				log.Println("master controller URL:", *masterController.PermURL.Ptr(), "Agent OwnerKey:", *Agent.OwnerKey.Ptr())
+				log.Println("master controller URL:", *masterController.PermURL.Ptr(), "Agent:", *Agent.Name.Ptr(), "Agent's OwnerKey:", *Agent.OwnerKey.Ptr())
 				// WHY Agent.Ownerkey?!?! Why not Agent.UUID?!?!?
 				curPos_raw, err := callURL(*masterController.PermURL.Ptr(), "npc=" + *Agent.OwnerKey.Ptr() + "&command=osNpcGetPos")
 				
@@ -542,7 +542,7 @@ func engine() {
 				_, err = fmt.Sscanf(curPos_raw, "%f,%f,%f", &curPos[0], &curPos[1], &curPos[2]) // best way to convert strings to floats! (20170728)
 				checkErr(err)
 				
-				log.Println("Avatar", *Agent.Name.Ptr(), "is at recalculated vectorised position:", curPos)
+				log.Println("Avatar", *Agent.Name.Ptr(), "(", *Agent.Name.Ptr(), ") is at recalculated vectorised position:", curPos)
 				// calculate distances to nearest obstacles
 					
 				// TODO(gwyneth): these might become globals, outside the loop, so we don't need to declare them
@@ -567,7 +567,7 @@ func engine() {
 						nearestObstacle = point
 					}
 				}
-				statusMessage := fmt.Sprintf("Nearest obstacle: '%s' (at %f)", *nearestObstacle.Name.Ptr(), smallestDistanceToObstacle)
+				statusMessage := fmt.Sprintf("Nearest obstacle to agent %s: '%s' (at %f)", *Agent.Name.Ptr(), *nearestObstacle.Name.Ptr(), smallestDistanceToObstacle)
 				fmt.Println(statusMessage)
 				sendMessageToBrowser("status", "", statusMessage + "<br />", "")				
 								
@@ -584,7 +584,7 @@ func engine() {
 						nearestCube = point
 					}
 				}			
-				statusMessage = fmt.Sprintf("Nearest cube: '%s' (at %f)", *nearestCube.Name.Ptr(), smallestDistanceToCube)
+				statusMessage = fmt.Sprintf("Nearest cube to agent %s: '%s' (at %f)", *Agent.Name.Ptr(), *nearestCube.Name.Ptr(), smallestDistanceToCube)
 				fmt.Println(statusMessage)
 				sendMessageToBrowser("status", "", statusMessage + "<br />", "")				
 				
@@ -629,19 +629,22 @@ func engine() {
 				var destCube PositionType
 				
 				// BUG(gwyneth): Somehow, the code below will just be valid once! (20170728)
-				fmt.Println("Destination cube: ", userDestCube.Load().(string))
+				fmt.Println("Destination cube for", *Agent.Name.Ptr(), ":", userDestCube.Load().(string))
 				if userDestCube.Load().(string) != NullUUID {
 					destCube = Cubes[userDestCube.Load().(string)] 
-					log.Println("User has supplied us with a destination cube named:", *destCube.Name.Ptr())
+					log.Println("User has supplied us with a destination cube for ", *Agent.Name.Ptr(), "named:", *destCube.Name.Ptr())
 				} else {
 					destCube = nearestCube
-					log.Println("Automatically selecting nearest cube to go:", *destCube.Name.Ptr())
+					log.Println("Automatically selecting nearest cube for ", *Agent.Name.Ptr(), "to go:", *destCube.Name.Ptr())
 				}
 
 				// This is just a test without the GA (20170725)
+				// Commented out in 20170730 — forgot completely about this!!
+				/*
 				sendMessageToBrowser("status", "", "GA will attempt to move agent '" + *Agent.Name.Ptr() + "' to cube '" + *destCube.Name.Ptr() + "' at position " + *destCube.Position.Ptr(), "")
-				_, _ = callURL(*masterController.PermURL.Ptr(), "npc=" + *Agent.OwnerKey.Ptr() + "&command=osNpcMoveToTarget&vector=<" + *destCube.Position.Ptr() + ">&integer=1")
-				
+				_, err = callURL(*masterController.PermURL.Ptr(), "npc=" + *Agent.OwnerKey.Ptr() + "&command=osNpcMoveToTarget&vector=<" + *destCube.Position.Ptr() + ">&integer=1")
+				checkErr(err)
+				*/
 				time_start := time.Now()
 				
 				// Genetic algorithm for movement
@@ -752,8 +755,9 @@ func engine() {
 							//  include the bounding box only for ray-casting, or else navigation would be impossible!
 							//  Note that probably OpenSim raycasts only via bounding boxes (need confirmation)
 							//  so maybe this is never a good approach. Lots of tests to be done here!
+							// NOTE(gwyneth): The latest version of llRayCast, v3 on BulletSim, does NOT use bounding boxes. Confirmed 20170730.
 						}
-						if (population[i].chromosomes[y].obstacle == RADIUS) {// we might have to use a delta here, because of rounding errors
+						if RADIUS - population[i].chromosomes[y].obstacle < 0.00001 { // we use a delta to deal with rounding errors with floats
 							population[i].chromosomes[y].obstacle = 0.0
 						}
 						
@@ -872,7 +876,7 @@ func engine() {
 			
 			for generation := 0; generation < GENERATIONS; generation++	{
 				// Calculate fitness
-				log.Println("Generating fitness for generation ", generation, " (out of ", GENERATIONS, ") ...")
+				log.Println("Generating fitness for generation ", generation, " (out of ", GENERATIONS, ") for agent", *Agent.Name.Ptr(), "...")
 				
 				// When calculating a new population, each element will have its chromosomes reordered
 				//  So we have no choice but to calculate fitness for all population elements _again_
@@ -966,7 +970,7 @@ func engine() {
 				
 				time_end := time.Now()
 				diffTime := time_end.Sub(time_start)
-				log.Println("CPU time used after sorting this generation:", diffTime)		
+				log.Println("CPU time used after sorting this generation for agent", *Agent.Name.Ptr(), ":", diffTime)		
 
 				// Selection step. We're using fitness rank
 				
@@ -1179,7 +1183,7 @@ func engine() {
 				target = CHROMOSOMES -1
 			}
 			
-			sendMessageToBrowser("status", "info", fmt.Sprintf("Solution: move this agent to (%v, %v, %v) and following %v points. Distance is %v m", population[0].chromosomes[1].x, population[0].chromosomes[1].y, population[0].chromosomes[1].z, target - 1, distanceToTarget), "")
+			sendMessageToBrowser("status", "info", fmt.Sprintf("Solution: move agent %s first to (%v, %v, %v) and follow with %v points. Distance is %v m", *Agent.Name.Ptr(), population[0].chromosomes[1].x, population[0].chromosomes[1].y, population[0].chromosomes[1].z, target - 1, distanceToTarget), "")
 			
 			for p := 1; p < target; p++ { // (skip first point — current location)
 				// because Go is so fast at calculating generations, we need to push the commands to give on a separate goroutine
@@ -1213,9 +1217,9 @@ func engine() {
 			
 			stmt, err := db.Prepare("UPDATE Agents SET BestPath=?, SecondBestPath=?, CurrentTarget=? WHERE UUID=?")
 			if (err != nil) {
-				sendMessageToBrowser("status", "error", fmt.Sprintf("%v: Updating database with best path, second best path, and current target for this agent - prepare failed: %s", 
-					funcName(), err), "")
-				log.Println(funcName(), "Updating database with best path, second best path, and current target for this agent - prepare failed:", err)
+				sendMessageToBrowser("status", "error", fmt.Sprintf("%v: Updating database with best path, second best path, and current target for agent %s - prepare failed: %s", 
+					funcName(), *Agent.Name.Ptr(), err), "")
+				log.Println(funcName(), "Updating database with best path, second best path, and current target for agent ", *Agent.Name.Ptr(), "- prepare failed:", err)
 			}
 
 			marshalled0, err := json.Marshal(population[0])
@@ -1228,21 +1232,23 @@ func engine() {
 						strings.Trim(*destCube.Position.Ptr(), " \t"),
 						*Agent.UUID.Ptr())
 			if (err != nil) {
-				sendMessageToBrowser("status", "error", fmt.Sprintf("%v: Updating database with best path, second best path, and current target for this agent failed: %s", 
-					funcName(), err), "")
-				log.Println(funcName(), "Updating database with best path, second best path, and current target for this agent failed:", err)
+				sendMessageToBrowser("status", "error", fmt.Sprintf("%v: Updating database with best path, second best path, and current target for agent %s failed: %s", 
+					funcName(), *Agent.Name.Ptr(), err), "")
+				log.Println(funcName(), "Updating database with best path, second best path, and current target for agent ", *Agent.Name.Ptr(), " failed:", err)
 			}
 			
 			stmt.Close()
 			db.Close()
 
 			// See if we're close to the target; absolute precision might be impossible
-			
-			curposResult, _ := callURL(*masterController.PermURL.Ptr(), "npc=" + *Agent.OwnerKey.Ptr() + "&command=osNpcGetPos")
-			sendMessageToBrowser("status", "info", fmt.Sprintf("Grid reports that agent is at position: %v", curposResult), "")
-			
 			// first, read position again, just to see what we get
-	
+			curposResult, err := callURL(*masterController.PermURL.Ptr(), "npc=" + *Agent.OwnerKey.Ptr() + "&command=osNpcGetPos")
+			if err == nil {
+				sendMessageToBrowser("status", "info", fmt.Sprintf("Grid reports that agent %s is at position: %v", 
+					*Agent.Name.Ptr(), curposResult), "")
+			} else { 
+				sendMessageToBrowser("status", "error", "We cannot get report from the grid for the position of agent " + *Agent.Name.Ptr(), "") 
+			}
 	/*
 			echo "This is how Destination Cube looks like: <br \>\n";
 			var_dump($destCube);
@@ -1263,15 +1269,20 @@ func engine() {
 			distance = calcDistance(cubePosition, currentPosition);
 							
 			if distance < 1.1 { // we might never get closer than this due to rounding errors
-				sendMessageToBrowser("status", "info", fmt.Sprintf("Within rounding errors of %s , distance is merely %v m; let's sit down", *destCube.Name.Ptr(), distance), "")
+				sendMessageToBrowser("status", "info", fmt.Sprintf("Within rounding errors of %s , distance is merely %v m; let's sit %s down", *destCube.Name.Ptr(), distance, *Agent.Name.Ptr()), "")
 
 				// if we're close enough, sit on it
-				sitResult, _ := callURL(*masterController.PermURL.Ptr(), "npc=" + *Agent.OwnerKey.Ptr() + "&command=osNpcSit&key=" + *destCube.UUID.Ptr() + "&integer=" + OS_NPC_SIT_NOW)
-				sendMessageToBrowser("status", "info", "Result from sitting: " + sitResult + "<br />\n", "")
+				sitResult, err := callURL(*masterController.PermURL.Ptr(), "npc=" + *Agent.OwnerKey.Ptr() + "&command=osNpcSit&key=" + *destCube.UUID.Ptr() + "&integer=" + OS_NPC_SIT_NOW)
+				if (err == nil) {
+					sendMessageToBrowser("status", "info", "Result from " + *Agent.Name.Ptr() + " sitting: " + sitResult, "")
+				} else {
+					sendMessageToBrowser("status", "error", "Grid error when trying to sit " + *Agent.Name.Ptr(), "")					
+				}
 			} else if distance < 2.5 {
-				sendMessageToBrowser("status", "warning", fmt.Sprintf("Very close to %s, distance is now %v m", *destCube.Name.Ptr(), distance), "")
+				sendMessageToBrowser("status", "warning", fmt.Sprintf("%s is very close to %s, distance is now %v m", *Agent.Name.Ptr(), *destCube.Name.Ptr(), distance), "")
 			} else {
-				sendMessageToBrowser("status", "warning", fmt.Sprintf("Still %v m away from %s (%v, %v, %v)",
+				sendMessageToBrowser("status", "warning", fmt.Sprintf("%s is still %v m away from %s (%v, %v, %v)",
+					*Agent.Name.Ptr(),
 					distance,
 					*destCube.Name.Ptr(),
 					cubePosition[0],
