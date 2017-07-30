@@ -409,8 +409,11 @@ func engine() {
 	
 	// prepare data to be saved as a CSV/XML file for later import into Excel and do nice graphics
 	var export_rows []string // we place it here because of potential scope issues later on...
-			
+	
+	// Theoretically endless loop follows (20170730)	
 	for {
+		// Now, the problem with the approach of going through the list of Agents is that new Agents might appear, old
+		//  might be deleted, and then we're stuck! (Remember, the 
 		for i, possibleAgent := range Agents {
 			// check if we should be running or not
 			if engineRunning.Load().(bool) {
@@ -511,11 +514,18 @@ func engine() {
 				
 				//log.Println(masterController, Position, Cubes, Object, Obstacles)
 				if !masterController.PermURL.Valid || !Agent.OwnerKey.Valid {
-					log.Panic("Major error with database")
+					log.Panic(funcName() + ": Major error with database")
 				}
 				log.Println("master controller URL:", *masterController.PermURL.Ptr(), "Agent OwnerKey:", *Agent.OwnerKey.Ptr())
 				// WHY Agent.Ownerkey?!?! Why not Agent.UUID?!?!?
-				curPos_raw, _ := callURL(*masterController.PermURL.Ptr(), "npc=" + *Agent.OwnerKey.Ptr() + "&command=osNpcGetPos")
+				curPos_raw, err := callURL(*masterController.PermURL.Ptr(), "npc=" + *Agent.OwnerKey.Ptr() + "&command=osNpcGetPos")
+				
+				// NOTE(gwyneth): Apparently the web server will reply to ALL possible requests, even if the Agent doesn't exist any more;
+				//  I still don't know what to do in that situation, so we skip this Agent and try the next one (20170730).
+				if curPos_raw == "" || err != nil {
+					break;
+				}
+				
 				sendMessageToBrowser("status", "info", "Grid reports that agent " + *Agent.Name.Ptr() + " is at position: " + curPos_raw + "...</p>\n", "") 
 				log.Println("Grid reports that agent", *Agent.Name.Ptr(), "is at position:", curPos_raw, "...")
 				
@@ -529,7 +539,7 @@ func engine() {
 				// sanitize
 				Agent.Coords_xyz = strings.Split(strings.Trim(curPos_raw, " <>()\t\n\r"), ",")
 				curPos := make([]float64, 3) // to be more similar to the PHP version
-				_, err = fmt.Sscanf(curPos_raw, "<%f, %f, %f>", &curPos[0], &curPos[1], &curPos[2]) // best way to convert strings to floats! (20170728)
+				_, err = fmt.Sscanf(curPos_raw, "%f,%f,%f", &curPos[0], &curPos[1], &curPos[2]) // best way to convert strings to floats! (20170728)
 				checkErr(err)
 				
 				log.Println("Avatar", *Agent.Name.Ptr(), "is at recalculated vectorised position:", curPos)
@@ -1403,11 +1413,11 @@ func movementWorker() {
 			curPos, []float64 {	nextPoint.destPoint.x, nextPoint.destPoint.y, nextPoint.destPoint.z })
 		timeToTravel := walkingDistance / WALKING_SPEED // we might adjust this to assume the in-world calls took some time as well
 		// do not wait too long, though!
-		if timeToTravel > 2.0 {
-			timeToTravel = 2.0
+		if timeToTravel > 5.0 {
+			timeToTravel = 5.0
 		}
-		sendMessageToBrowser("status", "", fmt.Sprintf("[%s]: Next point at %v metres; waiting %v secs for avatar %s to go to next point...<\br>",
-			funcName(), walkingDistance, nextPoint.agentUUID, timeToTravel), "")
+		sendMessageToBrowser("status", "", fmt.Sprintf("[%s]: Next point at %v metres; waiting %v secs for avatar %s to go to next point...<br />",
+			funcName(), walkingDistance, timeToTravel, nextPoint.agentUUID), "")
 	
 		moveResult, err := callURL(nextPoint.masterControllerPermURL, 
 					fmt.Sprintf("npc=%s&command=osNpcMoveToTarget&vector=<%v,%v,%v>&integer=1",

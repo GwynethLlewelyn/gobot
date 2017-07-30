@@ -497,7 +497,7 @@ default
 			string commandTag = llList2String(params, 2);
 			string command = llList2String(params, 3);
 			
-			if (commandTag == "command")
+			if (osIsNpc(NPC) && commandTag == "command")
 			{
 				if (command == "osNpcGetRot")
 				{
@@ -625,6 +625,10 @@ llSleep(1);
 					llHTTPResponse(id, 405, "Unknown engine command " + command + ".");
 				}
 			}
+			else if (!osIsNpc(NPC)) {
+				llSay(0, "Call made for invalid NPC UUID"); 
+				llHTTPResponse(id, 400, "Not an NPC");
+			} 
 			
 			if (response) 
 			{
@@ -633,8 +637,10 @@ llSleep(1);
 				//	  response + "'...");
 				llHTTPResponse(id, 200, response);
 			}
-			else
+			else {
 				llSay(0, "ERROR: No response or no command found!");
+				llHTTPResponse(id, 404, "ERROR: No response or no command found!");
+			}
 		}		
 		else
 		{
