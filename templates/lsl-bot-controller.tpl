@@ -159,7 +159,7 @@ default
 					  "request=delete"
 						+ "&npc=" + msg1
 						+ "&amp;timestamp=" + myTimestamp
-						+ "&signature=" + llMD5String((string)llGetKey() + myTimestamp, 9876));
+						+ "&signature=" + llMD5String((string)llGetKey() + myTimestamp, LSLSignaturePIN));
 			}
 			else if (msg0 == "removeall")
 			{
@@ -173,7 +173,7 @@ default
 					   "request=delete"
 						+ "&npc=" + llList2String(npcNames, i)
 						+ "&amp;timestamp=" + myTimestamp
-						+ "&signature=" + llMD5String((string)llGetKey() + myTimestamp, 9876));
+						+ "&signature=" + llMD5String((string)llGetKey() + myTimestamp, LSLSignaturePIN));
 				}
 				llOwnerSay("All NPCs removed");
 			}
@@ -614,6 +614,13 @@ llSleep(1);
 				{
 					osNpcRemove(NPC);
 					response = "Removing " + llKey2Name(NPC);
+					// send command to web app to remove from database
+					string myTimestamp = llGetTimestamp();
+					deleteRequest = llHTTPRequest(deleteAvatarURL, [HTTP_METHOD, "POST", HTTP_MIMETYPE, "application/x-www-form-urlencoded"],
+					   "request=delete"
+						+ "&npc=" + NPC
+						+ "&amp;timestamp=" + myTimestamp
+						+ "&signature=" + llMD5String((string)llGetKey() + myTimestamp, LSLSignaturePIN));
 				}
 				else if (command == "ping")
 				{
