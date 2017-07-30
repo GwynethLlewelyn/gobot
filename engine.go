@@ -74,6 +74,18 @@ type popType struct {
 	chromosomes []chromosomeType
 }
 
+// movementJob is used in the worker goroutine which processes the points to move the avatars to, which needs to wait until the avatars have moved.
+// Go is so quick in recalculating generations that the avatars never get a chance to reach their destination until we wait for them!
+// So the commands to move the avatars need to go into a separate goroutine, to wait on avatars, while the main engine continues (20170730).
+type movementJob struct {
+	agentUUID string				// Agent UUID to move
+	masterControllerPermURL string	// masterController to use (note that the engine may pick one of several active ones)
+	destPoint chromosomeType		// destination to go to; it's a chromosome so that we get distance information as well to calculate
+									//  for how long we need to sleep until the avatar reaches destination
+}
+// movementJobChannel is the blocking channel to which we write points for the next bot movement
+var movementJobChannel = make(chan movementJob, CHROMOSOMES) // for now, we'll try to 
+
 // Go is tricky. While we send and receive WebSocket messages as it would be expected on a 'normal' 
 //  programming language, we actually have an insane amount of goroutines all in parallel. So what we do is to 
 //  send messages to a 'channel' (Go's version of a semaphore) and receive them from a different one; two sets
@@ -234,6 +246,12 @@ func engine() {
 	fmt.Println("this is the engine starting")
 	sendMessageToBrowser("status", "", "this is the engine <b>starting</b><br />", "") // browser might not even know we're sending messages to it, so this will just gracefully timeout and be ignored
 	
+	// Launch the movement worker goroutine. This is needed because Go is so fast calculating populations that it keeps giving the agents
+	// contradictory movement commands. This uses a blocking channel and calculates how long the avatar needs to reach its destination
+	// and sleeps for that time. There was something similar done in PHP as well, but PHP took long enough recalculating everything, so
+	// it was deemed not to be necessary. (20170730)
+	go movementWorker()
+	
 	// Now, this is a message handler to receive messages while inside the engine, we
 	//  block on a message and run a goroutine in the background, so we can safely continue
 	//  to run the engine without blocking or errors
@@ -327,10 +345,10 @@ func engine() {
 		Agent AgentType // temporary way to store what comes from database
 		Agents map[string]AgentType // we OUGHT to have a type without those strange zero.String, but it's tough to keep two structs in perfect sync (20170722); this is mapped by Agent UUID (20170725)
 		Position PositionType
-		Cubes map[string]PositionType // name to be compatible with PHP version; mapped by UUID (20170725)
+		Cubes map[string]PositionType // name to be compatible with PHP version; mapped by UUID (20170725).
 		Object ObjectType
 		Obstacles []ObjectType
-		masterController PositionType // we will need the most recent Bot Master Controller to send commands! (name is the same as in former PHP code).
+		masterController PositionType // set to the most recent Bot Master Controller to send commands (name is the same as in former PHP code).
 	)
 	// NOTE(gwyneth): The reason why we use maps and not slices (slices may be faster) is just because that way we can
     //  directly address the element by UUID, instead of doing array searches (20170725)
@@ -1154,37 +1172,17 @@ func engine() {
 			sendMessageToBrowser("status", "info", fmt.Sprintf("Solution: move this agent to (%v, %v, %v) and following %v points. Distance is %v m", population[0].chromosomes[1].x, population[0].chromosomes[1].y, population[0].chromosomes[1].z, target - 1, distanceToTarget), "")
 			
 			for p := 1; p < target; p++ { // (skip first point — current location)
-				moveResult, err := callURL(*masterController.PermURL.Ptr(), 
-					fmt.Sprintf("npc=%s&command=osNpcMoveToTarget&vector=<%v,%v,%v>&integer=1",
-					*Agent.OwnerKey.Ptr(), population[0].chromosomes[p].x, population[0].chromosomes[p].y, population[0].chromosomes[p].z))
-				checkErr(err)
+				// because Go is so fast at calculating generations, we need to push the commands to give on a separate goroutine
+				//  which acts as a worker to consume points and wait on them until the avatar has finished walking to the point.
+				// We begin with a channel with the capacity of allowing CHROMOSOMES points, maybe this needs to be adjusted in the future
+				movementJobChannel <- movementJob {
+						agentUUID: *Agent.OwnerKey.Ptr(),
+						masterControllerPermURL: *masterController.PermURL.Ptr(),
+						destPoint: population[0].chromosomes[p],
+					}
 				
-				export_rows = append(export_rows, fmt.Sprintf("%f,%f,%f", population[0].chromosomes[p].x, population[0].chromosomes[p].y, population[0].chromosomes[p].z))
-				sendMessageToBrowser("status", "", fmt.Sprintf("%v: In-world result call from moving to (%v, %v, %v): %s<br />",
-					p, population[0].chromosomes[p].x, population[0].chromosomes[p].y, population[0].chromosomes[p].z, moveResult), "")
-				
-				/*
-				// How much should we wait? Well, we calculate the distance to the next point
-				
-				// ask the avatar where he is
-				$curposResult = callURL($masterController['PermURL'], "npc=" . $agent['OwnerKey'] . "&command=osNpcGetPos");
-				$curPos = explode(",", trim($curPos_raw, " <>()\t\n\r\0\x0B")); // sanitize
-				
-				
-				$walkingDistance = distance(
-					$curPos,
-					array(
-						$population[0][$p]["x"],
-						$population[0][$p]["y"],
-					)
-				);
-				$timeToTravel = ($walkingDistance / WALKING_SPEED) - 1.0; // assume the calls took 1 sec so far
-				// do not wait too long, though!
-				if ($timeToTravel > 2.0)
-					$timeToTravel = 2.0;
-				
-				echo "Next point at $walkingDistance metres; waiting $timeToTravel secs for avatar to go to next point...<\br>";
-				sleep($timeToTravel);*/
+				// This is added for the CSV export, but I don't know if it makes more sense here or in the movementWorker goroutine
+				export_rows = append(export_rows, fmt.Sprintf("%f,%f,%f", population[0].chromosomes[p].x, population[0].chromosomes[p].y, population[0].chromosomes[p].z))	
 			}
 			
 	 		// Save two best solutions for next iteration; attempts to avoid to recalculate always from scratch
@@ -1370,4 +1368,51 @@ fmt.Println("Population")
 		}
 		fmt.Println("\n---")
 	}	
+}
+
+// movementWorker reads one point from the movementJobChannel and sends a command to the avatar to move to it.
+// Then it blocks for the necessary amount of estimated time for the avatar to reach that destination until it reads the next
+// point. Right now, the channel accepts CHROMOSOME jobs at a time (20170730).
+func movementWorker() {
+	var nextPoint movementJob
+	curPos := make([]float64, 3) // no need to allocate this over and over again
+	for { // once started, never stops?
+		nextPoint = <-movementJobChannel // consume one point from the channel
+	
+		// these must be set, nothing like a bit of error checking for eventual bugs elsewhere
+		if nextPoint.masterControllerPermURL == "" || nextPoint.agentUUID == "" {
+			break
+		}
+	
+		// The code below was commented in the PHP code, but we reuse it here as it was because it makes sense! (20170730)	
+
+		// How much should we wait? Well, we calculate the distance to the next point! And since avatars move pretty much
+		//  at the same speed all the time, we can make a rough estimate of the time they will take.
+		
+		// ask the avatar where he is
+		curposResult, err := callURL(nextPoint.masterControllerPermURL, "npc=" + nextPoint.agentUUID + "&command=osNpcGetPos")
+		checkErr(err)
+		// convert string result to array of floats				
+		_, err = fmt.Sscanf(strings.Trim(curposResult, " ()<>"), "%f,%f,%f", &curPos[0], &curPos[1], &curPos[2])
+		checkErr(err)
+		
+		walkingDistance := calcDistance(
+			curPos, []float64 {	nextPoint.destPoint.x, nextPoint.destPoint.y, nextPoint.destPoint.z })
+		timeToTravel := walkingDistance / WALKING_SPEED // we might adjust this to assume the in-world calls took some time as well
+		// do not wait too long, though!
+		if timeToTravel > 2.0 {
+			timeToTravel = 2.0
+		}
+		sendMessageToBrowser("status", "", fmt.Sprintf("[%s]: Next point at %v metres; waiting %v secs for avatar %s to go to next point...<\br>",
+			funcName(), walkingDistance, nextPoint.agentUUID, timeToTravel), "")
+	
+		moveResult, err := callURL(nextPoint.masterControllerPermURL, 
+					fmt.Sprintf("npc=%s&command=osNpcMoveToTarget&vector=<%v,%v,%v>&integer=1",
+					nextPoint.agentUUID, nextPoint.destPoint.x, nextPoint.destPoint.y, nextPoint.destPoint.z))
+		checkErr(err)
+				
+		sendMessageToBrowser("status", "", fmt.Sprintf("[%s]: In-world result call from moving %s to (%v, %v, %v): %s<br />",
+			funcName(), nextPoint.agentUUID, nextPoint.destPoint.x, nextPoint.destPoint.y, nextPoint.destPoint.z, moveResult), "")
+		time.Sleep(time.Second * time.Duration(timeToTravel))
+	}
 }
