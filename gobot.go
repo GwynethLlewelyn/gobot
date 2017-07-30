@@ -127,6 +127,8 @@ func main() {
 	
 	go engine() // run everything but the kitchen sink in parallel; yay goroutines!
 
+	go garbageCollector() // this will periodically remove from the database all old items that are 'dead' (20170730)
+
 	// Now prepare the web interface
 	
 	// Load all templates
