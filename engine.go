@@ -1202,11 +1202,10 @@ func engine() {
 			checkErr(err)
 			
 			stmt, err := db.Prepare("UPDATE Agents SET BestPath=?, SecondBestPath=?, CurrentTarget=? WHERE UUID=?")
-			checkErr(err)
 			if (err != nil) {
-				sendMessageToBrowser("status", "error", fmt.Sprintf("%v: Update agents prepare failed: %s", 
+				sendMessageToBrowser("status", "error", fmt.Sprintf("%v: Updating database with best path, second best path, and current target for this agent - prepare failed: %s", 
 					funcName(), err), "")
-				log.Println(funcName(), "Update agents prepare failed:", err)
+				log.Println(funcName(), "Updating database with best path, second best path, and current target for this agent - prepare failed:", err)
 			}
 
 			marshalled0, err := json.Marshal(population[0])
@@ -1218,7 +1217,11 @@ func engine() {
 						marshalled1,
 						strings.Trim(*destCube.Position.Ptr(), " \t"),
 						*Agent.UUID.Ptr())
-			checkErr(err)
+			if (err != nil) {
+				sendMessageToBrowser("status", "error", fmt.Sprintf("%v: Updating database with best path, second best path, and current target for this agent failed: %s", 
+					funcName(), err), "")
+				log.Println(funcName(), "Updating database with best path, second best path, and current target for this agent failed:", err)
+			}
 			
 			stmt.Close()
 			db.Close()
