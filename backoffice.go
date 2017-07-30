@@ -187,7 +187,7 @@ func backofficeMain(w http.ResponseWriter, r *http.Request) {
 	} else {
 		strObstacles = "No Obstacles."
 	}
-	err = db.QueryRow("select count(*) from Obstacles where Phantom <> 0 AND Type <> 1").Scan(&phantom)
+	err = db.QueryRow("select count(*) from Obstacles where Phantom <> 1 AND Type <> 1").Scan(&phantom)
 	checkErr(err)		
 	if (phantom != 0) {
 		strObstacles += " (" + strconv.Itoa(phantom) + " phantom)"
@@ -288,7 +288,7 @@ func backofficeMain(w http.ResponseWriter, r *http.Request) {
 	// and at last add all the stupid obstacles...
 	var Object ObjectType
 	
-	rows, err = db.Query("SELECT * FROM Obstacles WHERE Phantom <> 0 AND Type <> 1")
+	rows, err = db.Query("SELECT * FROM Obstacles WHERE Phantom <> 1 AND Type <> 1")
 	checkErr(err)
 
 	for rows.Next() {
