@@ -243,8 +243,7 @@ func engine() {
 	curAgent.Store(NullUUID)	//  or the engine will simply go through all agents (20170725)
 	webSocketActive.Store(false)	// as soon as we know that we have a connection to the client, we set this to true (20170728) 
 	
-	fmt.Println("this is the engine starting")
-	sendMessageToBrowser("status", "", "this is the engine <b>starting</b><br />", "") // browser might not even know we're sending messages to it, so this will just gracefully timeout and be ignored
+	sendMessageToBrowser("status", "info", "this is the engine <b>starting</b><br />", "") // browser might not even know we're sending messages to it, so this will just gracefully timeout and be ignored and just appear on the log
 	
 	// Launch the movement worker goroutine. This is needed because Go is so fast calculating populations that it keeps giving the agents
 	// contradictory movement commands. This uses a blocking channel and calculates how long the avatar needs to reach its destination
@@ -312,8 +311,9 @@ func engine() {
 					userDestCube.Store(returnValues[0])
 					curAgent.Store(returnValues[1])
 					
-					log.Println("Destination: ", userDestCube.Load().(string), "Agent:", curAgent.Load().(string))
-					sendMessageToBrowser("status", "", "Received '" + userDestCube.Load().(string) + "|" + curAgent.Load().(string) + "'<br />", "")
+					// Commented out because we know this works and we'll print it out later on anyway (20170730)
+					// log.Println("Destination: ", userDestCube.Load().(string), "Agent:", curAgent.Load().(string))
+					// sendMessageToBrowser("status", "info", "Received '" + userDestCube.Load().(string) + "|" + curAgent.Load().(string) + "'<br />", "")
 				case "engineControl":
 					switch messageSubType {
 						case "start":
@@ -401,10 +401,10 @@ func engine() {
 			
 	// if we have zero agents, we cannot go on!
 	// TODO(gwyneth): be more graceful handling this, because the engine will stop forever this way
+	// TODO(gwyneth): Better to randomly pick an agent from the database, and if none is available, skip a cycle (20170730).
 	if len(Agents) == 0 {
-		log.Println("Error: no Agents found. Engine cannot run. Aborted. Add an Agent and try sending a SIGCONT to restart engine again")
 		sendMessageToBrowser("status", "error", "Error: no Agents found. Engine cannot run. Aborted. Add an Agent and try sending a <code>SIGCONT</code> to restart engine again<br />"," ")
-		return
+		return // ouchie...
 	}
 	
 	// prepare data to be saved as a CSV/XML file for later import into Excel and do nice graphics
@@ -422,7 +422,7 @@ func engine() {
 				// log.Println("userSetAgent is", userSetAgent)
 				if userSetAgent != NullUUID {
 					Agent = Agents[userSetAgent] // this is EVIL. EVIL!!! I love it (20170725)
-					log.Println("Agent got from user: ", Agent)
+					// log.Println("Agent got from user: ", *Agent.Name.Ptr())
 				} else {
 					Agent = possibleAgent	// we may skip one agent or two, but who cares?? Eventually we'll get back to
 											//  that agent again, and we might do all this in parallel anyway (20170725)
@@ -527,7 +527,6 @@ func engine() {
 				}
 				
 				sendMessageToBrowser("status", "info", "Grid reports that agent " + *Agent.Name.Ptr() + " is at position: " + curPos_raw + "...</p>\n", "") 
-				log.Println("Grid reports that agent", *Agent.Name.Ptr(), "is at position:", curPos_raw, "...")
 				
 				// update database with new position
 				_, err = db.Exec("UPDATE Agents SET Position = '" + strings.Trim(curPos_raw, " ()<>") +
@@ -567,9 +566,7 @@ func engine() {
 						nearestObstacle = point
 					}
 				}
-				statusMessage := fmt.Sprintf("Nearest obstacle to agent %s: '%s' (at %f)", *Agent.Name.Ptr(), *nearestObstacle.Name.Ptr(), smallestDistanceToObstacle)
-				fmt.Println(statusMessage)
-				sendMessageToBrowser("status", "", statusMessage + "<br />", "")				
+				sendMessageToBrowser("status", "info", fmt.Sprintf("Nearest obstacle to agent %s: '%s' (at %f)<br />", *Agent.Name.Ptr(), *nearestObstacle.Name.Ptr(), smallestDistanceToObstacle), "")				
 								
 				for k, point := range Cubes {
 					_, err = fmt.Sscanf(*point.Position.Ptr(), "%f, %f, %f", &cubePosition[0], &cubePosition[1], &cubePosition[2])
@@ -584,9 +581,7 @@ func engine() {
 						nearestCube = point
 					}
 				}			
-				statusMessage = fmt.Sprintf("Nearest cube to agent %s: '%s' (at %f)", *Agent.Name.Ptr(), *nearestCube.Name.Ptr(), smallestDistanceToCube)
-				fmt.Println(statusMessage)
-				sendMessageToBrowser("status", "", statusMessage + "<br />", "")				
+				sendMessageToBrowser("status", "info", fmt.Sprintf("Nearest cube to agent %s: '%s' (at %f)<br />", *Agent.Name.Ptr(), *nearestCube.Name.Ptr(), smallestDistanceToCube), "")				
 				
 				/* Idea for the GA
 				
@@ -629,19 +624,19 @@ func engine() {
 				var destCube PositionType
 				
 				// BUG(gwyneth): Somehow, the code below will just be valid once! (20170728)
-				fmt.Println("Destination cube for", *Agent.Name.Ptr(), ":", userDestCube.Load().(string))
+				fmt.Println("User-set destination cube for", *Agent.Name.Ptr(), ":", userDestCube.Load().(string), "(NullUUID means no destination manually set)")
 				if userDestCube.Load().(string) != NullUUID {
 					destCube = Cubes[userDestCube.Load().(string)] 
-					log.Println("User has supplied us with a destination cube for ", *Agent.Name.Ptr(), "named:", *destCube.Name.Ptr())
+					log.Println("User has supplied us with a destination cube for", *Agent.Name.Ptr(), "named:", *destCube.Name.Ptr())
 				} else {
 					destCube = nearestCube
-					log.Println("Automatically selecting nearest cube for ", *Agent.Name.Ptr(), "to go:", *destCube.Name.Ptr())
+					log.Println("Automatically selecting nearest cube for", *Agent.Name.Ptr(), "to go:", *destCube.Name.Ptr())
 				}
 
 				// This is just a test without the GA (20170725)
 				// Commented out in 20170730 — forgot completely about this!!
 				/*
-				sendMessageToBrowser("status", "", "GA will attempt to move agent '" + *Agent.Name.Ptr() + "' to cube '" + *destCube.Name.Ptr() + "' at position " + *destCube.Position.Ptr(), "")
+				sendMessageToBrowser("status", "info", "GA will attempt to move agent '" + *Agent.Name.Ptr() + "' to cube '" + *destCube.Name.Ptr() + "' at position " + *destCube.Position.Ptr(), "")
 				_, err = callURL(*masterController.PermURL.Ptr(), "npc=" + *Agent.OwnerKey.Ptr() + "&command=osNpcMoveToTarget&vector=<" + *destCube.Position.Ptr() + ">&integer=1")
 				checkErr(err)
 				*/
@@ -1216,10 +1211,9 @@ func engine() {
 			checkErr(err)
 			
 			stmt, err := db.Prepare("UPDATE Agents SET BestPath=?, SecondBestPath=?, CurrentTarget=? WHERE UUID=?")
-			if (err != nil) {
+			if err != nil {
 				sendMessageToBrowser("status", "error", fmt.Sprintf("%v: Updating database with best path, second best path, and current target for agent %s - prepare failed: %s", 
 					funcName(), *Agent.Name.Ptr(), err), "")
-				log.Println(funcName(), "Updating database with best path, second best path, and current target for agent ", *Agent.Name.Ptr(), "- prepare failed:", err)
 			}
 
 			marshalled0, err := json.Marshal(population[0])
@@ -1231,10 +1225,9 @@ func engine() {
 						marshalled1,
 						strings.Trim(*destCube.Position.Ptr(), " \t"),
 						*Agent.UUID.Ptr())
-			if (err != nil) {
+			if err != nil {
 				sendMessageToBrowser("status", "error", fmt.Sprintf("%v: Updating database with best path, second best path, and current target for agent %s failed: %s", 
 					funcName(), *Agent.Name.Ptr(), err), "")
-				log.Println(funcName(), "Updating database with best path, second best path, and current target for agent ", *Agent.Name.Ptr(), " failed:", err)
 			}
 			
 			stmt.Close()
@@ -1330,28 +1323,37 @@ func engine() {
     }
     
     // Why should we ever stop? :)
-	sendMessageToBrowser("status", "", "this is the engine <i>stopping</i><br />", "")
-	fmt.Println("this is the engine stopping")
+	sendMessageToBrowser("status", "success", "this is the engine <i>stopping</i><br />", "")
 }
 
-// sendMessageToBrowser sends a string to the internal, global channel which is hopefully picked up by the websocket handling goroutine.
+// sendMessageToBrowser sends a string to the internal, global channel which is picked up by the websocket handling goroutine.
+// In the case of special status messages (info, success, warning, error) we also send the same message to the log.
+// If no WebSocket is active (and we check that in two different ways!) the message simply goes to the log instead.
 func sendMessageToBrowser(msgType string, msgSubType string, msgText string, msgId string) {
 	if webSocketActive.Load().(bool) == true { // no point in sending if nobody is there to receive
 		var msgToSend WsMessageType
 		
 		msgToSend.New(msgType, msgSubType, msgText, msgId)
 		
-		marshalled, err := json.MarshalIndent(msgToSend, "", " ") // debug line just to show msgToSend's structure
-		checkErr(err)
-		
+		// Go idiomatic programming: 'select' parallels the output of the two cases and picks the one which finishes; in this case, either
+		// we are able to send a message via the channel, or there is a timeout, and Go picks what happens first
 		select {
 		    case wsSendMessage <- msgToSend:
-				// fmt.Println("Sent: ", string(marshalled))
-		    case <-time.After(time.Second * 10):
-		        fmt.Println("timeout after 10 seconds; coudn't send:", string(marshalled))
+				// we use this so often as info/warning/error message that we may better send it also to the log
+				if msgType == "status" && msgSubType != "" {
+					log.Println("(connected via WebSocket)", msgType, "-", msgSubType, "-", msgText, "-", msgId)
+				}
+				// 'common' messages have the nil string subtype, so we ignore these and don't log them
+				//  we might have a Debug facility in the future which allows for more verbosity!
+ 		    case <-time.After(time.Second * 10):
+ 		    	// this case exists only if we failed to figure out if the WebSocket is active or not; in most cases, we will
+ 		    	//  be able to know that in advance, but here we catch the edge cases.
+		        log.Println("WebSocket timeout after 10 seconds; coudn't send message:", msgType, "-", msgSubType, "-", msgText, "-", msgId)
 		}
 	} else {
-		log.Println("(no WebSocket connection)", msgType, msgSubType, msgText, msgId)
+		// No active WebSocket? Just dump it to the log. Note that this will be the most usual case, since we hardly expect users to be 24/7 in
+		//  front of their browsers...
+		log.Print("(no WebSocket connection)", msgType, "-", msgSubType, "-", msgText, "-", msgId)
 	}
 }
 
