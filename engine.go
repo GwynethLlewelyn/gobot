@@ -413,7 +413,18 @@ func engine() {
 	// Theoretically endless loop follows (20170730)	
 	for {
 		// Now, the problem with the approach of going through the list of Agents is that new Agents might appear, old
-		//  might be deleted, and then we're stuck! (Remember, the 
+		//  might be deleted, and then we're stuck! (Remember, the updating of the Agents table is done in parallel to this)
+		//  The idea of running goroutines for each Agent will also suffer from the same problem: what if the Agent dies and we don't know
+		//  about it? Of course we can check with a ping first. What about *new* Agents? How do we launch new goroutines for them if we
+		//  don't know about them beforehand? (20170801)
+		
+		// Second approach (20170801): initialise lastAgentRunning with NullUUID; pick one agent from the database; if it's the
+		//  same as before, pick a new one; if the user has provided us with an agent, use that one instead. This will at least provide
+		//  all agents with a chance of running, while allowing new Agents to appear and old ones to die (20170801). The cost of this
+		//  solution is that *some* Agents may not have a chance to run (since they're picked randomly), so we might be a little more
+		//  evil and use some magical pseudo-random generators from Go which allow a sequence of non-repeated random numbers to be
+		//  generated, and try to follow that order if possible, which means reloading the Agent table every cycle, but it might still be
+		//  worth it (20170801).
 		for i, possibleAgent := range Agents {
 			// check if we should be running or not
 			if engineRunning.Load().(bool) {
