@@ -514,7 +514,9 @@ func engine() {
 				
 				//log.Println(masterController, Position, Cubes, Object, Obstacles)
 				if !masterController.PermURL.Valid || !Agent.OwnerKey.Valid {
-					log.Panic(funcName() + ": Major error with database")
+					log.Println(funcName() + ": Major error with database, we need at least one valid masterController and Agent to proceed. Sleeping for 10 seconds for user to correct this...")
+					time.Sleep(10 * time.Second)
+					break // go to next iteration, this one has borked data (20170801)
 				}
 				log.Println("master controller URL:", *masterController.PermURL.Ptr(), "Agent:", *Agent.Name.Ptr(), "Agent's OwnerKey:", *Agent.OwnerKey.Ptr())
 				// WHY Agent.Ownerkey?!?! Why not Agent.UUID?!?!?
