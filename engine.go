@@ -690,6 +690,8 @@ func engine() {
 				// calculate the center point between current position and target
 				// needs to be global for path sorting function (Ruhe's algorithm)
 				// NOTE(gwyneth): in PHP we had a global $centerPoint; Go uses capital letters to designate globality (20170726).
+				// NOTE(gwyneth): Ruhe's algorithm is not used any more, so we can safely forget this declaration (20170805).
+				/*
 				CenterPoint := struct {
 					x, y, z float64
 				}{
@@ -697,6 +699,9 @@ func engine() {
 					y: 0.5 * (cubePosition[1] + curPos[1]),
 					z: 0.5 * (cubePosition[2] + curPos[2]),
 				}
+				
+				sendMessageToBrowser("status", "", fmt.Sprintf("Center point for this iteration is <%f, %f, %f><br/>", CenterPoint.x, CenterPoint.y, CenterPoint.z), "")
+				*/
 				
 				// Now generate from scratch the remaining population
 							 
@@ -732,7 +737,7 @@ func engine() {
 								population[i].chromosomes[y].y = 255.0
 							}
 							
-							population[i].chromosomes[y].z = math.Trunc(CenterPoint.z) // will work for flat terrain but not more
+							population[i].chromosomes[y].z = math.Trunc((cubePosition[2] + curPos[2])/2) // will work for flat terrain but not more
 						}
 						
 						// To implement Shi & Cui (2010) or Qu et al. (2013) we add these distances to obstacles together
@@ -861,7 +866,7 @@ func engine() {
 				} // endfor i
 				
 				// testing printing the current population (with json we get strange results!)
-				// showPopulation(population)
+				showPopulation(population)
 				
 				//marshalled, err := json.MarshalIndent(population, "", "  ") // debug line just to show population's structure
 				//checkErr(err)
@@ -1191,38 +1196,40 @@ func engine() {
 				target = CHROMOSOMES -1
 			}
 			
-			sendMessageToBrowser("status", "info", fmt.Sprintf("Solution: move agent %s first to (%v, %v, %v) and follow with %v points. Distance is %v m", *Agent.Name.Ptr(), population[0].chromosomes[1].x, population[0].chromosomes[1].y, population[0].chromosomes[1].z, target - 1, distanceToTarget), "")
+			sendMessageToBrowser("status", "info", fmt.Sprintf("Solution: move agent %s first to (%v, %v, %v) [and follow with %v points]. Distance is %v m", *Agent.Name.Ptr(), population[0].chromosomes[1].x, population[0].chromosomes[1].y, population[0].chromosomes[1].z, target - 1, distanceToTarget), "")
 			
-			for p := 1; p < target; p++ { // (skip first point — current location)
-				// because Go is so fast at calculating generations, we need to push the commands to give on a separate goroutine
-				//  which acts as a worker to consume points and wait on them until the avatar has finished walking to the point.
-				// We begin with a channel with the capacity of allowing CHROMOSOMES points, maybe this needs to be adjusted in the future
-				movementJobChannel <- movementJob {
+			// BUG(gwyneth): Major bug here! Possibly corrected with new approach. (20170805)
+			// Basically, we generate the path for the next CHROMOSOME points. But we just need to move the avatar to the NEXT point
+			// (i.e. chromosomes[1], because we will recalculate the whole path from then on. On the other hand, we need to print out
+			// what the best path was so far, etc. and this will enter the calculations for the next batch of generations and so forth.
+			// Nevertheless, the command to move the avatar is just for the NEXT point. (20170805) This should eliminate the 'quirks' of
+			// the avatar moving in zig-zag and sometimes even backwards... and hopefully it will avoid them to move towards 0,0,Z...
+			
+			// Possibly Go is much faster at calculating new paths than the avatar is in moving to the next one.
+
+			// because Go is so fast at calculating generations, we need to push the commands to give on a separate goroutine
+			//  which acts as a worker to consume points and wait on them until the avatar has finished walking to the point.
+			// We begin with a channel with the capacity of allowing CHROMOSOMES points, maybe this needs to be adjusted in the future
+			// Possibly we just need to move to the NEXT point, so the channel capacity would be just one! (20170805)
+			movementJobChannel <- movementJob {
 						agentUUID: *Agent.OwnerKey.Ptr(),
 						masterControllerPermURL: *masterController.PermURL.Ptr(),
-						destPoint: population[0].chromosomes[p],
-					}
-				
-				// This is added for the CSV export, but I don't know if it makes more sense here or in the movementWorker goroutine
-				export_rows = append(export_rows, fmt.Sprintf("%f,%f,%f", population[0].chromosomes[p].x, population[0].chromosomes[p].y, population[0].chromosomes[p].z))	
+						destPoint: population[0].chromosomes[1],
 			}
 			
+			for p := 1; p < target; p++ { // (skip first point — current location)
+				// This is added for the CSV export, but I don't know if it makes more sense here or in the movementWorker goroutine
+				export_rows = append(export_rows, fmt.Sprintf("%f,%f,%f;", population[0].chromosomes[p].x, population[0].chromosomes[p].y, population[0].chromosomes[p].z))
+			}
+						
 	 		// Save two best solutions for next iteration; attempts to avoid to recalculate always from scratch
 	 		// We do it after moving because the avatar needs a few seconds to reach destination 		
 	 		
-	 		// now update our database with the best paths and the target
-	 		/*$SQL = "UPDATE Agents SET BestPath='" . base64_encode(serialize($population[0])) 
-	 			. "', SecondBestPath='" . base64_encode(serialize($population[1]))
-	 			. "', CurrentTarget='" . strtr($destCube['Position'], " ", "")
-				. "' WHERE UUID='" . $agent['UUID'] . "'";
-				*/
-				
-	//		echo "Updating database with best path, second best path, and current target for this agent...<br />";
-
 			// Reopen database, we need to write out the new Agent data
 			db, err := sql.Open(PDO_Prefix, GoBotDSN)
 			checkErr(err)
 			
+	 		// now update our database with the best paths and the target
 			stmt, err := db.Prepare("UPDATE Agents SET BestPath=?, SecondBestPath=?, CurrentTarget=? WHERE UUID=?")
 			if err != nil {
 				sendMessageToBrowser("status", "error", fmt.Sprintf("%v: Updating database with best path, second best path, and current target for agent %s - prepare failed: %s", 
