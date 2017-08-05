@@ -497,7 +497,7 @@ default
 			string commandTag = llList2String(params, 2);
 			string command = llList2String(params, 3);
 			
-			if (osIsNpc(NPC) && commandTag == "command")
+			if (commandTag == "command" && (osIsNpc(NPC) || command == "osNpcCreate" || command == "ping"))
 			{
 				if (command == "osNpcGetRot")
 				{
