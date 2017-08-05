@@ -662,6 +662,7 @@ func backofficeControllerCommandsExec(w http.ResponseWriter, r *http.Request) {
     
     rs, err := http.Post(r.Form.Get("PermURL"), "application/x-www-form-urlencoded", bytes.NewBuffer(body))
     // Code to process response (written in Get request snippet) goes here
+    checkErr(err)
 
 	defer rs.Body.Close()
 	
