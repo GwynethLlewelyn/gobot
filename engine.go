@@ -551,10 +551,12 @@ func engine() {
 				// sanitize
 				Agent.Coords_xyz = strings.Split(strings.Trim(curPos_raw, " <>()\t\n\r"), ",")
 				curPos := make([]float64, 3) // to be more similar to the PHP version
-				_, err = fmt.Sscanf(curPos_raw, "%f,%f,%f", &curPos[0], &curPos[1], &curPos[2]) // best way to convert strings to floats! (20170728)
+				
+				_, err = fmt.Sscanf(curPos_raw, "<%f, %f, %f>", &curPos[0], &curPos[1], &curPos[2]) // best way to convert strings to floats! (20170728)
 				checkErr(err)
 				
-				log.Println("Avatar", *Agent.Name.Ptr(), "(", *Agent.Name.Ptr(), ") is at recalculated vectorised position:", curPos)
+				sendMessageToBrowser("status", "", fmt.Sprintf("Avatar %s (%s) raw position was %v; recalculated to: %v<br />", *Agent.Name.Ptr(), *Agent.Name.Ptr(), curPos_raw, curPos), "")
+				
 				// calculate distances to nearest obstacles
 					
 				// TODO(gwyneth): these might become globals, outside the loop, so we don't need to declare them
