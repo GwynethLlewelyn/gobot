@@ -7,6 +7,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"github.com/fatih/color" // allows ANSI escaping for logging in colour! (20170806)
 	"golang.org/x/net/websocket"
 	"gopkg.in/guregu/null.v3/zero"
 	"html/template"
@@ -121,6 +122,8 @@ func serveWs(ws *websocket.Conn) {
 			sendMessage := <-wsSendMessage
 			
 			if err = websocket.JSON.Send(ws, sendMessage); err != nil {
+				color.Set(color.FgRed)
+				defer color.Unset()
 				log.Println("Can't send; error:", err)
 				break
 			}
@@ -132,6 +135,8 @@ func serveWs(ws *websocket.Conn) {
 
 	for {
 		if err = websocket.JSON.Receive(ws, &receiveMessage); err != nil {
+			color.Set(color.FgRed)
+			defer color.Unset()
 			log.Println("Can't receive; error:", err)
 			break
 		}
@@ -291,14 +296,18 @@ func engine() {
 									sendMessageToBrowser("htmlControl", "disable", "", "stopEngine")
 							}
 						case "gone": // The client has gone, we have no more websocket for this one (20170704)
+							color.Set(color.FgCyan)
 							fmt.Println("Client just told us that it went away, we continue on our own")
+							color.Unset()
 							webSocketActive.Store(false)
 						default: // no other special functions for now, just echo what the client has sent...
 							//unknownMessage := *receiveMessage.Text.Ptr() // better not...
 							//fmt.Println("Received from client unknown status message with subtype",
 							//	messageSubType, "and text: >>", unknownMessage, "<< — ignoring...")
+							color.Set(color.FgYellow)
 							fmt.Println("Received from client unknown status message with subtype",
 								messageSubType, " — ignoring...")
+							color.Unset()
 					}
 				case "formSubmit":
 					var messageText string
@@ -332,7 +341,9 @@ func engine() {
 					sendMessageToBrowser("status", "", "Engine " + messageSubType + "<br />", "")
 							
 				default:
+					color.Set(color.FgYellow)
 					log.Println("Unknown message type", messageType)
+					color.Unset()
 			}
 		}
 	}()
@@ -525,12 +536,17 @@ func engine() {
 				
 				//log.Println(masterController, Position, Cubes, Object, Obstacles)
 				if !masterController.PermURL.Valid || !Agent.OwnerKey.Valid {
+					color.Set(color.FgRed)
 					log.Println(funcName() + ": Major error with database, we need at least one valid masterController and Agent to proceed. Sleeping for 10 seconds for user to correct this...")
+					color.Unset()
 					time.Sleep(10 * time.Second)
 					break // go to next iteration, this one has borked data (20170801)
 				}
 				log.Println("master controller URL:", *masterController.PermURL.Ptr(), "Agent:", *Agent.Name.Ptr(), "Agent's OwnerKey:", *Agent.OwnerKey.Ptr())
 				// WHY Agent.Ownerkey?!?! Why not Agent.UUID?!?!?
+				// The answer is NOT obvious: NPCs created by the master controller are owned by the avatar owning the master controller
+				//  and somehow to contact them we need the ownerkey, which is weird; newer versions of OpenSim are supposed to have fixed
+				//  this by adding a flag for NPCs not to be owned by anyone. Using this might mean to change a lot of code! (20170806)
 				curPos_raw, err := callURL(*masterController.PermURL.Ptr(), "npc=" + *Agent.OwnerKey.Ptr() + "&command=osNpcGetPos")
 				
 				// NOTE(gwyneth): Apparently the web server will reply to ALL possible requests, even if the Agent doesn't exist any more;
@@ -539,7 +555,7 @@ func engine() {
 					break;
 				}
 				
-				sendMessageToBrowser("status", "info", "Grid reports that agent " + *Agent.Name.Ptr() + " is at position: " + curPos_raw + "...</p>\n", "") 
+				sendMessageToBrowser("status", "info", "Grid reports that agent '" + *Agent.Name.Ptr() + "' is at position: " + curPos_raw + "...</p>\n", "") 
 				
 				// update database with new position
 				_, err = db.Exec("UPDATE Agents SET Position = '" + strings.Trim(curPos_raw, " ()<>") +
@@ -555,7 +571,7 @@ func engine() {
 				_, err = fmt.Sscanf(curPos_raw, "<%f, %f, %f>", &curPos[0], &curPos[1], &curPos[2]) // best way to convert strings to floats! (20170728)
 				checkErr(err)
 				
-				sendMessageToBrowser("status", "", fmt.Sprintf("Avatar %s (%s) raw position was %v; recalculated to: %v<br />", *Agent.Name.Ptr(), *Agent.Name.Ptr(), curPos_raw, curPos), "")
+				sendMessageToBrowser("status", "", fmt.Sprintf("Avatar '%s' (%s) raw position was %v; recalculated to: %v<br />", *Agent.Name.Ptr(), *Agent.Name.Ptr(), curPos_raw, curPos), "")
 				
 				// calculate distances to nearest obstacles
 					
@@ -566,7 +582,11 @@ func engine() {
 				var nearestCube PositionType
 				obstaclePosition := make([]float64, 3)
 				cubePosition := make([]float64, 3)
+
 				var distance float64
+				
+				// pretty-print some nice tables for nearest obstacles and nearest cubes (20170806).				
+				outputBuffer := "<div class='table-responsive'><table class='table table-striped table-bordered table-hover'><caption>Obstacles</caption><thead><tr><th>#</th><th>Name</th><th>Position</th><th>Distance</th></tr></thead><tbody>\n"
 				
 				for k, point := range Obstacles {
 					_, err = fmt.Sscanf(*point.Position.Ptr(), "%f, %f, %f", &obstaclePosition[0], &obstaclePosition[1], &obstaclePosition[2])
@@ -574,29 +594,35 @@ func engine() {
 					
 					distance = calcDistance(curPos, obstaclePosition)
 					
-					fmt.Println("Obstacle", k, " - ", *point.Name.Ptr(), " - ", *point.Position.Ptr(), "- Distance:", distance)
+					outputBuffer += fmt.Sprintf("<tr><td>%v</td><td>%s</td><td>%v</td><td>%.4f</td></tr>\n", k, *point.Name.Ptr(), *point.Position.Ptr(), distance)
 					
 					if distance < smallestDistanceToObstacle {
 						smallestDistanceToObstacle = distance
 						nearestObstacle = point
 					}
 				}
-				sendMessageToBrowser("status", "info", fmt.Sprintf("Nearest obstacle to agent %s: '%s' (distance: %f m)<br />", *Agent.Name.Ptr(), *nearestObstacle.Name.Ptr(), smallestDistanceToObstacle), "")				
-								
+				outputBuffer += "</tbody><tfoot><tr><th>#</th><th>Name</th><th>Position</th><th>Distance</th></tr></tfoot></table></div>\n"
+				sendMessageToBrowser("status", "", outputBuffer, "")
+				sendMessageToBrowser("status", "info", fmt.Sprintf("Nearest obstacle to agent %s: '%s' (distance: %.4f m)<br />", *Agent.Name.Ptr(), *nearestObstacle.Name.Ptr(), smallestDistanceToObstacle), "")				
+				
+				// now pretty-print nearest cubes (20170806).				
+				outputBuffer = "<div class='table-responsive'><table class='table table-striped table-bordered table-hover'><caption>Cubes (Positions)</caption><thead><tr><th>UUID</th><th>Name</th><th>Position</th><th>Distance</th></tr></thead><tbody>\n"
 				for k, point := range Cubes {
 					_, err = fmt.Sscanf(*point.Position.Ptr(), "%f, %f, %f", &cubePosition[0], &cubePosition[1], &cubePosition[2])
 					checkErr(err)
 					
 					distance = calcDistance(curPos, cubePosition)
 					
-					fmt.Println("Cube", k, " - ", *point.Name.Ptr(), " - ", *point.Position.Ptr(), "- Distance:", distance)
+					outputBuffer += fmt.Sprintf("<tr><td>%v</td><td>%s</td><td>%v</td><td>%.4f</td></tr>\n", k, *point.Name.Ptr(), *point.Position.Ptr(), distance)
 					
 					if distance < smallestDistanceToCube {
 						smallestDistanceToCube = distance
 						nearestCube = point
 					}
-				}			
-				sendMessageToBrowser("status", "info", fmt.Sprintf("Nearest cube to agent %s: '%s' (distance: %f m)<br />", *Agent.Name.Ptr(), *nearestCube.Name.Ptr(), smallestDistanceToCube), "")				
+				}
+				outputBuffer += "</tbody><tfoot><tr><th>UUID</th><th>Name</th><th>Position</th><th>Distance</th></tr></tfoot></table></div>\n"
+				sendMessageToBrowser("status", "", outputBuffer, "")	
+				sendMessageToBrowser("status", "info", fmt.Sprintf("Nearest cube to agent %s: '%s' (distance: %.4f m)<br />", *Agent.Name.Ptr(), *nearestCube.Name.Ptr(), smallestDistanceToCube), "")				
 				
 				/* Idea for the GA
 				
@@ -638,7 +664,10 @@ func engine() {
 				// nearestCube is where we go (20140526 changing it to selected cube by user, named destCube)
 				var destCube PositionType
 				
-				// BUG(gwyneth): Somehow, the code below will just be valid once! (20170728)
+				// BUG(gwyneth): Somehow, the code below will just be valid once! (20170728) - this needs more testing, I think
+				//  it was a clear somewhere at the end of the iteration, but we got to check it. Also, the submit button for
+				//  changing cube/agent does not go away and the visual feedback is weird (20170806)
+				color.Set(color.FgCyan)
 				fmt.Println("User-set destination cube for", *Agent.Name.Ptr(), ":", userDestCube.Load().(string), "(NullUUID means no destination manually set)")
 				if userDestCube.Load().(string) != NullUUID {
 					destCube = Cubes[userDestCube.Load().(string)] 
@@ -647,7 +676,8 @@ func engine() {
 					destCube = nearestCube
 					log.Println("Automatically selecting nearest cube for", *Agent.Name.Ptr(), "to go:", *destCube.Name.Ptr())
 				}
-
+				color.Unset()
+				
 				// This is just a test without the GA (20170725)
 				// Commented out in 20170730 — forgot completely about this!!
 				/*
@@ -868,11 +898,7 @@ func engine() {
 				} // endfor i
 				
 				// testing printing the current population (with json we get strange results!)
-				showPopulation(population)
-				
-				//marshalled, err := json.MarshalIndent(population, "", "  ") // debug line just to show population's structure
-				//checkErr(err)
-				//log.Println("Population", string(marshalled))
+				// showPopulation(population, "Current population")
 				
 				// We're not finished yet! We need to calculate angles between all points (duh!) to establish smoothness
 				// Let's do it from scratch:		
@@ -884,6 +910,7 @@ func engine() {
 						population[i].chromosomes[j].angle = 
 							math.Atan2(population[i].chromosomes[j].y - population[i].chromosomes[j-1].y, 
 							population[i].chromosomes[j].x - population[i].chromosomes[j-1].x)
+						// sendMessageToBrowser("status", "", fmt.Sprintf("Pop %v, Chromosome %v - Angle is %v<br />", i, j, population[i].chromosomes[j].angle), "")
 					}
 				}
 
@@ -891,7 +918,7 @@ func engine() {
 			
 			for generation := 0; generation < GENERATIONS; generation++	{
 				// Calculate fitness
-				log.Println("Generating fitness for generation ", generation, " (out of ", GENERATIONS, ") for agent", *Agent.Name.Ptr(), "...")
+				// log.Println("Generating fitness for generation ", generation, " (out of ", GENERATIONS, ") for agent", *Agent.Name.Ptr(), "...")
 				
 				// When calculating a new population, each element will have its chromosomes reordered
 				//  So we have no choice but to calculate fitness for all population elements _again_
@@ -970,10 +997,7 @@ func engine() {
 				echo "<p>CPU time used after fitness calculations for generation " . $generation . ": " . $time
 					. " seconds</p>\n";
 				
-				
-				echo "Generation " . $generation . " - Before ordering: <br />\n";
-				showPopulation(population);
-				echo "<br />\n";
+				showPopulation(population, fmt.Sprintf("Generation %v] - Before ordering:", generation))
 				*/
 
 				// Now we do genetics!
@@ -987,12 +1011,11 @@ func engine() {
 					})
 				
 				// TODO(gwyneth): to comment out later (20170727)
-				//log.Println("Generation ", generation, " - After ordering by fitness:")
-				//showPopulation(population);
+				showPopulation(population, fmt.Sprintf("Population for agent '%s' [generation %v] after calculating fitness and ordering by fitness follows:", *Agent.Name.Ptr(), generation))
 				
 				time_end := time.Now()
 				diffTime := time_end.Sub(time_start)
-				log.Println("CPU time used after sorting this generation for agent", *Agent.Name.Ptr(), ":", diffTime)		
+				sendMessageToBrowser("status", "", fmt.Sprintf("CPU time used after sorting generation %v for agent '%s': %v<br />\n", generation, *Agent.Name.Ptr(), diffTime), "")		
 
 				// Selection step. We're using fitness rank
 				
@@ -1180,8 +1203,7 @@ func engine() {
 	*/
 			}  // for generation
 	
-			//fmt.Println("Final result (", GENERATIONS, " generation(s)):")
-			//showPopulation(population)
+			//showPopulation(population, fmt.Sprintf("Final result (%v generation(s)):", GENERATIONS))
 
 				// at the end, the first point (after the current position) for the last population should give us the nearest point to move to
 			//  ideally, the remaining points should also have converged
@@ -1205,7 +1227,7 @@ func engine() {
 				target = CHROMOSOMES -1
 			}
 			
-			sendMessageToBrowser("status", "info", fmt.Sprintf("Solution: move agent %s first to (%v, %v, %v) [and follow with %v points]. Distance is %v m", *Agent.Name.Ptr(), population[0].chromosomes[1].x, population[0].chromosomes[1].y, population[0].chromosomes[1].z, target - 1, distanceToTarget), "")
+			sendMessageToBrowser("status", "info", fmt.Sprintf("Solution: move agent %s first to (%v, %v, %v) [and follow with %v points]. Distance is %.4f m", *Agent.Name.Ptr(), population[0].chromosomes[1].x, population[0].chromosomes[1].y, population[0].chromosomes[1].z, target - 1, distanceToTarget), "")
 			
 			// BUG(gwyneth): Major bug here! Possibly corrected with new approach. (20170805)
 			// Basically, we generate the path for the next CHROMOSOME points. But we just need to move the avatar to the NEXT point
@@ -1291,7 +1313,7 @@ func engine() {
 			distance = calcDistance(cubePosition, currentPosition);
 							
 			if distance < 1.1 { // we might never get closer than this due to rounding errors
-				sendMessageToBrowser("status", "info", fmt.Sprintf("Within rounding errors of %s , distance is merely %v m; let's sit %s down", *destCube.Name.Ptr(), distance, *Agent.Name.Ptr()), "")
+				sendMessageToBrowser("status", "info", fmt.Sprintf("Within rounding errors of %s, distance is merely %.4f m; let's sit %s down", *destCube.Name.Ptr(), distance, *Agent.Name.Ptr()), "")
 
 				// if we're close enough, sit on it
 				sitResult, err := callURL(*masterController.PermURL.Ptr(), "npc=" + *Agent.OwnerKey.Ptr() + "&command=osNpcSit&key=" + *destCube.UUID.Ptr() + "&integer=" + OS_NPC_SIT_NOW)
@@ -1301,9 +1323,9 @@ func engine() {
 					sendMessageToBrowser("status", "error", "Grid error when trying to sit " + *Agent.Name.Ptr(), "")					
 				}
 			} else if distance < 2.5 {
-				sendMessageToBrowser("status", "warning", fmt.Sprintf("%s is very close to %s, distance is now %v m", *Agent.Name.Ptr(), *destCube.Name.Ptr(), distance), "")
+				sendMessageToBrowser("status", "warning", fmt.Sprintf("%s is very close to %s, distance is now %.4f m", *Agent.Name.Ptr(), *destCube.Name.Ptr(), distance), "")
 			} else {
-				sendMessageToBrowser("status", "warning", fmt.Sprintf("%s is still %v m away from %s (%v, %v, %v)",
+				sendMessageToBrowser("status", "warning", fmt.Sprintf("%s is still %.4f m away from %s (%v, %v, %v)",
 					*Agent.Name.Ptr(),
 					distance,
 					*destCube.Name.Ptr(),
@@ -1322,7 +1344,6 @@ func engine() {
 				
 				time_end := time.Now()
 				diffTime := time_end.Sub(time_start)
-				log.Println("CPU time used", diffTime)
 				sendMessageToBrowser("status", "info", fmt.Sprintf("CPU time used: %v", diffTime), "")
 				
 				// output something to console so that we know this is being run in parallel
@@ -1370,6 +1391,20 @@ func sendMessageToBrowser(msgType string, msgSubType string, msgText string, msg
 		    case wsSendMessage <- msgToSend:
 				// we use this so often as info/warning/error message that we may better send it also to the log
 				if msgType == "status" && msgSubType != "" {
+					switch msgSubType {
+						case "info":
+							color.Set(color.FgCyan)
+							defer color.Unset()
+						case "success":
+							color.Set(color.FgGreen)
+							defer color.Unset()
+						case "warning":
+							color.Set(color.FgYellow)
+							defer color.Unset()
+						case "error":
+							color.Set(color.FgRed)
+							defer color.Unset()					
+					}
 					log.Println("(connected via WebSocket)", msgType, "-", msgSubType, "-", msgText, "-", msgId)
 				}
 				// 'common' messages have the nil string subtype, so we ignore these and don't log them
@@ -1377,7 +1412,9 @@ func sendMessageToBrowser(msgType string, msgSubType string, msgText string, msg
  		    case <-time.After(time.Second * 10):
  		    	// this case exists only if we failed to figure out if the WebSocket is active or not; in most cases, we will
  		    	//  be able to know that in advance, but here we catch the edge cases.
+ 		    	color.Set(color.FgYellow) 		    	
 		        log.Println("WebSocket timeout after 10 seconds; coudn't send message:", msgType, "-", msgSubType, "-", msgText, "-", msgId)
+		        color.Unset()
 		}
 	} else {
 		// No active WebSocket? Just dump it to the log. Note that this will be the most usual case, since we hardly expect users to be 24/7 in
@@ -1400,33 +1437,39 @@ func callURL(url string, encodedRequest string) (string, error) {
 		rsBody, err := ioutil.ReadAll(rs.Body)
 		if err != nil {
 			errMsg := fmt.Sprintf("Error response from in-world object: '%v'", err)
+			color.Set(color.FgRed)
 			log.Println(errMsg)
+			color.Unset()
 			return errMsg, err
 		} else {
 		    // log.Printf("Reply from in-world object %s\n", rsBody)
 			return string(rsBody), err
 		}
 	} else {
+		color.Set(color.FgRed)
 		log.Printf("HTTP call to %s failed; error was: '%v'", url, err)
+		color.Unset()
 		return fmt.Sprintf("HTTP call to %s failed; error was: '%v'", url, err), err
 	}
 }
 
 // showPopulation is adapted from the PHP code to pretty-print a whole population
 // new version creates HTML tables
-func showPopulation(popul []popType) {
-	outputBuffer := "<div class='table-responsive'><table class='table table-striped table-bordered table-hover'><caption>Population</caption><thead><tr><th>Pop #</th><th>Fitness</th><th>Chromossomes</th></tr></thead><tbody>"
+func showPopulation(popul []popType, popCaption string) {
+	outputBuffer := "<div class='table-responsive'><table class='table table-striped table-bordered table-hover'><caption>" + popCaption + "</caption><thead><tr><th>Pop #</th><th>Fitness</th><th>Chromossomes</th></tr></thead><tbody>\n"
 	
 	for p, pop := range popul {
-		outputBuffer += fmt.Sprintf("<tr><td>%v</td><td>%v</td>", p, pop.fitness)					
-		for c, chr := range pop.chromosomes {
-			outputBuffer += fmt.Sprintf("<td>[%v]</td><td>(%v, %v, %v) Distance: %v Obstacle: %v Angle: %v Smoothness %v</td>",
-				c, chr.x, chr.y, chr.z, chr.distance, chr.obstacle, chr.angle, chr.smoothness)
+		outputBuffer += fmt.Sprintf("<tr><td>%v</td><td>%.4f</td>", p, pop.fitness)					
+		for _, chr := range pop.chromosomes {
+			outputBuffer += fmt.Sprintf("<td>(%v, %v, %v)<br />Distance: %.4f<br />Obstacle: %.4f<br />Angle: %.4f<br />Smoothness %.4f</td>",
+				chr.x, chr.y, chr.z, chr.distance, chr.obstacle, chr.angle, chr.smoothness)
 		}
 		outputBuffer += "</tr>\n"
 	}
-	outputBuffer += "<tfoot><tr><th>Pop #</th><th>Fitness</th><th>Chromossomes</th></tr></tfoot></tbody></table></div>\n"
+	outputBuffer += "</tbody><tfoot><tr><th>Pop #</th><th>Fitness</th><th>Chromossomes</th></tr></tfoot></table></div>\n"
+	color.Set(color.FgBlue)
 	sendMessageToBrowser("status", "", outputBuffer, "")
+	color.Unset()
 }
 
 // movementWorker reads one point from the movementJobChannel and sends a command to the avatar to move to it.
@@ -1462,7 +1505,7 @@ func movementWorker() {
 		if timeToTravel > 5.0 {
 			timeToTravel = 5.0
 		}
-		sendMessageToBrowser("status", "", fmt.Sprintf("[%s]: Next point at %v metres; waiting %v secs for avatar %s to go to next point...<br />",
+		sendMessageToBrowser("status", "", fmt.Sprintf("[%s]: Next point at %.4f metres; waiting %.4f secs for avatar %s to go to next point...<br />",
 			funcName(), walkingDistance, timeToTravel, nextPoint.agentUUID), "")
 	
 		moveResult, err := callURL(nextPoint.masterControllerPermURL, 

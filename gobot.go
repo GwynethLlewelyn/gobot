@@ -5,6 +5,7 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 	"database/sql"
 	"fmt"
+	"github.com/fatih/color" // allows ANSI escaping for logging in colour! (20170806)
 	"github.com/Pallinder/go-randomdata"
 	"github.com/spf13/viper" // to read config files
 	"golang.org/x/net/websocket"
@@ -204,6 +205,8 @@ func main() {
 // checkErrPanic logs a fatal error and panics.
 func checkErrPanic(err error) {
 	if err != nil {
+		color.Set(color.FgRed)
+		defer color.Unset()
 		log.Panic("gobot panic: ", err)
 	}
 }
@@ -212,7 +215,9 @@ func checkErrPanic(err error) {
 //  this is for 'normal' situations when we want to get a log if something goes wrong but do not need to panic
 func checkErr(err error) {
 	if err != nil {
+		color.Set(color.FgYellow)
 		log.Println("gobot error: ", err)
+		color.Unset()
 	}
 }
 

@@ -43,6 +43,9 @@ func garbageCollector() {
 				)
 				checkErr(err) // cannot hurt
 				
+				// TODO(gwyneth): test 2 or 3 times, sometimes we exaust HTTP requests. Also, deal with a way for the LSL scripts
+				//  attempt to register after an hour or so instead of entering BROKEN mode (20170806).
+				
 				// now call the ping on this Agent
 				callResult, err = callURL(*agent.PermURL.Ptr(), "command=ping")
 				log.Println("Agent", *agent.UUID.Ptr(), "Result of calling", *agent.PermURL.Ptr(), ":", callResult, "Error:", err)

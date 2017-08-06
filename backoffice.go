@@ -2,21 +2,22 @@
 package main
 
 import (
-	"database/sql"
-	"fmt"
 	_ "github.com/go-sql-driver/mysql"
-	"net/http"
-	"html/template"
-	"github.com/gorilla/securecookie"
 	"bytes"
-	"strconv"
 	"crypto/md5"
+	"database/sql"
 	"encoding/hex"
-	"io/ioutil"
-	"strings"
-	"log"
-	// "gopkg.in/guregu/null.v3/zero"
+	"fmt"
+	"github.com/fatih/color" // allows ANSI escaping for logging in colour! (20170806)
+	"github.com/gorilla/securecookie"
 	"github.com/heatxsink/go-gravatar"
+	// "gopkg.in/guregu/null.v3/zero"
+	"html/template"
+	"io/ioutil"
+	"log"
+	"net/http"
+	"strconv"
+	"strings"
 )
 
 // GobotTemplatesType expands on template.Template.
@@ -103,7 +104,9 @@ func setSession(userName string, response http.ResponseWriter) {
 		// fmt.Println("Encoded cookie:", cookie)
 		http.SetCookie(response, cookie)
 	} else {
-		fmt.Println("Error encoding cookie:", err)
+		color.Set(color.FgYellow)
+		log.Println("Error encoding cookie:", err)
+		color.Unset()
 	}
  }
  

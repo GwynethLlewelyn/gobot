@@ -3,12 +3,13 @@ package main
 
 import (
 	"database/sql"
-	"fmt"
 	"encoding/json"
-	"net/http"
-	"io/ioutil"
+	"fmt"
+	"github.com/fatih/color" // allows ANSI escaping for logging in colour! (20170806)
 	"gopkg.in/guregu/null.v3/zero"
+	"io/ioutil"
 	"log"
+	"net/http"
 	"runtime"
 )
 
@@ -18,7 +19,9 @@ import (
 func checkErrHTTP(w http.ResponseWriter, httpStatus int, errorMessage string, err error) {
 	if err != nil {
 		http.Error(w, fmt.Sprintf(errorMessage, err), httpStatus)
-		log.Printf("(" + http.StatusText(httpStatus) + ") " + errorMessage, err)		
+		color.Set(color.FgYellow)
+		log.Printf("(" + http.StatusText(httpStatus) + ") " + errorMessage, err)	
+		color.Unset()	
 	}
 }
 
@@ -26,6 +29,8 @@ func checkErrHTTP(w http.ResponseWriter, httpStatus int, errorMessage string, er
 func checkErrPanicHTTP(w http.ResponseWriter, httpStatus int, errorMessage string, err error) {
 	if err != nil {
 		http.Error(w, fmt.Sprintf(errorMessage, err), httpStatus)
+		color.Set(color.FgRed)
+		defer color.Unset()
 		log.Panicf("(" + http.StatusText(httpStatus) + ") " + errorMessage, err)			
 	}
 }
@@ -34,7 +39,9 @@ func checkErrPanicHTTP(w http.ResponseWriter, httpStatus int, errorMessage strin
 //  this is mostly to avoid code duplication and make sure that all entries are written similarly 
 func logErrHTTP(w http.ResponseWriter, httpStatus int, errorMessage string) {
 	http.Error(w, errorMessage, httpStatus)
+	color.Set(color.FgRed)
 	log.Print("(" + http.StatusText(httpStatus) + ") " + errorMessage)
+	color.Unset()
 }
 
 // funcName is @Sonia's solution to get the name of the function that Go is currently running.
@@ -167,7 +174,9 @@ func uiObjectsRemove(w http.ResponseWriter, r *http.Request) {
 	_, err = db.Exec(fmt.Sprintf("DELETE FROM Obstacles WHERE UUID IN (%s)", string(body)));
 	checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Objects remove failed: %s\n", err)
 
+	color.Set(color.FgGreen)
 	log.Println("Object UUIDs >>", string(body), "<< successfully removed.")
+	color.Unset()
 }
 
 // agentType is a struct to hold data retrieved from the database.
@@ -284,7 +293,9 @@ func uiAgentsRemove(w http.ResponseWriter, r *http.Request) {
 	_, err = db.Exec(fmt.Sprintf("DELETE FROM Agents WHERE UUID IN (%s)", string(body)));
 	checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Agents remove failed: %s\n", err)
 
+	color.Set(color.FgGreen)
 	log.Println("Agents UUIDs >>", string(body), "<< successfully removed.")
+	color.Unset()
 }
 
 // positionType is a struct to hold data retrieved from the database, used by several functions (including JSON).
@@ -396,7 +407,9 @@ func uiPositionsRemove(w http.ResponseWriter, r *http.Request) {
 	_, err = db.Exec(fmt.Sprintf("DELETE FROM Positions WHERE UUID IN (%s)", string(body)));
 	checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Positions remove failed: %s\n", err)
 
+	color.Set(color.FgGreen)
 	log.Println("Positions UUIDs >>", string(body), "<< successfully removed.")
+	color.Unset()
 }
 
 // inventoryType is a struct to hold data retrieved from the database, used by several functions (including JSON).
@@ -484,7 +497,9 @@ func uiInventoryRemove(w http.ResponseWriter, r *http.Request) {
 	_, err = db.Exec(fmt.Sprintf("DELETE FROM Inventory WHERE UUID IN (%s)", string(body)));
 	checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Inventory remove failed: %s\n", err)
 
+	color.Set(color.FgGreen)
 	log.Println("Inventory UUIDs >>", string(body), "<< successfully removed.")
+	color.Unset()
 }
 
 
@@ -567,5 +582,7 @@ func uiUserManagementRemove(w http.ResponseWriter, r *http.Request) {
 	_, err = db.Exec(fmt.Sprintf("DELETE FROM Users WHERE Email IN (%s)", string(body)));
 	checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Users remove failed: %s\n", err)
 
+	color.Set(color.FgGreen)
 	log.Println("User(s) Email(s) >>", string(body), "<< successfully removed.")
+	color.Unset()
 }
