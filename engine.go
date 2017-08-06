@@ -943,8 +943,15 @@ func engine() {
 								(population[i][$y].x - population[i][$y-1].x)
 							);
 						*/
+						// even though Shi & Cui was abandoned, we calculate smoothness nevertheless, only to make sure these calculations work!
+						//  (20170806)
+						population[i].chromosomes[y].smoothness = ( population[i].chromosomes[y-1].y - population[i].chromosomes[y].y /
+							population[i].chromosomes[y-1].x - population[i].chromosomes[y].x ) -
+							( population[i].chromosomes[y].y - population[i].chromosomes[y-1].y /
+							  population[i].chromosomes[y].x - population[i].chromosomes[y-1].x )
 						
-						fitnessW3 += math.Abs(population[i].chromosomes[y].angle) // clever, huh? check if abs makes sense
+						fitnessW3 += population[i].chromosomes[y].angle // clever, huh? check if abs makes sense
+						// I don't think abs of an angle is a good idea (20170806)
 						
 						// and we'll also use the overall distance to the attractor
 						//population[i]["fitness"] += population[i][$y]["distance"];
