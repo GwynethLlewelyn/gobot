@@ -84,7 +84,7 @@ type movementJob struct {
 									//  for how long we need to sleep until the avatar reaches destination
 }
 // movementJobChannel is the blocking channel to which we write points for the next bot movement
-var movementJobChannel = make(chan movementJob, CHROMOSOMES) // for now, we'll try to 
+var movementJobChannel = make(chan movementJob, 1) // for now, we'll try with just 1 point
 
 // Go is tricky. While we send and receive WebSocket messages as it would be expected on a 'normal' 
 //  programming language, we actually have an insane amount of goroutines all in parallel. So what we do is to 
@@ -97,7 +97,7 @@ var wsSendMessage = make(chan WsMessageType)
 var wsReceiveMessage = make(chan WsMessageType)
 var webSocketActive atomic.Value // this is an attempt to check if we have an active WebSocket, to avoid too many timeouts (20170728)
 
-// serveWs - apparently this is what is 'called' from the outside, and I need to talk to a socket here.
+// serveWs - this is what is 'called' from the outside, and I need to talk to a socket here.
 func serveWs(ws *websocket.Conn) {
 	// see also how it is implemented here: http://eli.thegreenplace.net/2016/go-websocket-server-sample/ (20170703)
 	var err error // to avoid constant redeclarations in tight loop below
@@ -285,7 +285,7 @@ func engine() {
 									sendMessageToBrowser("htmlControl", "enable", "", "stopEngine")
 								case false:
 									sendMessageToBrowser("htmlControl", "enable", "", "startEngine")
-									sendMessageToBrowser("htmlControl", "false", "", "stopEngine")
+									sendMessageToBrowser("htmlControl", "disable", "", "stopEngine")
 								default: // should never happen, but turn both buttons off just in case
 									sendMessageToBrowser("htmlControl", "disable", "", "startEngine")
 									sendMessageToBrowser("htmlControl", "disable", "", "stopEngine")
@@ -581,7 +581,7 @@ func engine() {
 						nearestObstacle = point
 					}
 				}
-				sendMessageToBrowser("status", "info", fmt.Sprintf("Nearest obstacle to agent %s: '%s' (at %f)<br />", *Agent.Name.Ptr(), *nearestObstacle.Name.Ptr(), smallestDistanceToObstacle), "")				
+				sendMessageToBrowser("status", "info", fmt.Sprintf("Nearest obstacle to agent %s: '%s' (distance: %f m)<br />", *Agent.Name.Ptr(), *nearestObstacle.Name.Ptr(), smallestDistanceToObstacle), "")				
 								
 				for k, point := range Cubes {
 					_, err = fmt.Sscanf(*point.Position.Ptr(), "%f, %f, %f", &cubePosition[0], &cubePosition[1], &cubePosition[2])
@@ -596,7 +596,7 @@ func engine() {
 						nearestCube = point
 					}
 				}			
-				sendMessageToBrowser("status", "info", fmt.Sprintf("Nearest cube to agent %s: '%s' (at %f)<br />", *Agent.Name.Ptr(), *nearestCube.Name.Ptr(), smallestDistanceToCube), "")				
+				sendMessageToBrowser("status", "info", fmt.Sprintf("Nearest cube to agent %s: '%s' (distance: %f m)<br />", *Agent.Name.Ptr(), *nearestCube.Name.Ptr(), smallestDistanceToCube), "")				
 				
 				/* Idea for the GA
 				
@@ -1406,16 +1406,20 @@ func callURL(url string, encodedRequest string) (string, error) {
 }
 
 // showPopulation is adapted from the PHP code to pretty-print a whole population
+// new version creates HTML tables
 func showPopulation(popul []popType) {
-fmt.Println("Population")
+	outputBuffer := "<div class='table-responsive'><table class='table table-striped table-bordered table-hover'><caption>Population</caption><thead><tr><th>Pop #</th><th>Fitness</th><th>Chromossomes</th></tr></thead><tbody>"
+	
 	for p, pop := range popul {
-		fmt.Print("pop:", p, " - Fitness: ", pop.fitness, " Chromosomes: ")					
+		outputBuffer += fmt.Sprintf("<tr><td>%v</td><td>%v</td>", p, pop.fitness)					
 		for c, chr := range pop.chromosomes {
-			fmt.Printf("[%v] { %v, %v, %v } Distance: %v Obstacle: %v Angle: %v Smoothness %v;\t",
+			outputBuffer += fmt.Sprintf("<td>[%v]</td><td>(%v, %v, %v) Distance: %v Obstacle: %v Angle: %v Smoothness %v</td>",
 				c, chr.x, chr.y, chr.z, chr.distance, chr.obstacle, chr.angle, chr.smoothness)
 		}
-		fmt.Println("\n---")
-	}	
+		outputBuffer += "</tr>\n"
+	}
+	outputBuffer += "<tfoot><tr><th>Pop #</th><th>Fitness</th><th>Chromossomes</th></tr></tfoot></tbody></table></div>\n"
+	sendMessageToBrowser("status", "", outputBuffer, "")
 }
 
 // movementWorker reads one point from the movementJobChannel and sends a command to the avatar to move to it.
