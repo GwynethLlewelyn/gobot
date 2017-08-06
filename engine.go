@@ -881,9 +881,9 @@ func engine() {
 					population[i].chromosomes[0].angle = 0.0 // curPos has (obviously) angle 0
 					
 					for j := 1; j < CHROMOSOMES; j++ {
-						population[i].chromosomes[j].angle = math.Abs(
+						population[i].chromosomes[j].angle = 
 							math.Atan2(population[i].chromosomes[j].y - population[i].chromosomes[j-1].y, 
-							population[i].chromosomes[j].x - population[i].chromosomes[j-1].x))
+							population[i].chromosomes[j].x - population[i].chromosomes[j-1].x)
 					}
 				}
 
