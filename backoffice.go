@@ -80,6 +80,7 @@ func (gt *GobotTemplatesType)gobotRenderer(w http.ResponseWriter, r *http.Reques
 	g = gravatar.New("identicon", gravatarSizeMenu, "g", true)
 	tplParams["GravatarMenu"] = g.GetImageUrl(thisUserName) // we also ought to cache this somewhere
 	
+	w.Header().Set("X-Clacks-Overhead", "GNU Terry Pratchett") // do a tribute to one of my best fantasy authors (see http://www.gnuterrypratchett.com/) (20170807)
 	return gt.ExecuteTemplate(w, tplName, tplParams)
 }
 
