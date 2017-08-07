@@ -126,7 +126,7 @@ func serveWs(ws *websocket.Conn) {
 				color.Set(color.FgRed)
 				defer color.Unset()
 				log.Println("Can't send; error:", err)
-				break
+				continue
 			}
 		}
 	}()
@@ -139,7 +139,7 @@ func serveWs(ws *websocket.Conn) {
 			color.Set(color.FgRed)
 			defer color.Unset()
 			log.Println("Can't receive; error:", err)
-			break
+			continue
 		}
 		// log.Println("Received message", receiveMessage)
 
@@ -401,7 +401,7 @@ func engine() {
 			
 			// First check if the end-user hasn't sent us an Agent UUID to use:
 			userSetAgentUUID := curAgent.Load().(string)
-			var possibleAgentUUID string
+			possibleAgentUUID := NullUUID
 			// log.Println("userSetAgent is", userSetAgent)
 			if userSetAgentUUID == NullUUID {
 				// we need to pick one agent at random
@@ -410,7 +410,7 @@ func engine() {
 				//  select one randomly in Go; then we just get the row from the database (20170807)
 				rows, err := db.Query("SELECT UUID FROM Agents")
 				checkErr(err)
-				defer rows.Close() // needed? The problem here is with a break on the check below...
+				defer rows.Close() // needed? The problem here is with a continue on the check below...
 		
 				var agentUUIDs []string
 				tempUUID := ""
@@ -425,13 +425,29 @@ func engine() {
 				if len(agentUUIDs) == 0 {
 					sendMessageToBrowser("status", "error", "Error: no Agents found. Engine cannot run. Aborted. Add an Agent and try sending a <code>SIGCONT</code> to restart engine again<br />"," ")
 					time.Sleep(10 * time.Second)
-					break // now we simply wait...
+					continue // now we simply wait...
 				}				
 				log.Println("We got a bunch of UUIDs:", agentUUIDs)
-				index := rand.Intn(len(agentUUIDs) - 1)
-				possibleAgentUUID = agentUUIDs[index]
-				lastAgentToRunUUID = possibleAgentUUID
-				log.Println("And picked #", index, ":", possibleAgentUUID, "Last agent was", lastAgentToRunUUID)
+				possibleAgentUUID = agentUUIDs[0] // make sure we have at least a valid UUID!!
+				// Generate a random index, search for it in agentUUIDs; if it's the same one as last time, try again; test for edge case,
+				//  i.e. that we have just 1 Agent in the database. (20170807)
+				if len(agentUUIDs) > 1 && lastAgentToRunUUID != NullUUID {	// edge case: on initialisation, both are set to NullID, so both are equal
+					for index := 0; lastAgentToRunUUID == possibleAgentUUID; {
+						index = rand.Intn(len(agentUUIDs))
+						possibleAgentUUID = agentUUIDs[index]
+						//if lastAgentToRunUUID != possibleAgentUUID {
+						//	break
+						//}
+						log.Println("Index picked:", index, "possibleAgentUUID", possibleAgentUUID, "Last agent was", lastAgentToRunUUID)
+					}
+				}
+			} else {
+				possibleAgentUUID = userSetAgentUUID
+				sendMessageToBrowser("status", "info", fmt.Sprintf("Using agent UUID %s set by end-user", possibleAgentUUID), "")
+			}
+			lastAgentToRunUUID = possibleAgentUUID
+			if possibleAgentUUID == NullUUID {
+				log.Println("My logic is still borked!!")
 			}
 			err = db.QueryRow("SELECT * FROM Agents where UUID=?", possibleAgentUUID).Scan(
 				&Agent.UUID,
@@ -456,7 +472,7 @@ func engine() {
 			if err != nil || !Agent.OwnerKey.Valid {
 				sendMessageToBrowser("status", "error", fmt.Sprintf("Error %v: no Agent found for UUID %s, or invalid OwnerKey for this agent. Engine cannot run. Aborted. Fix the database and try sending a <code>SIGCONT</code> to restart engine again<br />", err, possibleAgentUUID)," ")
 					time.Sleep(10 * time.Second)
-					break // wait until situation improves...
+					continue // wait until situation improves...
 			}
 			// do the magic to extract the actual coords
 			Agent.Coords_xyz = strings.Split(strings.Trim(*Agent.Position.Ptr(), "() \t\n\r"), ",")
@@ -510,7 +526,7 @@ func engine() {
 				log.Println(funcName() + ": Major error with database, we need at least one valid masterController to proceed. Sleeping for 10 seconds for user to correct this...")
 				color.Unset()
 				time.Sleep(10 * time.Second)
-				break // go to next iteration, this one has borked data (20170801)
+				continue // go to next iteration, this one has borked data (20170801)
 			}
 
 			// load in everything we found out so far on our region(s) but ignore phantom objects
@@ -554,7 +570,7 @@ func engine() {
 			// NOTE(gwyneth): Apparently the web server will reply to ALL possible requests, even if the Agent doesn't exist any more;
 			//  I still don't know what to do in that situation, so we skip this Agent and try the next one (20170730).
 			if curPos_raw == "" || err != nil {
-				break;
+				continue
 			}
 
 			sendMessageToBrowser("status", "info", "Grid reports that agent '" + *Agent.Name.Ptr() + "' is at position: " + curPos_raw + "...</p>\n", "")
@@ -1490,7 +1506,7 @@ func movementWorker() {
 
 		// these must be set, nothing like a bit of error checking for eventual bugs elsewhere
 		if nextPoint.masterControllerPermURL == "" || nextPoint.agentUUID == "" {
-			break
+			continue	// either the next job comes valid, or we continue to consume points until a valid one comes along
 		}
 
 		// The code below was commented in the PHP code, but we reuse it here as it was because it makes sense! (20170730)
