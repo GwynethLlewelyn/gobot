@@ -1407,7 +1407,7 @@ func sendMessageToBrowser(msgType string, msgSubType string, msgText string, msg
 							defer color.Unset()					
 					}
 					// prettify eventual HTML inside msgText
-					text, err := html2text.FromString(msgText, html2text.Options{PrettyTables: true})
+					text, err := html2text.FromString(msgText)
 					checkErr(err)
 					log.Println("(connected via WebSocket)", msgType, "-", msgSubType, "-", text, "-", msgId)
 				}
@@ -1417,7 +1417,7 @@ func sendMessageToBrowser(msgType string, msgSubType string, msgText string, msg
  		    	// this case exists only if we failed to figure out if the WebSocket is active or not; in most cases, we will
  		    	//  be able to know that in advance, but here we catch the edge cases.
  		    	color.Set(color.FgYellow)
- 		    	text, err := html2text.FromString(msgText, html2text.Options{PrettyTables: true})
+ 		    	text, err := html2text.FromString(msgText)
  		    	checkErr(err)	    	
 		        log.Println("WebSocket timeout after 10 seconds; coudn't send message:", msgType, "-", msgSubType, "-", text, "-", msgId)
 		        color.Unset()
@@ -1425,7 +1425,7 @@ func sendMessageToBrowser(msgType string, msgSubType string, msgText string, msg
 	} else {
 		// No active WebSocket? Just dump it to the log. Note that this will be the most usual case, since we hardly expect users to be 24/7 in
 		//  front of their browsers...
-		text, err := html2text.FromString(msgText, html2text.Options{PrettyTables: true})
+		text, err := html2text.FromString(msgText)
 		checkErr(err)
 		log.Print("(no WebSocket connection)", msgType, "-", msgSubType, "-", text, "-", msgId)
 	}
