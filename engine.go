@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/fatih/color" // allows ANSI escaping for logging in colour! (20170806)
+	"github.com/jaytaylor/html2text" // converts HTML to pretty-printed text! (20170807) 
 	"golang.org/x/net/websocket"
 	"gopkg.in/guregu/null.v3/zero"
 	"html/template"
@@ -1405,21 +1406,28 @@ func sendMessageToBrowser(msgType string, msgSubType string, msgText string, msg
 							color.Set(color.FgRed)
 							defer color.Unset()					
 					}
-					log.Println("(connected via WebSocket)", msgType, "-", msgSubType, "-", msgText, "-", msgId)
+					// prettify eventual HTML inside msgText
+					text, err := html2text.FromString(msgText, html2text.Options{PrettyTables: true})
+					checkErr(err)
+					log.Println("(connected via WebSocket)", msgType, "-", msgSubType, "-", text, "-", msgId)
 				}
 				// 'common' messages have the nil string subtype, so we ignore these and don't log them
 				//  we might have a Debug facility in the future which allows for more verbosity!
  		    case <-time.After(time.Second * 10):
  		    	// this case exists only if we failed to figure out if the WebSocket is active or not; in most cases, we will
  		    	//  be able to know that in advance, but here we catch the edge cases.
- 		    	color.Set(color.FgYellow) 		    	
-		        log.Println("WebSocket timeout after 10 seconds; coudn't send message:", msgType, "-", msgSubType, "-", msgText, "-", msgId)
+ 		    	color.Set(color.FgYellow)
+ 		    	text, err := html2text.FromString(msgText, html2text.Options{PrettyTables: true})
+ 		    	checkErr(err)	    	
+		        log.Println("WebSocket timeout after 10 seconds; coudn't send message:", msgType, "-", msgSubType, "-", text, "-", msgId)
 		        color.Unset()
 		}
 	} else {
 		// No active WebSocket? Just dump it to the log. Note that this will be the most usual case, since we hardly expect users to be 24/7 in
 		//  front of their browsers...
-		log.Print("(no WebSocket connection)", msgType, "-", msgSubType, "-", msgText, "-", msgId)
+		text, err := html2text.FromString(msgText, html2text.Options{PrettyTables: true})
+		checkErr(err)
+		log.Print("(no WebSocket connection)", msgType, "-", msgSubType, "-", text, "-", msgId)
 	}
 }
 
