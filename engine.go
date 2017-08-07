@@ -126,7 +126,7 @@ func serveWs(ws *websocket.Conn) {
 				color.Set(color.FgRed)
 				defer color.Unset()
 				log.Println("Can't send; error:", err)
-				continue
+				break
 			}
 		}
 	}()
@@ -139,7 +139,7 @@ func serveWs(ws *websocket.Conn) {
 			color.Set(color.FgRed)
 			defer color.Unset()
 			log.Println("Can't receive; error:", err)
-			continue
+			break
 		}
 		// log.Println("Received message", receiveMessage)
 
