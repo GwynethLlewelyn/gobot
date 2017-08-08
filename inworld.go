@@ -10,6 +10,7 @@ import (
 	"fmt"
 //	"log"
 	"net/http"
+	"strconv"
 	"strings"
 )
 
@@ -327,5 +328,126 @@ func registerAgent(w http.ResponseWriter, r *http.Request) {
 //	that we don't need to hardcode them
 func configureCube(w http.ResponseWriter, r *http.Request) {
 	logErrHTTP(w, http.StatusNotImplemented, funcName() + ": configureCube not implemented") 
+	return
+}
+
+// processCube is called when an agent sits on the cube; it will update the agent's money/energy/happiness.
+//  Once everything is updated, the agent will get kicked out of the cube after a certain time has elapsed. This happens in-world.
+//  We might also animate the avatar depending on its class, subclass, etc.
+func processCube(w http.ResponseWriter, r *http.Request) {
+	err := r.ParseForm()
+	checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Extracting parameters failed: %s\n", err)
+	
+	if r.Header.Get("X-Secondlife-Object-Key") == "" {
+		logErrHTTP(w, http.StatusForbidden, funcName() + ": Only in-world requests allowed.")
+		return		
+	}
+	
+	if r.Form.Get("signature") == "" {
+		logErrHTTP(w, http.StatusForbidden, funcName() + ": Signature not found") 
+		return
+	}
+	
+	signature := GetMD5Hash(r.Header.Get("X-Secondlife-Object-Key") + r.Form.Get("timestamp") + ":" + LSLSignaturePIN)
+						
+	if signature != r.Form.Get("signature") {
+		logErrHTTP(w, http.StatusForbidden, funcName() + ": Signature does not match - hack attempt?")
+		return
+	}
+	// all checks fine, now let's get the agent data from the database:
+	// allegedly, we get avatar=[UUID] — all the rest ought to be on the database (20170807)
+	db, err := sql.Open(PDO_Prefix, GoBotDSN)
+	checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Connect failed: %s\n", err)
+	
+	defer db.Close()
+	
+	var agent AgentType
+	err = db.QueryRow("SELECT * FROM Agents WHERE UUID=?", r.Form.Get("avatar")).Scan(
+		&agent.UUID,
+		&agent.Name,
+		&agent.OwnerName,
+		&agent.OwnerKey,
+		&agent.Location,
+		&agent.Position,
+		&agent.Rotation,
+		&agent.Velocity,
+		&agent.Energy,
+		&agent.Money,
+		&agent.Happiness,
+		&agent.Class,
+		&agent.SubType,
+		&agent.PermURL,
+		&agent.LastUpdate,
+		&agent.BestPath,
+		&agent.SecondBestPath,
+		&agent.CurrentTarget,
+	)
+	if err != nil || !agent.UUID.Valid {
+		checkErrHTTP(w, http.StatusNotFound, funcName() + "Agent UUID not found in database or invalid: %s\n", err)
+	}
+	// get information on this cube
+	var cube PositionType
+	err = db.QueryRow("SELECT * FROM Objects WHERE UUID=?", r.Header.Get("X-Secondlife-Object-Key")).Scan(
+		&cube.PermURL,
+		&cube.UUID,
+		&cube.Name,
+		&cube.OwnerName,
+		&cube.Location,
+		&cube.Position,
+		&cube.Rotation,
+		&cube.Velocity,
+		&cube.LastUpdate,
+		&cube.OwnerKey,
+		&cube.ObjectType,
+		&cube.ObjectClass,
+		&cube.RateEnergy,
+		&cube.RateMoney,
+		&cube.RateHappiness,
+		)
+	if err != nil || !cube.UUID.Valid {
+		checkErrHTTP(w, http.StatusNotFound, funcName() + "This cube's UUID was not found in database or is invalid! We should reset it in-world. Error was: %s\n", err)
+	}
+	// we update the avatar's money, happiness etc. by the rate of the object
+	energyAgent, err := strconv.ParseFloat(*agent.Energy.Ptr(), 64) // get this as a float or else all hell will break loose!
+	checkErr(err)
+	energyCube, err := strconv.ParseFloat(*cube.RateEnergy.Ptr(), 64)
+	checkErr(err)
+	energyAgent += energyCube	
+	// in theory, this should now go to the engine, to see if it's enough or not; we'll see what happens (20170808)
+	// We now call the agent and tell him about the new values:
+	rsBody, err := callURL(*agent.PermURL.Ptr(), fmt.Sprintf("command=setEnergy&param1=float&data1=%f", energyAgent))
+    if (err != nil) {
+	    sendMessageToBrowser("status", "error", fmt.Sprintf("Agent '%s' could not be updated in-world with new energy settings; in-world reply was: '%s'", *agent.Name.Ptr(), rsBody), "")
+	}
+	// now do it for money!
+	moneyAgent, err := strconv.ParseFloat(*agent.Money.Ptr(), 64)
+	checkErr(err)
+	moneyCube, err := strconv.ParseFloat(*cube.RateMoney.Ptr(), 64)
+	checkErr(err)
+	moneyAgent += moneyCube	
+	rsBody, err = callURL(*agent.PermURL.Ptr(), fmt.Sprintf("command=setMoney&param1=float&data1=%f", moneyAgent))
+    if (err != nil) {
+	    sendMessageToBrowser("status", "error", fmt.Sprintf("Agent '%s' could not be updated in-world with new money settings; in-world reply was: '%s'", *agent.Name.Ptr(), rsBody), "")
+	}
+	// last but not least, make the agent more happy!
+	happinessAgent, err := strconv.ParseFloat(*agent.Happiness.Ptr(), 64)
+	checkErr(err)
+	happinessCube, err := strconv.ParseFloat(*cube.RateHappiness.Ptr(), 64)
+	checkErr(err)
+	happinessAgent += happinessCube	
+	rsBody, err = callURL(*agent.PermURL.Ptr(), fmt.Sprintf("command=setHappiness&param1=float&data1=%f", happinessAgent))
+    if (err != nil) {
+	    sendMessageToBrowser("status", "error", fmt.Sprintf("Agent '%s' could not be updated in-world with new happiness settings; in-world reply was: '%s'", *agent.Name.Ptr(), rsBody), "")
+	}
+	// the next step is to update the database with the new values
+	_, err = db.Exec("UPDATE Agents SET `Energy`=?, `Money`=?, `Happiness`=? WHERE UUID=?", energyAgent, moneyAgent, happinessAgent, *agent.UUID.Ptr())
+    if (err != nil) {
+	    sendMessageToBrowser("status", "error", fmt.Sprintf("Agent '%s' could not be updated in database with new energy/money/happiness settings; database reply was: '%v'", *agent.Name.Ptr(), err), "")
+	}	
+	
+	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-type", "text/plain; charset=utf-8")
+	fmt.Fprintf(w, "'%s' successfully updated.", *agent.Name.Ptr())
+	sendMessageToBrowser("status", "success", fmt.Sprintf("'%s' successfully updated.", *agent.Name.Ptr()), "")
 	return
 }

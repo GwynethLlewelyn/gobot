@@ -43,7 +43,7 @@ func loadConfiguration() {
 	viper.AddConfigPath(".")               // optionally look for config in the working directory
 	err := viper.ReadInConfig() // Find and read the config file
 	checkErr(err) // Handle errors reading the config file
-	
+
 	// Without these set, we cannot do anything
 	viper.SetDefault("gobot.Host", "localhost") // to prevent bombing out with panics
 	Host = viper.GetString("gobot.Host"); fmt.Print(".")
@@ -67,13 +67,13 @@ func main() {
 	// to change the flags on the default logger
 	// see https://stackoverflow.com/a/24809859/1035977
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
-	
+
 	loadConfiguration() // this gets loaded always, on the first time it runs
-	
+
 	// prepares a special channel to look for termination signals
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGHUP, syscall.SIGUSR1, syscall.SIGUSR2)
-	
+
 	// goroutine which listens to signals and calls the loadConfiguration() function if someone sends us a HUP
 	go func() {
 		for {
@@ -97,18 +97,18 @@ func main() {
 	        }
         }
     }()
-	
+
 	// do some database tests. If it fails, it means the database is broken or corrupted and it's worthless
 	//  to run this application anyway!
 	log.Println("\nTesting opening database connection at ", GoBotDSN, "\nPath to static files is:", PathToStaticFiles)
-	
+
 	db, err := sql.Open(PDO_Prefix, GoBotDSN) // presumes sqlite3 for now
 	checkErr(err) // abort if it cannot even open the database
 
 	// query
 	rows, err := db.Query("SELECT UUID, Name, Location, Position FROM Agents")
 	checkErr(err) // if select fails, probably the table doesn't even exist
- 	
+
  	var agent AgentType; // type defined on ui.go to be used on database requests
 
 	for rows.Next() {
@@ -121,42 +121,42 @@ func main() {
 	}
 	rows.Close()
 	db.Close()
-	
+
 	log.Println("\n\nDatabase tests ended.\n\nStarting Gobot application at port", ServerPort, "\nfor URL:", URLPathPrefix)
-	
+
 	// this was just to make tests; now start the engine as a separate goroutine in the background
-	
+
 	go engine() // run everything but the kitchen sink in parallel; yay goroutines!
 
 	go garbageCollector() // this will periodically remove from the database all old items that are 'dead' (20170730)
 
 	// Now prepare the web interface
-	
+
 	// Load all templates
 	err = GobotTemplates.init(PathToStaticFiles + "/templates/*.tpl")
 	checkErr(err) // abort if templates are not found
-	
+
 	// Configure routers for our many inworld scripts
 	// In my case, paths with /go will be served by gobot, the rest by nginx as before
 	// Exception is for static files
-	http.HandleFunc(URLPathPrefix + "/update-inventory/",	updateInventory) 
-	http.HandleFunc(URLPathPrefix + "/update-sensor/",		updateSensor) 
-	http.HandleFunc(URLPathPrefix + "/register-position/",	registerPosition) 
-	http.HandleFunc(URLPathPrefix + "/register-agent/",		registerAgent) 
+	http.HandleFunc(URLPathPrefix + "/update-inventory/",	updateInventory)
+	http.HandleFunc(URLPathPrefix + "/update-sensor/",		updateSensor)
+	http.HandleFunc(URLPathPrefix + "/register-position/",	registerPosition)
+	http.HandleFunc(URLPathPrefix + "/register-agent/",		registerAgent)
 	http.HandleFunc(URLPathPrefix + "/configure-cube/",		configureCube)
-	
+	http.HandleFunc(URLPathPrefix + "/process-cube/",		processCube)
+
 	// Static files. This should be handled directly by nginx, but we include it here
-	//  for a standalone version...	
+	//  for a standalone version...
 	fslib := http.FileServer(http.Dir(PathToStaticFiles + "/lib"))
 	http.Handle(URLPathPrefix + "/lib/", http.StripPrefix(URLPathPrefix + "/lib/", fslib))
 
 	templatelib := http.FileServer(http.Dir(PathToStaticFiles + "/templates"))
 	http.Handle(URLPathPrefix + "/templates/",
 		http.StripPrefix(URLPathPrefix + "/templates/", templatelib)) // not sure if this is needed
-	
+
 	// Deal with templated output for the admin back office, defined on backoffice.go
 	// For now this is crude, each page is really very similar, but there are not many so each will get its own handler function for now
-	
 	http.HandleFunc(URLPathPrefix + "/admin/agents/",					backofficeAgents)
 	http.HandleFunc(URLPathPrefix + "/admin/logout/",					backofficeLogout)
 	http.HandleFunc(URLPathPrefix + "/admin/login/",					backofficeLogin) // probably not necessary
@@ -170,12 +170,12 @@ func main() {
 	http.HandleFunc(URLPathPrefix + "/admin/controller-commands/",		backofficeControllerCommands)
 	http.HandleFunc(URLPathPrefix + "/admin/engine/",					backofficeEngine)
 	// LSL Template Generator
-	http.HandleFunc(URLPathPrefix + "/admin/lsl-register-object/",		backofficeLSLRegisterObject)	
-	http.HandleFunc(URLPathPrefix + "/admin/lsl-bot-controller/",		backofficeLSLBotController)	
+	http.HandleFunc(URLPathPrefix + "/admin/lsl-register-object/",		backofficeLSLRegisterObject)
+	http.HandleFunc(URLPathPrefix + "/admin/lsl-bot-controller/",		backofficeLSLBotController)
 	http.HandleFunc(URLPathPrefix + "/admin/lsl-agent-scripts/",		backofficeLSLAgentScripts)
 	// fallthrough for admin
 	http.HandleFunc(URLPathPrefix + "/admin/",							backofficeMain)
-	
+
 	// deal with agGrid UI elements
 	http.HandleFunc(URLPathPrefix + "/uiObjects/",						uiObjects)
 	http.HandleFunc(URLPathPrefix + "/uiObjectsUpdate/",				uiObjectsUpdate) // to change the database manually
@@ -191,13 +191,13 @@ func main() {
 	http.HandleFunc(URLPathPrefix + "/uiInventoryRemove/",				uiInventoryRemove)
 	http.HandleFunc(URLPathPrefix + "/uiUserManagement/",				uiUserManagement)
 	http.HandleFunc(URLPathPrefix + "/uiUserManagementUpdate/",			uiUserManagementUpdate)
-	http.HandleFunc(URLPathPrefix + "/uiUserManagementRemove/",			uiUserManagementRemove)	
-	
+	http.HandleFunc(URLPathPrefix + "/uiUserManagementRemove/",			uiUserManagementRemove)
+
 	// Handle Websockets on Engine
 	http.Handle(URLPathPrefix + "/wsEngine/",							websocket.Handler(serveWs))
 
 	http.HandleFunc(URLPathPrefix + "/",								backofficeLogin) // if not auth, then get auth
-	
+
     err = http.ListenAndServe(ServerPort, nil) // set listen port
     checkErr(err) // if it can't listen to all the above, then it has to abort anyway
 }
