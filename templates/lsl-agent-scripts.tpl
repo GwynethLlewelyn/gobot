@@ -72,6 +72,7 @@ default
 	state_entry()
 	{
 		parseDescription();
+        llSetTimerEvent(3600.0); // this will hopefully force an update every hour
 	}	 
 
 	on_rez(integer what)
@@ -120,6 +121,7 @@ default
 			{
 				llSetText("!!! BROKEN !!!", &lt;1.0,0.0,0.0&gt;, 1.0);
 				llSay(0, "Register Agent: Error " +(string)status + ": " + body);
+				llSetTimerEvent(3600.0); // try again later
 			}
 		}	 
 	}
@@ -149,6 +151,7 @@ default
 		{
 			llSetText("!!! BROKEN !!!", &lt;1.0,0.0,0.0&gt;, 1.0);
 			llSay(0, "Register Agent: Something went wrong, no url. Error was: '" + body + "'");
+			llSetTimerEvent(3600.0); // try again later
 		}
 		else if (method == "POST" || method == "GET")
 		{
@@ -476,7 +479,7 @@ detection()
 				list objectDetailsList = llGetObjectDetails(uuid, [ OBJECT_ROT, OBJECT_VELOCITY, OBJECT_CREATOR, OBJECT_PHANTOM, OBJECT_PRIM_EQUIVALENCE]);
 				string type;
 				
-				// test if it's an avatar or an object
+				// test if it is an avatar or an object
 				if (llList2Key(objectDetailsList, 2) == NULL_KEY) // avatars have no creator!
 				{
 					type = "1";

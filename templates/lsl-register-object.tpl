@@ -60,6 +60,7 @@ default
     state_entry()
     {
         parseDescription();
+        llSetTimerEvent(3600.0); // this will hopefully force an update every hour
     }    
 
     on_rez(integer what)
@@ -69,7 +70,7 @@ default
 
     touch_start(integer total_number)
     {
-        // this has to be redone: touching will allow to set the cube's class, type, etc.
+        // this has to be redone: touching will allow to set the cube´s class, type, etc.
         
         if (llDetectedKey(0) == llGetOwner() || llDetectedGroup(0))
         {
@@ -85,7 +86,7 @@ default
         {
             // Only face 0 is active for this
             if (llDetectedTouchFace(0) == -1)
-                llWhisper(PUBLIC_CHANNEL, "Sorry, your viewer doesn't support touched faces.");
+                llWhisper(PUBLIC_CHANNEL, "Sorry, your viewer does not support touched faces.");
             else if (llDetectedTouchFace(0) == 0)
             {
                 touchST = llDetectedTouchST(0);
@@ -154,13 +155,14 @@ default
                 // new registration? switch to inventory reading
                 if (request_id == registrationRequest)
                     state read_inventory;
-                // if it's just an update, no need to do anything else for now
+                // if it is just an update, no need to do anything else for now
                 updateSetText();
             }
             else
             {
                 llSetText("!!! BROKEN !!!", <1.0,0.0,0.0>, 1.0);
                 llOwnerSay("Error " +(string)status + ": " + body);
+                llSetTimerEvent(3600.0);
             }
         }
     }
@@ -188,11 +190,12 @@ default
         {
             llSetText("!!! BROKEN !!!", <1.0,0.0,0.0>, 1.0);
             llOwnerSay("Something went wrong, no url. " + body);
+            llSetTimerEvent(3600.0);
         }
         else if (method == "POST" || method == "GET")
         {
 			// NOTE(gwyneth): This will allow the web-based interface to send commands to each and every object.
-			//  Right now, it's just used to see if the objects are alive; this is needed by the Garbage Collector,
+			//  Right now, it is just used to see if the objects are alive; this is needed by the Garbage Collector,
 			//  it sends a 'command=ping' and expects a 'pong'; if not, it assumes that the object is 'dead' and cleans up. (20170729)
 
 			list params = llParseStringKeepNulls(llUnescapeURL(body), ["&", "="], []);
@@ -244,7 +247,7 @@ default
     
     timer()
     {
-        llSetText("Timed out, trying again to\nregister position...", <1.0,0.0,0.0>, 1.0);
+        llSetText("Trying again to register cube/position...", <1.0,0.0,0.0>, 1.0);
         llSetTimerEvent(0.0);
         init();
     }
@@ -267,7 +270,7 @@ state read_inventory
         llSetTimerEvent(360.00); // timeout if the web server is too slow in responding
         
         // Now add the new items.
-        // This needs two passes: on the first one, we'll skip textures
+        // This needs two passes: on the first one, we will skip textures
         // The second pass will add them later
         llSetText("Checking inventory...", <1.0,1.0,0.0>, 1.0);
         
@@ -323,8 +326,15 @@ state read_inventory
     timer()
     {
         // HTTP server does not work, go to default state for now
-        llOwnerSay("Web server did not reply after 3 minutes - not updated - try again later");
+        llOwnerSay("Web server did not reply after 6 minutes - not updated - trying again later");
+        llSetTimerEvent(0.0);
+        init();
     }
+    
+    state_exit()
+	{
+		llSetTimerEvent(0.0);
+	}
 }
 </code></pre>
 {{ end }}

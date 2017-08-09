@@ -43,7 +43,7 @@ default
 		llListen(listenChannel,"",NULL_KEY,"");
 		llSetText("Listening on " + listenChannel, &lt;0, 255, 0&gt;, 1);
 		llOwnerSay("Say /" + (string)listenChannel + " help for commands");
-		llSetTimerEvent(0.0);
+		llSetTimerEvent(3600.0); // this will hopefully force an update every hour
 	}
 	
 	on_rez(integer what)
@@ -442,12 +442,13 @@ default
 				// new registration? switch to inventory reading
 				if (request_id == registrationRequest)
 					state read_inventory;
-				// if it's just an update, no need to do anything else for now
+				// if it is just an update, no need to do anything else for now
 			}
 			else
 			{
 				llSetText("!!! BROKEN !!!", &lt;1.0,0.0,0.0&gt;, 1.0);
 				llOwnerSay("Error " +(string)status + ": " + body);
+				llSetTimerEvent(3600.0); // try registering again in an hour
 			}
 		}
 	}
@@ -474,6 +475,7 @@ default
 		{
 			llSetText("!!! BROKEN !!!", &lt;1.0,0.0,0.0&gt;, 1.0);
 			llOwnerSay("Something went wrong, no url. " + body);
+			llSetTimerEvent(3600.0);
 		}
 		else if (method == "POST" || method == "GET")
 		{
@@ -496,7 +498,7 @@ default
 			// commands begin on the second parameter
 			string commandTag = llList2String(params, 2);
 			string command = llList2String(params, 3);
-			
+
 			if (commandTag == "command" && (osIsNpc(NPC) || command == "osNpcCreate" || command == "ping"))
 			{
 				if (command == "osNpcGetRot")
@@ -669,8 +671,8 @@ llSleep(1);
 	
 	timer()
 	{
-		llSetText("Timed out, trying again to\nregister bot controller...", &lt;1.0,0.0,0.0&gt;, 1.0);
-		llOwnerSay("Timed out, trying again to register bot controller...");
+		llSetText("Trying to register bot controller...", &lt;1.0,0.0,0.0&gt;, 1.0);
+		llOwnerSay("Trying to register bot controller...");
 		llSetTimerEvent(0.0);
 		init();
 	}
@@ -690,7 +692,7 @@ state read_inventory
 		integer length = llGetInventoryNumber(INVENTORY_ALL);
 		serverKey = llGetKey();
 		
-		llSetTimerEvent(3600.0); // timeout if the web server is too slow in responding
+		llSetTimerEvent(360.0); // timeout if the web server is too slow in responding
 		
 		// Now add the new items.
 		// This needs two passes: on the first one, we'll skip textures
@@ -749,8 +751,9 @@ state read_inventory
 	timer()
 	{
 		// HTTP server does not work, go to default state for now
-		llOwnerSay("Web server did not reply after 3 minutes - not updated - try again later");
-		state default;
+		llOwnerSay("Web server did not reply after 6 minutes - not updated - try again later");
+		llSetTimerEvent(0.0);
+		init();
 	}
 	
 	state_exit()
