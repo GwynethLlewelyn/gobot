@@ -26,7 +26,7 @@ func GetMD5Hash(text string) string {
 func updateInventory(w http.ResponseWriter, r *http.Request) {
 	// get all parameters in array
 	err := r.ParseForm()
-	checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Extracting parameters failed: %s\n", err)
+	checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Extracting parameters failed:", err)
 	
 	if r.Form.Get("signature") != "" && r.Header.Get("X-Secondlife-Object-Key") != "" {
 		signature := GetMD5Hash(r.Header.Get("X-Secondlife-Object-Key") + r.Form.Get("timestamp") + ":" + LSLSignaturePIN)
@@ -43,7 +43,7 @@ func updateInventory(w http.ResponseWriter, r *http.Request) {
 		defer db.Close()		
 		
 		stmt, err := db.Prepare("REPLACE INTO Inventory (`UUID`, `Name`, `Type`, `Permissions`, `LastUpdate`) VALUES (?,?,?,?,?)");
-		checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Replace prepare failed: %s\n", err)
+		checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Replace prepare failed:", err)
 
 		defer stmt.Close()
 
@@ -54,7 +54,7 @@ func updateInventory(w http.ResponseWriter, r *http.Request) {
 			r.Form.Get("permissions"),
 			r.Form.Get("timestamp"),
 		)
-		checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Replace exec failed: %s\n", err)
+		checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Replace exec failed:", err)
 
 		//_, err := res.RowsAffected()
 		//checkErr(err)
@@ -96,16 +96,16 @@ func updateInventory(w http.ResponseWriter, r *http.Request) {
 func updateSensor(w http.ResponseWriter, r *http.Request) {	
 	if r.Header.Get("X-Secondlife-Object-Key") != "" {
 		err := r.ParseForm()
-		checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Extracting parameters failed: %s\n", err)
+		checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Extracting parameters failed:", err)
 		
 		// open database connection and see if we can update the inventory for this object
 		db, err := sql.Open(PDO_Prefix, GoBotDSN)
-		checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Connect failed: %s\n", err)
+		checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Connect failed:", err)
 		
 		defer db.Close()
 		
 		stmt, err := db.Prepare("REPLACE INTO Obstacles (`UUID`, `Name`, `BotKey`, `BotName`, `Type`, `Origin`, `Position`, `Rotation`, `Velocity`, `Phantom`, `Prims`, `BBHi`, `BBLo`, `LastUpdate`) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
-		checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Replace prepare failed: %s\n", err)
+		checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Replace prepare failed:", err)
 
 		defer stmt.Close()
 
@@ -125,7 +125,7 @@ func updateSensor(w http.ResponseWriter, r *http.Request) {
 			strings.Trim(r.Form.Get("bblo"), "<>()"),
 			r.Form.Get("timestamp"),
 		)
-		checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Replace exec failed: %s\n", err)
+		checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Replace exec failed:", err)
 
 		//_, err := res.RowsAffected()
 		//checkErr(err)
@@ -160,7 +160,7 @@ func updateSensor(w http.ResponseWriter, r *http.Request) {
 func registerPosition(w http.ResponseWriter, r *http.Request) {
 	// get all parameters in array
 	err := r.ParseForm()
-	checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Extracting parameters failed: %s\n", err)
+	checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Extracting parameters failed:", err)
 	// log.Println("Received: ", r) // we know this works well (20170725)
 	
 	if r.Header.Get("X-Secondlife-Object-Key") == "" {
@@ -191,7 +191,7 @@ func registerPosition(w http.ResponseWriter, r *http.Request) {
 		
 		// open database connection and see if we can update the inventory for this object
 		db, err := sql.Open(PDO_Prefix, GoBotDSN)
-		checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Connect failed: %s\n", err)
+		checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Connect failed:", err)
 		
 		defer db.Close()
 		
@@ -217,7 +217,7 @@ func registerPosition(w http.ResponseWriter, r *http.Request) {
 			r.Form.Get("ratehappiness"),
 			r.Form.Get("timestamp"),
 		)
-		checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Replace exec failed: %s\n", err)
+		checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Replace exec failed:", err)
 
 		//_, err := res.RowsAffected()
 		//checkErr(err)
@@ -242,7 +242,7 @@ func registerPosition(w http.ResponseWriter, r *http.Request) {
 func registerAgent(w http.ResponseWriter, r *http.Request) {
 	// get all parameters in array
 	err := r.ParseForm()
-	checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Extracting parameters failed: %s\n", err)
+	checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Extracting parameters failed:", err)
 	
 	if r.Header.Get("X-Secondlife-Object-Key") == "" {
 		// fmt.Printf("Got '%s'\n", r.Header["X-Secondlife-Object-Key"])
@@ -264,7 +264,7 @@ func registerAgent(w http.ResponseWriter, r *http.Request) {
 	
 	// open database connection and see if we can update the inventory for this object
 	db, err := sql.Open(PDO_Prefix, GoBotDSN)
-	checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Connect failed: %s\n", err)
+	checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Connect failed:", err)
 	
 	defer db.Close()
 
@@ -291,7 +291,7 @@ func registerAgent(w http.ResponseWriter, r *http.Request) {
 			r.Form.Get("subtype"),
 			r.Form.Get("timestamp"),
 		)
-		checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Replace exec failed: %s\n", err)
+		checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Replace exec failed:", err)
 
 		w.WriteHeader(http.StatusOK)
 		w.Header().Set("Content-type", "text/plain; charset=utf-8")
@@ -309,12 +309,12 @@ func registerAgent(w http.ResponseWriter, r *http.Request) {
 		// log.Printf(replyText) // debug
 	} else if r.Form.Get("request") == "delete" { // other requests, currently only deletion		
 		stmt, err := db.Prepare("DELETE FROM Agents WHERE UUID=?")
-		checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Delete agent prepare failed: %s\n", err)
+		checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Delete agent prepare failed:", err)
 
 		defer stmt.Close()
 		
 		_, err = stmt.Exec(r.Form.Get("npc"))
-		checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Delete agent exec failed: %s\n", err)
+		checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Delete agent exec failed:", err)
 		
 		w.WriteHeader(http.StatusOK)
 		w.Header().Set("Content-type", "text/plain; charset=utf-8")
@@ -336,7 +336,7 @@ func configureCube(w http.ResponseWriter, r *http.Request) {
 //  We might also animate the avatar depending on its class, subclass, etc.
 func processCube(w http.ResponseWriter, r *http.Request) {
 	err := r.ParseForm()
-	checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Extracting parameters failed: %s\n", err)
+	checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Extracting parameters failed:", err)
 	
 	if r.Header.Get("X-Secondlife-Object-Key") == "" {
 		logErrHTTP(w, http.StatusForbidden, funcName() + ": Only in-world requests allowed.")
@@ -357,12 +357,14 @@ func processCube(w http.ResponseWriter, r *http.Request) {
 	// all checks fine, now let's get the agent data from the database:
 	// allegedly, we get avatar=[UUID] — all the rest ought to be on the database (20170807)
 	db, err := sql.Open(PDO_Prefix, GoBotDSN)
-	checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Connect failed: %s\n", err)
+	checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Connect failed:", err)
 	
 	defer db.Close()
 	
+	fmt.Println("processCube called, avatar UUID is", r.Form.Get("avatar"), "cube UUID is", r.Header.Get("X-Secondlife-Object-Key"))
+	
 	var agent AgentType
-	err = db.QueryRow("SELECT * FROM Agents WHERE UUID=?", r.Form.Get("avatar")).Scan(
+	err = db.QueryRow("SELECT * FROM Agents WHERE OwnerKey=?", r.Form.Get("avatar")).Scan(
 		&agent.UUID,
 		&agent.Name,
 		&agent.OwnerName,
@@ -383,11 +385,11 @@ func processCube(w http.ResponseWriter, r *http.Request) {
 		&agent.CurrentTarget,
 	)
 	if err != nil || !agent.UUID.Valid {
-		checkErrHTTP(w, http.StatusNotFound, funcName() + "Agent UUID not found in database or invalid: %s\n", err)
+		checkErrPanicHTTP(w, http.StatusNotFound, funcName() + " Agent UUID not found in database or invalid:", err)
 	}
 	// get information on this cube
 	var cube PositionType
-	err = db.QueryRow("SELECT * FROM Objects WHERE UUID=?", r.Header.Get("X-Secondlife-Object-Key")).Scan(
+	err = db.QueryRow("SELECT * FROM Positions WHERE UUID=?", r.Header.Get("X-Secondlife-Object-Key")).Scan(
 		&cube.PermURL,
 		&cube.UUID,
 		&cube.Name,
@@ -405,7 +407,7 @@ func processCube(w http.ResponseWriter, r *http.Request) {
 		&cube.RateHappiness,
 		)
 	if err != nil || !cube.UUID.Valid {
-		checkErrHTTP(w, http.StatusNotFound, funcName() + "This cube's UUID was not found in database or is invalid! We should reset it in-world. Error was: %s\n", err)
+		checkErrPanicHTTP(w, http.StatusNotFound, funcName() + " This cube's UUID was not found in database or is invalid! We should reset it in-world. Error was:", err)
 	}
 	// we update the avatar's money, happiness etc. by the rate of the object
 	energyAgent, err := strconv.ParseFloat(*agent.Energy.Ptr(), 64) // get this as a float or else all hell will break loose!
@@ -440,7 +442,16 @@ func processCube(w http.ResponseWriter, r *http.Request) {
 	    sendMessageToBrowser("status", "error", fmt.Sprintf("Agent '%s' could not be updated in-world with new happiness settings; in-world reply was: '%s'", *agent.Name.Ptr(), rsBody), "")
 	}
 	// the next step is to update the database with the new values
-	_, err = db.Exec("UPDATE Agents SET `Energy`=?, `Money`=?, `Happiness`=? WHERE UUID=?", energyAgent, moneyAgent, happinessAgent, *agent.UUID.Ptr())
+	stmt, err := db.Prepare("UPDATE Agents SET `Energy`=?, `Money`=?, `Happiness`=? WHERE UUID=?")
+	checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Replace prepare failed:", err)
+    if (err != nil) {
+	    sendMessageToBrowser("status", "error", fmt.Sprintf("Agent '%s' could not be updated in database with new energy/money/happiness settings; database reply was: '%v'", *agent.Name.Ptr(), err), "")
+	}	
+
+	defer stmt.Close()
+
+	_, err = stmt.Exec(energyAgent, moneyAgent, happinessAgent, *agent.UUID.Ptr())
+	checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Replace exec failed:", err)
     if (err != nil) {
 	    sendMessageToBrowser("status", "error", fmt.Sprintf("Agent '%s' could not be updated in database with new energy/money/happiness settings; database reply was: '%v'", *agent.Name.Ptr(), err), "")
 	}	

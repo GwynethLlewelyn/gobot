@@ -219,7 +219,7 @@ func checkErrPanic(err error) {
 		color.Set(color.FgRed)
 		defer color.Unset()
 		pc, file, line, ok := runtime.Caller(0)
-		log.Panicln("gobot", file, line, ":", pc, ok, " - panic:", err)
+		log.Panicln("gobot", filepath.Base(file), ":", line, ":", pc, ok, " - panic:", err)
 	}
 }
 
@@ -229,7 +229,7 @@ func checkErr(err error) {
 	if err != nil {
 		color.Set(color.FgYellow)
 		pc, file, line, ok := runtime.Caller(0)
-		log.Panicln("gobot", file, line, ":", pc, ok, " - error:", err)
+		log.Panicln("gobot", filepath.Base(file), ":", line, ":", pc, ok, " - error:", err)
 		color.Unset()
 	}
 }

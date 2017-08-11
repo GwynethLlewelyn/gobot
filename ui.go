@@ -21,7 +21,7 @@ func checkErrHTTP(w http.ResponseWriter, httpStatus int, errorMessage string, er
 		http.Error(w, fmt.Sprintf(errorMessage, err), httpStatus)
 		color.Set(color.FgYellow)
 		pc, file, line, ok := runtime.Caller(1)
-		log.Println("(", http.StatusText(httpStatus), ") ", file, line, ":", pc, ok, " - error:", errorMessage, err)	
+		log.Println("(", http.StatusText(httpStatus), ") ", filepath.Base(file), ":", line, ":", pc, ok, " - error:", errorMessage, err)	
 		color.Unset()	
 	}
 }
@@ -33,7 +33,7 @@ func checkErrPanicHTTP(w http.ResponseWriter, httpStatus int, errorMessage strin
 		color.Set(color.FgRed)
 		defer color.Unset()
 		pc, file, line, ok := runtime.Caller(1)
-		log.Panicln("(", http.StatusText(httpStatus), ") ", file, line, ":", pc, ok, " - panic:", errorMessage, err)
+		log.Panicln("(", http.StatusText(httpStatus), ") ", filepath.Base(file), ":", line, ":", pc, ok, " - panic:", errorMessage, err)
 	}
 }
 

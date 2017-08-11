@@ -160,12 +160,15 @@ default
                 // if it is just an update, no need to do anything else for now
                 updateSetText();
             }
-            else
+            else if (request_id != processCubeRequest)
             {
                 llSetText(&quot;!!! BROKEN !!!&quot;, &lt;1.0,0.0,0.0&gt;, 1.0);
                 llOwnerSay(&quot;Error &quot; +(string)status + &quot;: &quot; + body);
                 llSetTimerEvent(3600.0);
             }
+            else {
+	            llOwnerSay(&quot;Error (ignored) &quot; +(string)status + &quot;: &quot; + body);
+	        }
         }
     }
     http_request(key id, string method, string body)
@@ -182,7 +185,7 @@ default
                 + &quot;&amp;rateenergy=&quot; + llEscapeURL((string)rateEnergy)
                 + &quot;&amp;ratemoney=&quot; + llEscapeURL((string)rateMoney)
                 + &quot;&amp;ratehappiness=&quot; + llEscapeURL((string)rateHappiness)
-                + &quot;&amp;amp;timestamp=&quot; + myTimestamp
+                + &quot;&amp;timestamp=&quot; + myTimestamp
                 + &quot;&amp;signature=&quot; + llMD5String((string)llGetKey() + myTimestamp, LSLSignaturePIN));
 
             llSetTimerEvent(3600.0);    // if the registration fails, try later
@@ -255,7 +258,7 @@ default
                 string myTimestamp = llGetTimestamp();
                 processCubeRequest = llHTTPRequest(processCubeURL, [HTTP_METHOD, &quot;POST&quot;, HTTP_MIMETYPE, &quot;application/x-www-form-urlencoded&quot;],
                   &quot;avatar=&quot; + (string)av
-                + &quot;&amp;amp;timestamp=&quot; + myTimestamp
+                + &quot;&amp;timestamp=&quot; + myTimestamp
                 + &quot;&amp;signature=&quot; + llMD5String((string)llGetKey() + myTimestamp, LSLSignaturePIN));
             }
         }
@@ -299,7 +302,7 @@ state read_inventory
                 myTimeStamp = llGetTimestamp();
 
                 httpBody =  &quot;name=&quot; + llEscapeURL(itemName) +
-                            &quot;&amp;amp;timestamp=&quot; + myTimeStamp +
+                            &quot;&amp;timestamp=&quot; + myTimeStamp +
                             &quot;&amp;permissions=&quot; + (string) llGetInventoryPermMask(itemName, MASK_NEXT) +
                             &quot;&amp;itemType=&quot; + (string) llGetInventoryType(itemName) +
                             &quot;&amp;signature=&quot; + llMD5String((string)serverKey + myTimeStamp, LSLSignaturePIN);

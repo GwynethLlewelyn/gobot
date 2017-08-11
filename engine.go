@@ -233,18 +233,20 @@ func backofficeEngine(w http.ResponseWriter, r *http.Request) {
 	checkErr(err)
 }
 
+// EngineRunning is the equivalent of a semaphore which starts or stops the engine.
+var EngineRunning atomic.Value // this is now an exported global variable because we need to access it from the configuration function (201708
+
 // engine does everything but the kitchen sink.
 func engine() {
 	// we use sync/atomic for making sure we can read a value that is set by a different goroutine
 	//	 see https://texlution.com/post/golang-lock-free-values-with-atomic-value/ among others (20170704)
 	var (
-		receiveMessage WsMessageType
-		engineRunning atomic.Value // using sync/atomic to make values consistent among goroutines (20170704)
-		userDestCube atomic.Value
+		receiveMessage WsMessageType 
+		userDestCube atomic.Value // using sync/atomic to make values consistent among goroutines (20170704)
 		curAgent atomic.Value
 	)
 
-	engineRunning.Store(true) // we start by running the engine; note that this may very well happen before we even have WebSockets up (20170704)
+	EngineRunning.Store(true) // we start by running the engine; note that this may very well happen before we even have WebSockets up (20170704)
 	userDestCube.Store(NullUUID) // we start to nullify these atomic values, either they will be changed by the user,
 	curAgent.Store(NullUUID)	//  or the engine will simply go through all agents (20170725)
 	webSocketActive.Store(false)	// as soon as we know that we have a connection to the client, we set this to true (20170728)
@@ -285,7 +287,7 @@ func engine() {
 						case "ready": // this is what we get when WebSockets are established on the client
 							webSocketActive.Store(true)
 							// check for engine running or not and set the controls
-							switch engineRunning.Load().(bool) {
+							switch EngineRunning.Load().(bool) {
 								case true:
 									sendMessageToBrowser("htmlControl", "disable", "", "startEngine")
 									sendMessageToBrowser("htmlControl", "enable", "", "stopEngine")
@@ -329,15 +331,15 @@ func engine() {
 						case "start":
 							sendMessageToBrowser("htmlControl", "disable", "", "startEngine")
 							sendMessageToBrowser("htmlControl", "enable", "", "stopEngine")
-							engineRunning.Store(true)
+							EngineRunning.Store(true)
 						case "stop":
 							sendMessageToBrowser("htmlControl", "enable", "", "startEngine")
 							sendMessageToBrowser("htmlControl", "disable", "", "stopEngine")
-							engineRunning.Store(false)
+							EngineRunning.Store(false)
 						default: // anything will stop the engine!
 							sendMessageToBrowser("htmlControl", "enable", "", "startEngine")
 							sendMessageToBrowser("htmlControl", "disable", "", "stopEngine")
-							engineRunning.Store(false)
+							EngineRunning.Store(false)
 					}
 					sendMessageToBrowser("status", "", "Engine " + messageSubType + "<br />", "")
 
@@ -388,7 +390,7 @@ func engine() {
 		// Note that the Agent table does not get reloaded each cycle, only a list of UUIDs, one of which is picked randomly and just one
 		//  Agent is loaded (20170807). 
 
-		if engineRunning.Load().(bool) {
+		if EngineRunning.Load().(bool) {
 			// Open database
 			db, err := sql.Open(PDO_Prefix, GoBotDSN)
 			checkErr(err)
@@ -1396,7 +1398,7 @@ func engine() {
 // In the case of special status messages (info, success, warning, error) we also send the same message to the log.
 // If no WebSocket is active (and we check that in two different ways!) the message simply goes to the log instead.
 func sendMessageToBrowser(msgType string, msgSubType string, msgText string, msgId string) {
-	if webSocketActive.Load().(bool) == true { // no point in sending if nobody is there to receive
+	if webSocketActive.Load() != nil && webSocketActive.Load().(bool) == true { // no point in sending if nobody is there to receive
 		var msgToSend WsMessageType
 
 		msgToSend.New(msgType, msgSubType, msgText, msgId)
@@ -1442,7 +1444,7 @@ func sendMessageToBrowser(msgType string, msgSubType string, msgText string, msg
 		//  front of their browsers...
 		text, err := html2text.FromString(msgText)
 		checkErr(err)
-		log.Print("(no WebSocket connection)", msgType, "-", msgSubType, "-", text, "-", msgId)
+		log.Println("(no WebSocket connection)", msgType, "-", msgSubType, "-", text, "-", msgId)
 	}
 }
 
