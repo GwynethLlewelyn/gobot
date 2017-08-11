@@ -320,6 +320,7 @@ type PositionType struct {
 	RateHappiness zero.String
 	Coords_region string
 	Coords_xyz []string
+	DistanceToAgent float64	// This does not get saved to the database, since it's different for every agent (20170811).
 }
 
 // uiPositions creates a JSON representation of the Positions table and spews it out.
