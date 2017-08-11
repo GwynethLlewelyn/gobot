@@ -25,6 +25,7 @@ vector touchST; // for the sliders
 
 init()
 {
+	llSitTarget(&lt;0.25,0.25,0.5&gt;, ZERO_ROTATION);
     llSetText(&quot;Registering position...&quot;, &lt;1.0,0.0,0.0&gt;, 1.0);
     llOwnerSay(&quot;Registering position...&quot;);
     // parse description field
