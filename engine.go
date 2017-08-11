@@ -234,9 +234,13 @@ func backofficeEngine(w http.ResponseWriter, r *http.Request) {
 }
 
 // EngineRunning is the equivalent of a semaphore which starts or stops the engine.
-var EngineRunning atomic.Value // this is now an exported global variable because we need to access it from the configuration function (201708
+// This is now an exported global variable because we need to access it from the configuration function and from the SIGHUP (20170811)
+var EngineRunning atomic.Value 
 
 // engine does everything but the kitchen sink.
+// Notably, it does not only run the GA. It also deals on a separate goroutine with message handling for WebSockets, which also includes 
+//  the ability to start or stop the GA. And it launches another goroutine to deal with buffering commands to the virtual world. It really does
+//  a lot, and possibly it ought to be simplified somehow. But this is the core, the essence, the kernel, the locus of all the rest!
 func engine() {
 	// we use sync/atomic for making sure we can read a value that is set by a different goroutine
 	//	 see https://texlution.com/post/golang-lock-free-values-with-atomic-value/ among others (20170704)
@@ -246,12 +250,13 @@ func engine() {
 		curAgent atomic.Value
 	)
 
-	EngineRunning.Store(true) // we start by running the engine; note that this may very well happen before we even have WebSockets up (20170704)
+//	EngineRunning.Store(true) // we start by running the engine; note that this may very well happen before we even have WebSockets up (20170704)
+								// now we let this be set via configuration file; the default is true; and a SIGHUP will start/stop the engine (20170811)
 	userDestCube.Store(NullUUID) // we start to nullify these atomic values, either they will be changed by the user,
 	curAgent.Store(NullUUID)	//  or the engine will simply go through all agents (20170725)
 	webSocketActive.Store(false)	// as soon as we know that we have a connection to the client, we set this to true (20170728)
 
-	sendMessageToBrowser("status", "info", "this is the engine <b>starting</b><br />", "") // browser might not even know we're sending messages to it, so this will just gracefully timeout and be ignored and just appear on the log
+	sendMessageToBrowser("status", "info", "Entering the engine goroutine", "") // browser might not even know we're sending messages to it, so this will just gracefully timeout and be ignored and just appear on the log; changed message to display that we don't know if the engine is going to run or not (20170811)
 
 	// Launch the movement worker goroutine. This is needed because Go is so fast calculating populations that it keeps giving the agents
 	// contradictory movement commands. This uses a blocking channel and calculates how long the avatar needs to reach its destination
