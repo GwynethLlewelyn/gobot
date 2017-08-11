@@ -432,6 +432,8 @@ func processCube(w http.ResponseWriter, r *http.Request) {
 	rsBody, err := callURL(*agent.PermURL.Ptr(), fmt.Sprintf("command=setEnergy&param1=float&data1=%f", energyAgent))
     if (err != nil) {
 	    sendMessageToBrowser("status", "error", fmt.Sprintf("Agent '%s' could not be updated in-world with new energy settings; in-world reply was: '%s'", *agent.Name.Ptr(), rsBody), "")
+	} else {
+		log.Println("Result from updating energy of ", *agent.Name.Ptr(), ":", rsBody)
 	}
 	// now do it for money!
 	moneyAgent, err := strconv.ParseFloat(*agent.Money.Ptr(), 64)
@@ -442,6 +444,8 @@ func processCube(w http.ResponseWriter, r *http.Request) {
 	rsBody, err = callURL(*agent.PermURL.Ptr(), fmt.Sprintf("command=setMoney&param1=float&data1=%f", moneyAgent))
     if (err != nil) {
 	    sendMessageToBrowser("status", "error", fmt.Sprintf("Agent '%s' could not be updated in-world with new money settings; in-world reply was: '%s'", *agent.Name.Ptr(), rsBody), "")
+	} else {
+		log.Println("Result from updating money of ", *agent.Name.Ptr(), ":", rsBody)
 	}
 	// last but not least, make the agent more happy!
 	happinessAgent, err := strconv.ParseFloat(*agent.Happiness.Ptr(), 64)
@@ -452,6 +456,8 @@ func processCube(w http.ResponseWriter, r *http.Request) {
 	rsBody, err = callURL(*agent.PermURL.Ptr(), fmt.Sprintf("command=setHappiness&param1=float&data1=%f", happinessAgent))
     if (err != nil) {
 	    sendMessageToBrowser("status", "error", fmt.Sprintf("Agent '%s' could not be updated in-world with new happiness settings; in-world reply was: '%s'", *agent.Name.Ptr(), rsBody), "")
+	} else {
+		log.Println("Result from updating happiness of ", *agent.Name.Ptr(), ":", rsBody)
 	}
 	// the next step is to update the database with the new values
 	stmt, err := db.Prepare("UPDATE Agents SET `Energy`=?, `Money`=?, `Happiness`=? WHERE UUID=?")
