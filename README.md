@@ -57,11 +57,13 @@ Because everything is controlled via `gobot` (as opposed to a specific, C#/libop
 
 Note that scanning objects is a _collaborative_ effort: _all_ agents write to the _same_ database about what items they have 'found'. So, the more agents are roaming the region, the more likely the data will be more and more accurate.
 
+You can (or rather, you should) also place the `Sensorama.lsl` script inside all your cubes, especially those near several complex (static) objects. This will prevent those objects to disappear from the database (when the garbage collector runs) since the cubes will continuously refresh them.
+
 `llCastRay detector script 3.1.lsl` also tries to detect the environment around the NPC. The concept, however, is slightly different: a 'virtual ray' is emitted from the NPC (the direction can be specified in LSL), and everything that this beam crosses will be retrieved into a list of objects — which, in turn, can be polled for additional information (e.g. size, velocity, and so forth). The `llCastRay()` function is directly tied to lower-level tools in the physics engine which provide this functionality directly, as opposed to the sensors, which require geofencing code to extract relevant data from the database (which is more resource-consuming, takes longer, and so forth); thus, `llCastRay()` would _theoretically_ be much more efficient, but there is a catch: it can be 'abused' to the point that the physics engine may be overloaded with way too many calls. Therefore, both OpenSimulator and Second Life limit the amount of rays that can be cast; and once that amount is reached, NPCs would become 'blind', unable to perceive anything in their immediate surroundings. That's why both kind of 'detection' work simultaneously (and cooperatively!) to fill up the database with as much data as it can be extracted from the environment; this 'common knowledge database' is actually what the engine uses to have an idea of how the environment looks like. Note that only the Energy/Happiness/Money are _active_ elements in the environment, telling the engine their _precise_ location; everything else must somehow be acquired with 'artificial vision' through those two scripts.
 
-Note that when the llCastRay detector is operational, there will be a 'laser beam' emitted from the NPC to the item it is currently analysing and considers to be 'in front of them'. Sometimes the NPC will turn the beam off: this means that there are no objects _directly_ in front of it. Unlike sensors, which are cones (or even spheres!), the llCastRay is a tight beam (theoretically of zero thickness) and may therefore produce unexpected results as it goes through certain objects (by narrowly missing their edges!). Nevertheless, _when_ it crosses an object, it is much more accurate in knowing that such an object is _really_ in the path of the agent.
+Note that when the `llCastRay` detector is operational, there will be a 'laser beam' emitted from the NPC to the item it is currently analysing and considers to be 'in front of them'. Sometimes the NPC will turn the beam off: this means that there are no objects _directly_ in front of it. Unlike sensors, which are cones (or even spheres!), the `llCastRay` is a tight beam (theoretically of zero thickness) and may therefore produce unexpected results as it goes through certain objects (by narrowly missing their edges!). Nevertheless, _when_ it crosses an object, it is much more accurate in knowing that such an object is _really_ in the path of the agent.
 
-In order for all the above to work, these three scripts (registration/commands, sensor, llCastRay) must be on an object attached to the NPC. So to prepare a 'template' NPC, you should do the following:
+In order for all the above to work, these three scripts (registration/commands, sensor, `llCastRay`) must be on an object attached to the NPC. So to prepare a 'template' NPC, you should do the following:
 
   - Start with your own avatar, stripping it from anything unnecessary.
   - Make sure that all scripts have been set to all permissions.
@@ -75,9 +77,13 @@ More to come...
 
 ## Hidden Easter Eggs
 
-Sending a SIGHUP will reload the configuration file (as expected)
+Changing the configuration notecard and saving it will get the application to reload it, and changes will take immediate effect; there is no need to kill the application for that.
+
+Sending a SIGHUP will also reload the configuration file (as expected), but probably will just try to restart the engine (in the works...)
 
 SIGUSR1 will send a randomly generated female name to appear on the Engine page; SIGUSR2 will place a random country. Why? Well, this was the only way to get *something* to appear there while testing the code (and without creating a new backoffice just for testing purposes). Now if I only came up with pipes and more esoteric stuff... 😉
+
+SIGCONT is supposed to restart the engine once it is stopped, but it's not working well.
 
 ## License
 
