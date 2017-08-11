@@ -550,7 +550,7 @@ func backofficeCommandsExec(w http.ResponseWriter, r *http.Request) {
 	    content += "<p class=\"text-success\">" + rsBody + "</p>"
     }
     
-    log.Printf("Sending to in-world object %s ... %s\n", r.Form.Get("PermURL"), body) // debug
+    // log.Printf("Sending to in-world object %s ... %s\n", r.Form.Get("PermURL"), body) // debug
     
     /*
     rs, err := http.Post(r.Form.Get("PermURL"), "application/x-www-form-urlencoded", bytes.NewBuffer(body))
