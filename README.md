@@ -79,11 +79,11 @@ More to come...
 
 Changing the configuration notecard and saving it will get the application to reload it, and changes will take immediate effect; there is no need to kill the application for that.
 
-Sending a SIGHUP will also reload the configuration file (as expected), but probably will just try to restart the engine (in the works...)
+Sending a _SIGHUP_ will also try to start/stop the engine. Note that this might not happen immediately: the engine might run one whole iteration of the whole genetic algorithm before stopping; and messages queued to be sent in-world will probably continue to be sent until the buffer flushes out.
 
-SIGUSR1 will send a randomly generated female name to appear on the Engine page; SIGUSR2 will place a random country. Why? Well, this was the only way to get *something* to appear there while testing the code (and without creating a new backoffice just for testing purposes). Now if I only came up with pipes and more esoteric stuff... 😉
+_SIGUSR1_ will send a randomly generated female name to appear on the Engine page; _SIGUSR2_ will place a random country. Why? Well, this was the only way to get *something* to appear there while testing the code (and without creating a new backoffice just for testing purposes). Now if I only came up with pipes and more esoteric stuff... 😉
 
-SIGCONT is supposed to restart the engine once it is stopped, but it's not working well.
+_SIGCONT_ is reserved for future use now.
 
 ## License
 
