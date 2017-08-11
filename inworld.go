@@ -429,11 +429,11 @@ func processCube(w http.ResponseWriter, r *http.Request) {
 	energyAgent += energyCube	
 	// in theory, this should now go to the engine, to see if it's enough or not; we'll see what happens (20170808)
 	// We now call the agent and tell him about the new values:
-	rsBody, err := callURL(*agent.PermURL.Ptr(), fmt.Sprintf("command=setEnergy&param1=float&data1=%f", energyAgent))
+	rsBody, err := callURL(*agent.PermURL.Ptr(), fmt.Sprintf("command=setEnergy&float=%f", energyAgent))
     if (err != nil) {
 	    sendMessageToBrowser("status", "error", fmt.Sprintf("Agent '%s' could not be updated in-world with new energy settings; in-world reply was: '%s'", *agent.Name.Ptr(), rsBody), "")
 	} else {
-		log.Println("Result from updating energy of ", *agent.Name.Ptr(), ":", rsBody)
+		fmt.Println("Result from updating energy of ", *agent.Name.Ptr(), ":", rsBody)
 	}
 	// now do it for money!
 	moneyAgent, err := strconv.ParseFloat(*agent.Money.Ptr(), 64)
@@ -441,11 +441,11 @@ func processCube(w http.ResponseWriter, r *http.Request) {
 	moneyCube, err := strconv.ParseFloat(*cube.RateMoney.Ptr(), 64)
 	checkErr(err)
 	moneyAgent += moneyCube	
-	rsBody, err = callURL(*agent.PermURL.Ptr(), fmt.Sprintf("command=setMoney&param1=float&data1=%f", moneyAgent))
+	rsBody, err = callURL(*agent.PermURL.Ptr(), fmt.Sprintf("command=setMoney&float=%f", moneyAgent))
     if (err != nil) {
 	    sendMessageToBrowser("status", "error", fmt.Sprintf("Agent '%s' could not be updated in-world with new money settings; in-world reply was: '%s'", *agent.Name.Ptr(), rsBody), "")
 	} else {
-		log.Println("Result from updating money of ", *agent.Name.Ptr(), ":", rsBody)
+		fmt.Println("Result from updating money of ", *agent.Name.Ptr(), ":", rsBody)
 	}
 	// last but not least, make the agent more happy!
 	happinessAgent, err := strconv.ParseFloat(*agent.Happiness.Ptr(), 64)
@@ -453,11 +453,11 @@ func processCube(w http.ResponseWriter, r *http.Request) {
 	happinessCube, err := strconv.ParseFloat(*cube.RateHappiness.Ptr(), 64)
 	checkErr(err)
 	happinessAgent += happinessCube	
-	rsBody, err = callURL(*agent.PermURL.Ptr(), fmt.Sprintf("command=setHappiness&param1=float&data1=%f", happinessAgent))
+	rsBody, err = callURL(*agent.PermURL.Ptr(), fmt.Sprintf("command=setHappiness&float=%f", happinessAgent))
     if (err != nil) {
 	    sendMessageToBrowser("status", "error", fmt.Sprintf("Agent '%s' could not be updated in-world with new happiness settings; in-world reply was: '%s'", *agent.Name.Ptr(), rsBody), "")
 	} else {
-		log.Println("Result from updating happiness of ", *agent.Name.Ptr(), ":", rsBody)
+		fmt.Println("Result from updating happiness of ", *agent.Name.Ptr(), ":", rsBody)
 	}
 	// the next step is to update the database with the new values
 	stmt, err := db.Prepare("UPDATE Agents SET `Energy`=?, `Money`=?, `Happiness`=? WHERE UUID=?")
