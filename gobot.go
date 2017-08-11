@@ -49,6 +49,8 @@ func loadConfiguration() {
 	checkErr(err) // Handle errors reading the config file
 
 	// Without these set, we cannot do anything
+	viper.SetDefault("gobot.EngineRunning", true) // try to set this as quickly as possible, or the engine WILL run!
+	EngineRunning.Store(viper.GetBool("gobot.EngineRunning")); fmt.Print(".")
 	viper.SetDefault("gobot.Host", "localhost") // to prevent bombing out with panics
 	Host = viper.GetString("gobot.Host"); fmt.Print(".")
 	URLPathPrefix = viper.GetString("gobot.URLPathPrefix"); fmt.Print(".")
@@ -64,8 +66,7 @@ func loadConfiguration() {
 	MapURL = viper.GetString("opensim.MapURL"); fmt.Print(".")
 	viper.SetDefault("gobot.LSLSignaturePIN", "9876") // better than no signature at all
 	LSLSignaturePIN = viper.GetString("opensim.LSLSignaturePIN"); fmt.Print(".")
-	viper.SetDefault("gobot.EngineRunning", true)
-	EngineRunning.Store(viper.GetBool("gobot.EngineRunning")); fmt.Print(".")
+
 	
 	viper.WatchConfig() // if the config file is changed, this is supposed to reload it (20170811)
 	viper.OnConfigChange(func(e fsnotify.Event) {
@@ -83,7 +84,7 @@ func main() {
 
 	// prepares a special channel to look for termination signals
 	sigs := make(chan os.Signal, 1)
-	signal.Notify(sigs, syscall.SIGHUP, syscall.SIGUSR1, syscall.SIGUSR2)
+	signal.Notify(sigs, syscall.SIGHUP, syscall.SIGUSR1, syscall.SIGUSR2, syscall.SIGCONT)
 
 	// goroutine which listens to signals and calls the loadConfiguration() function if someone sends us a HUP
 	go func() {
@@ -91,20 +92,24 @@ func main() {
 	        sig := <-sigs
 	        log.Println("Got signal", sig)
 	        switch sig {
-		        case syscall.SIGHUP:
-		        	log.Println(" ... reloading Gobot configuration again:")
-		        	loadConfiguration() // should not be necessary, we might reuse it for reloading the engine instead (20170811)
 		        case syscall.SIGUSR1:
 		        	sendMessageToBrowser("status", "", randomdata.FullName(randomdata.Female) + "<br />", "") // defined on engine.go for now
 		        case syscall.SIGUSR2:
 		        	sendMessageToBrowser("status", "", randomdata.Country(randomdata.FullCountry) + "<br />", "") // defined on engine.go for now
+		        case syscall.SIGHUP:
+		        	// HACK(gwyneth): if the engine dies, send a SIGHUP to get it running again (20170811).
+		        	//  Moved to HUP (instead of CONT done 20170723) because the configuration is now automatically re-read.
+		        	sendMessageToBrowser("status", "warning", "<code>SIGHUP</code> caught:", "")
+		        	if EngineRunning.Load() != nil {
+		        		EngineRunning.Store(!EngineRunning.Load().(bool))
+		        		sendMessageToBrowser("status", "warning", fmt.Sprintf("Engine running: %v", EngineRunning.Load().(bool)), "")
+		        	} else {
+			        	sendMessageToBrowser("status", "error", "No idea what's happened to the engine. Try again later?", "")
+		        	}
 		        case syscall.SIGCONT:
-		        	// HACK(gwyneth): if the engine dies, send a SIGCONT to get it running again (20170723).
-		        	log.Println("SIGCONT caught; trying to launch the engine again")
-		        	sendMessageToBrowser("status", "restart", "<code>SIGCONT</code> caught; trying to launch the engine again<br />", "")
-		        	go engine() // is this a good idea? Maybe we ought to have a flag saying if we're running or not! (20170723)
-		        default:
-		        	log.Println("Unknown UNIX signal caught!! Ignoring...")
+			        log.Println("SIGHUP caught") // unused for now
+				default:
+		        	log.Println("Unknown UNIX signal", sig, "caught!! Ignoring...")
 	        }
         }
     }()
@@ -136,9 +141,9 @@ func main() {
 	log.Println("\n\nDatabase tests ended.\n\nStarting Gobot application at port", ServerPort, "\nfor URL:", URLPathPrefix)
 
 	// this was just to make tests; now start the engine as a separate goroutine in the background
-	if EngineRunning.Load().(bool) { // check if the user hasn't stopped the engine in the config file
-		go engine() // run everything but the kitchen sink in parallel; yay goroutines!
-	}
+	
+	go engine() // run everything but the kitchen sink in parallel; yay goroutines!
+	
 	go garbageCollector() // this will periodically remove from the database all old items that are 'dead' (20170730)
 
 	// Now prepare the web interface
