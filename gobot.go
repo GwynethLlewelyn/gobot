@@ -27,6 +27,7 @@ var (
 	// we probably should have a struct for this
 	Host, GoBotDSN, URLPathPrefix, PDO_Prefix, PathToStaticFiles,
 	ServerPort, FrontEnd, MapURL, LSLSignaturePIN string
+	ShowPopulation bool = true
 )
 
 const NullUUID = "00000000-0000-0000-0000-000000000000" // always useful when we deal with SL/OpenSimulator...
@@ -66,7 +67,8 @@ func loadConfiguration() {
 	MapURL = viper.GetString("opensim.MapURL"); fmt.Print(".")
 	viper.SetDefault("gobot.LSLSignaturePIN", "9876") // better than no signature at all
 	LSLSignaturePIN = viper.GetString("opensim.LSLSignaturePIN"); fmt.Print(".")
-
+	viper.SetDefault("gobot.ShowPopulation", true) // try to set this as quickly as possible, or the engine WILL run!
+	ShowPopulation = viper.GetBool("gobot.ShowPopulation"); fmt.Print(".")
 	
 	viper.WatchConfig() // if the config file is changed, this is supposed to reload it (20170811)
 	viper.OnConfigChange(func(e fsnotify.Event) {
@@ -223,7 +225,7 @@ func checkErrPanic(err error) {
 	if err != nil {
 		color.Set(color.FgRed)
 		defer color.Unset()
-		pc, file, line, ok := runtime.Caller(0)
+		pc, file, line, ok := runtime.Caller(1)
 		log.Panicln("gobot", filepath.Base(file), ":", line, ":", pc, ok, " - panic:", err)
 	}
 }
@@ -233,7 +235,7 @@ func checkErrPanic(err error) {
 func checkErr(err error) {
 	if err != nil {
 		color.Set(color.FgYellow)
-		pc, file, line, ok := runtime.Caller(0)
+		pc, file, line, ok := runtime.Caller(1)
 		log.Panicln("gobot", filepath.Base(file), ":", line, ":", pc, ok, " - error:", err)
 		color.Unset()
 	}

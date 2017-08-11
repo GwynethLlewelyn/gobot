@@ -459,9 +459,17 @@ func processCube(w http.ResponseWriter, r *http.Request) {
 	} else {
 		fmt.Println("Result from updating happiness of ", *agent.Name.Ptr(), ":", rsBody)
 	}
+	// stand up the bot, he's done his work
+	rsBody, err = callURL(*agent.PermURL.Ptr(), "command=osNpcStand")
+    if (err != nil) {
+	    sendMessageToBrowser("status", "error", fmt.Sprintf("Agent '%s' could not be made to stand-up; in-world reply was: '%s'", *agent.Name.Ptr(), rsBody), "")
+	} else {
+		fmt.Println("Result from making", *agent.Name.Ptr(), "stand up:", rsBody)
+	}
+	
 	// the next step is to update the database with the new values
 	stmt, err := db.Prepare("UPDATE Agents SET `Energy`=?, `Money`=?, `Happiness`=? WHERE UUID=?")
-	checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Replace prepare failed:", err)
+	checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Update prepare failed:", err)
     if (err != nil) {
 	    sendMessageToBrowser("status", "error", fmt.Sprintf("Agent '%s' could not be updated in database with new energy/money/happiness settings; database reply was: '%v'", *agent.Name.Ptr(), err), "")
 	}	
@@ -474,7 +482,7 @@ func processCube(w http.ResponseWriter, r *http.Request) {
 	    sendMessageToBrowser("status", "error", fmt.Sprintf("Agent '%s' could not be updated in database with new energy/money/happiness settings; database reply was: '%v'", *agent.Name.Ptr(), err), "")
 	}	
 	
-	fmt.Println("Agent", *agent.Name.Ptr(), "updated with new energy:", energyAgent, "money:", moneyAgent, "happiness:", happinessAgent)
+	fmt.Println("Agent", *agent.Name.Ptr(), "updated database with new energy:", energyAgent, "money:", moneyAgent, "happiness:", happinessAgent)
 	
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-type", "text/plain; charset=utf-8")

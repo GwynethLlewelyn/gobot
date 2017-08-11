@@ -2,8 +2,8 @@
             <div class="navbar-header">
                 <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse">
                     <span class="sr-only">Toggle navigation</span>
-                    <span class="icon-bar"><a href="{{.URLPathPrefix}}/admin/agents/"><i class="fa fa-android fa-fw"></i> Agents</a></span>
-                    <span class="icon-bar"><a href="{{.URLPathPrefix}}/admin/positions/"><i class="fa fa-codepen fa-fw"></i> Positions</a></span>
+                    <span class="icon-bar"><a href="{{.URLPathPrefix}}/admin/agents/"><i class="fa fa-android fa-fw"></i> Agents (Bots/NPCs)</a></span>
+                    <span class="icon-bar"><a href="{{.URLPathPrefix}}/admin/positions/"><i class="fa fa-codepen fa-fw"></i> Positions (Cubes)</a></span>
                     <span class="icon-bar"><span class="icon-bar"a href="{{.URLPathPrefix}}/admin/inventory/"><i class="fa fa-folder-open-o fa-fw"></i> Content/Inventory</a></span>
                     <span class="icon-bar"><a href="{{.URLPathPrefix}}/admin/objects/"><i class="fa fa-cubes fa-fw"></i> Obstacles (Objects)</a></span>
                     <span class="icon-bar"><a href="{{.URLPathPrefix}}/admin/commands/"><i class="fa fa-android fa-fw"></i>Commands to Bot</a></span>
@@ -39,10 +39,10 @@
                     </a>
                     <ul class="dropdown-menu">
 		                <li>
-		                    <a href="{{.URLPathPrefix}}/admin/agents/"><i class="fa fa-android fa-fw"></i> Agents</a>
+		                    <a href="{{.URLPathPrefix}}/admin/agents/"><i class="fa fa-android fa-fw"></i> Agents (Bots/NPCs)</a>
 		                </li>
 		                <li>
-		                    <a href="{{.URLPathPrefix}}/admin/positions/"><i class="fa fa-codepen fa-fw"></i> Positions</a>
+		                    <a href="{{.URLPathPrefix}}/admin/positions/"><i class="fa fa-codepen fa-fw"></i> Positions (Cubes)</a>
 		                </li>
 		                <li>
 		                    <a href="{{.URLPathPrefix}}/admin/inventory/"><i class="fa fa-folder-open-o fa-fw"></i> Content/Inventory</a>

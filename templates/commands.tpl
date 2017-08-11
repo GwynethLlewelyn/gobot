@@ -26,7 +26,7 @@
 									<div class="form-group">
 										<label>Enter your command PermURL</label>
 										<select class="form-control" name="PermURL" id="PermURL" size="1">
-											<option value="0" selected="selected" disabled="disabled">Please choose an avatar</option>
+											<option value="0" selected="selected" disabled="disabled">Please choose an agent</option>
 											{{.AvatarPermURLOptions}}
 										</select>
 									</div> <!-- /.form-group -->

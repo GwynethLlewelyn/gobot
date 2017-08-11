@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/fatih/color" // allows ANSI escaping for logging in colour! (20170806)
 	"github.com/jaytaylor/html2text" // converts HTML to pretty-printed text! (20170807)
@@ -19,6 +20,7 @@ import (
 	"net/http"
 	"sort"
 	"strings"
+	"strconv"
 	"sync/atomic" // used for sync'ing values across goroutines at a low level
 	"time"
 )
@@ -82,6 +84,7 @@ type popType struct {
 type movementJob struct {
 	agentUUID string				// Agent UUID to move
 	masterControllerPermURL string	// masterController to use (note that the engine may pick one of several active ones)
+	agentPermURL string				// unfortunately the masterController cannot get or set Energy...
 	destPoint chromosomeType		// destination to go to; it's a chromosome so that we get distance information as well to calculate
 									//	 for how long we need to sleep until the avatar reaches destination
 }
@@ -575,8 +578,9 @@ func engine() {
 			curPos_raw, err := callURL(*masterController.PermURL.Ptr(), "npc=" + *Agent.OwnerKey.Ptr() + "&command=osNpcGetPos")
 
 			// NOTE(gwyneth): Apparently the web server will reply to ALL possible requests, even if the Agent doesn't exist any more;
-			//  I still don't know what to do in that situation, so we skip this Agent and try the next one (20170730).
-			if curPos_raw == "" || err != nil {
+			//  I still don't know what to do in that situation, so we skip this cycle and try the next one (20170730).
+			if curPos_raw == "" || curPos_raw == "No response could be obtained" || err != nil {
+				log.Println("Error in figuring out the response for agent", *Agent.Name.Ptr(), "so we will try to skip this cycle...")
 				continue
 			}
 
@@ -592,12 +596,37 @@ func engine() {
 			Agent.Coords_xyz = strings.Split(strings.Trim(curPos_raw, " <>()\t\n\r"), ",")
 			curPos := make([]float64, 3) // to be more similar to the PHP version
 
+			log.Println("curPos_raw is", curPos_raw)
 			_, err = fmt.Sscanf(curPos_raw, "<%f, %f, %f>", &curPos[0], &curPos[1], &curPos[2]) // best way to convert strings to floats! (20170728)
 			checkErr(err)
 
 			sendMessageToBrowser("status", "", fmt.Sprintf("Avatar '%s' (%s) raw position was %v; recalculated to: %v<br />", *Agent.Name.Ptr(), *Agent.Name.Ptr(), curPos_raw, curPos), "")
+			
+			// Now we select where to go to!
+			// This will eventually become more complex and *possibly* part of the GA (20170811).
+			// For now, we just see what attribute is more 'urgent' and choose a cube of the appropriate type.
+			
+			whatCubeTypeNext := "energy" // by default it will be energy
+			
+			// convert to floats, we could actually change that in the database but I'm lazy... (20170811)
+			energyAgent, err := strconv.ParseFloat(*Agent.Energy.Ptr(), 64)
+			checkErr(err)
+			moneyAgent, err := strconv.ParseFloat(*Agent.Money.Ptr(), 64)
+			checkErr(err)
+			happinessAgent, err := strconv.ParseFloat(*Agent.Happiness.Ptr(), 64)
+			checkErr(err)
+			
+			// Simple way to make a choice, but this will get much more complicated in the future (I hope!) (20170811)
+			if moneyAgent < energyAgent {
+				whatCubeTypeNext = "money"
+			}
+			if (happinessAgent < moneyAgent) && (happinessAgent < energyAgent) {
+				whatCubeTypeNext = "happiness"
+			}
 
-			// calculate distances to nearest obstacles
+			log.Println(*Agent.Name.Ptr(), "has energy:", energyAgent, "money:", moneyAgent, "happiness:", happinessAgent, "so obviously we will pick a", whatCubeTypeNext, "cube to move to.")
+			
+			// calculate distances to nearest obstacles and cubes
 
 			// TODO(gwyneth): these might become globals, outside the loop, so we don't need to declare them
 			var smallestDistanceToObstacle = 1024.0 // will be used later on
@@ -630,23 +659,24 @@ func engine() {
 			sendMessageToBrowser("status", "info", fmt.Sprintf("Nearest obstacle to agent %s: '%s' (distance: %.4f m)<br />", *Agent.Name.Ptr(), *nearestObstacle.Name.Ptr(), smallestDistanceToObstacle), "")
 
 			// now pretty-print nearest cubes (20170806).
-			outputBuffer = "<div class='table-responsive'><table class='table table-striped table-bordered table-hover'><caption>Cubes (Positions)</caption><thead><tr><th>UUID</th><th>Name</th><th>Position</th><th>Distance</th></tr></thead><tbody>\n"
+			outputBuffer = "<div class='table-responsive'><table class='table table-striped table-bordered table-hover'><caption>Cubes (Positions)</caption><thead><tr><th>UUID</th><th>Name</th><th>Position</th><th>ObjectType</th><th>Distance</th></tr></thead><tbody>\n"
 			for k, point := range Cubes {
 				_, err = fmt.Sscanf(*point.Position.Ptr(), "%f, %f, %f", &cubePosition[0], &cubePosition[1], &cubePosition[2])
 				checkErr(err)
 
 				distance = calcDistance(curPos, cubePosition)
+				point.DistanceToAgent = distance // hope this works, we're saving the distance so that later on we can use this as a weight
 
-				outputBuffer += fmt.Sprintf("<tr><td>%v</td><td>%s</td><td>%v</td><td>%.4f</td></tr>\n", k, *point.Name.Ptr(), *point.Position.Ptr(), distance)
+				outputBuffer += fmt.Sprintf("<tr><td>%v</td><td>%s</td><td>%v</td><td>%s</td><td>%.4f</td></tr>\n", k, *point.Name.Ptr(), *point.Position.Ptr(), *point.ObjectType.Ptr(), point.DistanceToAgent)
 
-				if distance < smallestDistanceToCube {
+				if distance < smallestDistanceToCube && *point.ObjectType.Ptr() == whatCubeTypeNext {
 					smallestDistanceToCube = distance
 					nearestCube = point
 				}
 			}
-			outputBuffer += "</tbody><tfoot><tr><th>UUID</th><th>Name</th><th>Position</th><th>Distance</th></tr></tfoot></table></div>\n"
+			outputBuffer += "</tbody><tfoot><tr><th>UUID</th><th>Name</th><th>Position</th><th>ObjectType</th><th>Distance</th></tr></tfoot></table></div>\n"
 			sendMessageToBrowser("status", "", outputBuffer, "")
-			sendMessageToBrowser("status", "info", fmt.Sprintf("Nearest cube to agent %s: '%s' (distance: %.4f m)<br />", *Agent.Name.Ptr(), *nearestCube.Name.Ptr(), smallestDistanceToCube), "")
+			sendMessageToBrowser("status", "info", fmt.Sprintf("Nearest %s cube to agent %s: '%s' (distance: %.4f m)<br />", whatCubeTypeNext, *Agent.Name.Ptr(), *nearestCube.Name.Ptr(), smallestDistanceToCube), "")
 
 			/* Idea for the GA
 
@@ -1269,6 +1299,7 @@ func engine() {
 		movementJobChannel <- movementJob {
 					agentUUID: *Agent.OwnerKey.Ptr(),
 					masterControllerPermURL: *masterController.PermURL.Ptr(),
+					agentPermURL: *Agent.PermURL.Ptr(),
 					destPoint: population[0].chromosomes[1],
 		}
 
@@ -1334,7 +1365,7 @@ func engine() {
 		var_dump($targetCube);
 		echo "<br />\n";
 */
-		distance = calcDistance(cubePosition, currentPosition);
+		distance = calcDistance(cubePosition, currentPosition) // this is how much is missing to reach destination
 
 		if distance < 1.1 { // we might never get closer than this due to rounding errors
 			sendMessageToBrowser("status", "info", fmt.Sprintf("Within rounding errors of %s, distance is merely %.4f m; let's sit %s down", *destCube.Name.Ptr(), distance, *Agent.Name.Ptr()), "")
@@ -1396,7 +1427,7 @@ func engine() {
 	} // end for (endless loop here)
 
 	// Why should we ever stop? :)
-	sendMessageToBrowser("status", "success", "this is the engine <i>stopping</i><br />", "")
+	sendMessageToBrowser("status", "success", "this is the engine <i>stopping</i>", "")
 }
 
 // sendMessageToBrowser sends a string to the internal, global channel which is picked up by the websocket handling goroutine.
@@ -1457,35 +1488,42 @@ func sendMessageToBrowser(msgType string, msgSubType string, msgText string, msg
 func callURL(url string, encodedRequest string) (string, error) {
 	//	 HTTP request as per http://moazzam-khan.com/blog/golang-make-http-requests/
 	body := []byte(encodedRequest)
+	//log.Printf("%s: URL: %s Encoded Request: %s\n", funcName(), url, encodedRequest)
 
 	rs, err := http.Post(url, "application/x-www-form-urlencoded", bytes.NewBuffer(body))
 	// Code to process response (written in Get request snippet) goes here
 
-	if err == nil {
-		defer rs.Body.Close()
-
-		rsBody, err := ioutil.ReadAll(rs.Body)
-		if err != nil {
-			errMsg := fmt.Sprintf("Error response from in-world object: '%v'", err)
-			color.Set(color.FgRed)
-			log.Println(errMsg)
-			color.Unset()
-			return errMsg, err
-		} else {
-			  // log.Printf("Reply from in-world object %s\n", rsBody)
-			return string(rsBody), err
-		}
-	} else {
+	if err != nil {
 		color.Set(color.FgRed)
 		log.Printf("HTTP call to %s failed; error was: '%v'", url, err)
 		color.Unset()
-		return fmt.Sprintf("HTTP call to %s failed; error was: '%v'", url, err), err
+		return fmt.Sprintf("HTTP call to %s failed; error was: '%v'", url, err), err	
+	}
+	defer rs.Body.Close()
+
+	rsBody, err := ioutil.ReadAll(rs.Body)
+	if err != nil {
+		errMsg := fmt.Sprintf("Error response from in-world object: '%v'", err)
+		color.Set(color.FgRed)
+		log.Println(errMsg)
+		color.Unset()
+		return errMsg, err
+	} else {
+		if string(rsBody) == "No response could be obtained" { // weird case, but apparently it can happen!
+			err = errors.New("No response could be obtained")
+		}
+		log.Printf("Reply from in-world object %s; error was %v\n", rsBody, err)
+		return string(rsBody), err
 	}
 }
 
 // showPopulation is adapted from the PHP code to pretty-print a whole population
 // new version creates HTML tables
 func showPopulation(popul []popType, popCaption string) {
+	if !ShowPopulation { // this might be the beginning of a debug level configuration type
+		return
+	}
+	
 	outputBuffer := "<div class='table-responsive'><table class='table table-striped table-bordered table-hover'><caption>" + popCaption + "</caption><thead><tr><th>Pop #</th><th>Fitness</th><th>Chromossomes</th></tr></thead><tbody>\n"
 
 	for p, pop := range popul {
@@ -1502,17 +1540,20 @@ func showPopulation(popul []popType, popCaption string) {
 	color.Unset()
 }
 
-// movementWorker reads one point from the movementJobChannel and sends a command to the avatar to move to it.
+// movementWorker reads one point from the movementJobChannel and sends a command to the avatar to move to it, and recalculates energy.
 // Then it blocks for the necessary amount of estimated time for the avatar to reach that destination until it reads the next
 // point. Right now, the channel accepts CHROMOSOME jobs at a time (20170730).
+// Finally, it calculates how much energy the avatar has spent for the distance travelled (20170811).
+// TODO(gwyneth): probably happiness is also affected, we have to think about a new formula for that (20170811).
 func movementWorker() {
 	var nextPoint movementJob
 	curPos := make([]float64, 3) // no need to allocate this over and over again
+	newPos := make([]float64, 3) // this is the position that the avatar managed to travel to after this iteration
 	for { // once started, never stops?
 		nextPoint = <-movementJobChannel // consume one point from the channel
 
 		// these must be set, nothing like a bit of error checking for eventual bugs elsewhere
-		if nextPoint.masterControllerPermURL == "" || nextPoint.agentUUID == "" {
+		if nextPoint.masterControllerPermURL == "" || nextPoint.agentUUID == "" || nextPoint.agentPermURL == "" {
 			continue	// either the next job comes valid, or we continue to consume points until a valid one comes along
 		}
 
@@ -1521,11 +1562,11 @@ func movementWorker() {
 		// How much should we wait? Well, we calculate the distance to the next point! And since avatars move pretty much
 		//  at the same speed all the time, we can make a rough estimate of the time they will take.
 
-		// ask the avatar where he is
-		curposResult, err := callURL(nextPoint.masterControllerPermURL, "npc=" + nextPoint.agentUUID + "&command=osNpcGetPos")
+		// ask the avatar where it is
+		curPosResult, err := callURL(nextPoint.agentPermURL, "command=osNpcGetPos")
 		checkErr(err)
 		// convert string result to array of floats
-		_, err = fmt.Sscanf(strings.Trim(curposResult, " ()<>"), "%f,%f,%f", &curPos[0], &curPos[1], &curPos[2])
+		_, err = fmt.Sscanf(strings.Trim(curPosResult, " ()<>"), "%f,%f,%f", &curPos[0], &curPos[1], &curPos[2])
 		checkErr(err)
 
 		walkingDistance := calcDistance(
@@ -1538,13 +1579,61 @@ func movementWorker() {
 		sendMessageToBrowser("status", "", fmt.Sprintf("[%s]: Next point at %.4f metres; waiting %.4f secs for avatar %s to go to next point...<br />",
 			funcName(), walkingDistance, timeToTravel, nextPoint.agentUUID), "")
 
-		moveResult, err := callURL(nextPoint.masterControllerPermURL,
-					fmt.Sprintf("npc=%s&command=osNpcMoveToTarget&vector=<%v,%v,%v>&integer=1",
-					nextPoint.agentUUID, nextPoint.destPoint.x, nextPoint.destPoint.y, nextPoint.destPoint.z))
+		moveResult, err := callURL(nextPoint.agentPermURL,
+					fmt.Sprintf("command=osNpcMoveToTarget&vector=<%v,%v,%v>&integer=1",
+					nextPoint.destPoint.x, nextPoint.destPoint.y, nextPoint.destPoint.z))
 		checkErr(err)
 
 		sendMessageToBrowser("status", "", fmt.Sprintf("[%s]: In-world result call from moving %s to (%v, %v, %v): %s<br />",
 			funcName(), nextPoint.agentUUID, nextPoint.destPoint.x, nextPoint.destPoint.y, nextPoint.destPoint.z, moveResult), "")
 		time.Sleep(time.Second * time.Duration(timeToTravel))
+		
+		// ask the avatar AGAIN where it is, since it MIGHT not have reached the destination we expect it to reach (20170811).
+		newPosResult, err := callURL(nextPoint.agentPermURL, "command=osNpcGetPos")
+		checkErr(err)
+		// convert string result to array of floats
+		_, err = fmt.Sscanf(strings.Trim(newPosResult, " ()<>"), "%f,%f,%f", &newPos[0], &newPos[1], &newPos[2])
+		checkErr(err)
+		
+		travelled := calcDistance(newPos, curPos) // see how much we've actually travelled
+		// calculate how much energy we've lost so far
+		energyLost := travelled / WALKING_SPEED // some stupid formula, it doesn't matter, it's just to affect the counters
+		// let the bloody avatar subtract some energy!
+		
+		energyResult, err := callURL(nextPoint.agentPermURL, "command=getEnergy")
+		checkErr(err)
+		
+		energyAgent, err := strconv.ParseFloat(energyResult, 64)
+		checkErr(err)
+		sendMessageToBrowser("status", "", fmt.Sprintf("[%s]: %s had %f energy; lost %f on movement<br />", funcName(), nextPoint.agentUUID, energyAgent, energyLost), "")
+		
+		energyAgent -= energyLost
+		energyResult, err = callURL(nextPoint.agentPermURL, fmt.Sprintf("command=setEnergy&float=%f", energyAgent))
+		checkErr(err)
+		sendMessageToBrowser("status", "", fmt.Sprintf("[%s]: %s updated to new energy level %f; in.world reply: %v<br />", funcName(), nextPoint.agentUUID, energyAgent, energyResult), "")
+		
+		// update on database as well
+		db, err := sql.Open(PDO_Prefix, GoBotDSN)
+		checkErr(err)
+		
+		defer db.Close()
+		stmt, err := db.Prepare("UPDATE Agents SET `Energy`=? WHERE OwnerKey=?")
+	    if (err != nil) {
+		    sendMessageToBrowser("status", "error", fmt.Sprintf("Agent '%s' could not be prepared in database with new energy settings; database reply was: '%v'", nextPoint.agentUUID, err), "")
+		}	
+		defer stmt.Close()
+	
+		execResult, err := stmt.Exec(energyAgent, nextPoint.agentUUID)
+	    if (err != nil) {
+		    sendMessageToBrowser("status", "error", fmt.Sprintf("Agent '%s' could not be updated in database with new energy settings; database reply was: '%v'", nextPoint.agentUUID, err), "")
+		} else {
+			id, err := execResult.LastInsertId()
+			rowsAffected, err2 := execResult.RowsAffected()
+			fmt.Println("Result from executing the energy update was:", id, err, "Rows affected:", rowsAffected, err2)
+		}
+		
+		fmt.Println("Agent", nextPoint.agentUUID, "updated database with new energy:", energyAgent)
+		stmt.Close()
+		db.Close()
 	}
 }

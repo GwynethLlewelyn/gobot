@@ -12,7 +12,7 @@ GoBotDSN = "btopensim:betaopenmv2008!@/gobot"
 PDO_Prefix = "mysql"
 
 EngineRunning = false
-ShowPopulation = true
+ShowPopulation = false
 
 [opensim]
 MapURL = "http://opensim.betatechnologies.info:8002/map-1-3646-3645-objects.jpg" # get a map tile
