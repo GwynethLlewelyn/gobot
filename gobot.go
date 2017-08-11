@@ -5,6 +5,7 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 	"database/sql"
 	"fmt"
+	"github.com/fsnotify/fsnotify"
 	"github.com/fatih/color" // allows ANSI escaping for logging in colour! (20170806)
 	"github.com/Pallinder/go-randomdata"
 	"github.com/spf13/viper" // to read config files
@@ -14,7 +15,9 @@ import (
 	"os"
 	"os/signal"
 	"os/user"
+	"runtime"
 	"path/filepath"
+//	"sync/atomic" // this is weird since we USE sync/atomic, but the Go compiler complains...
 	"syscall"
 )
 
@@ -32,7 +35,8 @@ const NullUUID = "00000000-0000-0000-0000-000000000000" // always useful when we
 type templateParameters map[string]interface{}
 
 // loadConfiguration loads all the configuration from the config.toml file.
-// It's a separate function because we want to be able to do a killall -HUP gobot to force the configuration to be read again
+// It's a separate function because we want to be able to do a killall -HUP gobot to force the configuration to be read again.
+// Also, if the configuration file changes, this ought to read it back in again without the need of a HUP signal (20170811).
 func loadConfiguration() {
 	log.Print("Reading Gobot configuration...")
 	// Open our config file and extract relevant data from there
@@ -60,6 +64,13 @@ func loadConfiguration() {
 	MapURL = viper.GetString("opensim.MapURL"); fmt.Print(".")
 	viper.SetDefault("gobot.LSLSignaturePIN", "9876") // better than no signature at all
 	LSLSignaturePIN = viper.GetString("opensim.LSLSignaturePIN"); fmt.Print(".")
+	viper.SetDefault("gobot.EngineRunning", true)
+	EngineRunning.Store(viper.GetBool("gobot.EngineRunning")); fmt.Print(".")
+	
+	viper.WatchConfig() // if the config file is changed, this is supposed to reload it (20170811)
+	viper.OnConfigChange(func(e fsnotify.Event) {
+		log.Println("Config file changed:", e.Name)
+	})
 }
 
 // main() starts here.
@@ -82,7 +93,7 @@ func main() {
 	        switch sig {
 		        case syscall.SIGHUP:
 		        	log.Println(" ... reloading Gobot configuration again:")
-		        	loadConfiguration()
+		        	loadConfiguration() // should not be necessary, we might reuse it for reloading the engine instead (20170811)
 		        case syscall.SIGUSR1:
 		        	sendMessageToBrowser("status", "", randomdata.FullName(randomdata.Female) + "<br />", "") // defined on engine.go for now
 		        case syscall.SIGUSR2:
@@ -125,9 +136,9 @@ func main() {
 	log.Println("\n\nDatabase tests ended.\n\nStarting Gobot application at port", ServerPort, "\nfor URL:", URLPathPrefix)
 
 	// this was just to make tests; now start the engine as a separate goroutine in the background
-
-	go engine() // run everything but the kitchen sink in parallel; yay goroutines!
-
+	if EngineRunning.Load().(bool) { // check if the user hasn't stopped the engine in the config file
+		go engine() // run everything but the kitchen sink in parallel; yay goroutines!
+	}
 	go garbageCollector() // this will periodically remove from the database all old items that are 'dead' (20170730)
 
 	// Now prepare the web interface
@@ -207,7 +218,8 @@ func checkErrPanic(err error) {
 	if err != nil {
 		color.Set(color.FgRed)
 		defer color.Unset()
-		log.Panic("gobot panic: ", err)
+		pc, file, line, ok := runtime.Caller(0)
+		log.Panicln("gobot", file, line, ":", pc, ok, " - panic:", err)
 	}
 }
 
@@ -216,7 +228,8 @@ func checkErrPanic(err error) {
 func checkErr(err error) {
 	if err != nil {
 		color.Set(color.FgYellow)
-		log.Println("gobot error: ", err)
+		pc, file, line, ok := runtime.Caller(0)
+		log.Panicln("gobot", file, line, ":", pc, ok, " - error:", err)
 		color.Unset()
 	}
 }
