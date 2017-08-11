@@ -354,6 +354,15 @@ func processCube(w http.ResponseWriter, r *http.Request) {
 		logErrHTTP(w, http.StatusForbidden, funcName() + ": Signature does not match - hack attempt?")
 		return
 	}
+	
+	if r.Form.Get("avatar") == NullUUID { // happens when standing up, we return without giving errors
+		w.WriteHeader(http.StatusOK)
+		w.Header().Set("Content-type", "text/plain; charset=utf-8")
+		fmt.Fprintf(w, "Got an avatar/NPC standing up")
+		sendMessageToBrowser("status", "success", "Got an avatar/NPC standing up", "")
+		return		
+	}
+	
 	// all checks fine, now let's get the agent data from the database:
 	// allegedly, we get avatar=[UUID] — all the rest ought to be on the database (20170807)
 	db, err := sql.Open(PDO_Prefix, GoBotDSN)
@@ -385,7 +394,10 @@ func processCube(w http.ResponseWriter, r *http.Request) {
 		&agent.CurrentTarget,
 	)
 	if err != nil || !agent.UUID.Valid {
-		checkErrPanicHTTP(w, http.StatusNotFound, funcName() + " Agent UUID not found in database or invalid:", err)
+		// this can happen when an avatar sits on the object, or a NPC that never got a chance to register, or even because of bugs
+		//  or cubes which did not have llSitTarget() initialised (20170811)
+		checkErrHTTP(w, http.StatusNotFound, funcName() + " Agent UUID not found in database or invalid:", err)
+		return
 	}
 	// get information on this cube
 	var cube PositionType
@@ -455,6 +467,8 @@ func processCube(w http.ResponseWriter, r *http.Request) {
     if (err != nil) {
 	    sendMessageToBrowser("status", "error", fmt.Sprintf("Agent '%s' could not be updated in database with new energy/money/happiness settings; database reply was: '%v'", *agent.Name.Ptr(), err), "")
 	}	
+	
+	fmt.Println("Agent", *agent.Name.Ptr(), "updated with new energy:", energyAgent, "money:", moneyAgent, "happiness:", happinessAgent)
 	
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-type", "text/plain; charset=utf-8")
