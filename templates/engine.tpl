@@ -55,19 +55,6 @@
                 </div>
 				<div class="row">
 					<div class="col-lg-12">
-						<style type="text/css">
-						#log {
-						    background: white;
-						    margin: 0;
-						    padding: 0.5em 0.5em 0.5em 0.5em;
-						    //position: absolute;
-						    top: 0.5em;
-						    left: 0.5em;
-						    right: 0.5em;
-						    bottom: 3em;
-						    overflow: auto;
-						}
-						</style>
 						<div id="engineResponse" name="engineResponse" contenteditable="false"></div>
 						<!-- websockets will fill this in -->
 						<script type="text/javascript">
@@ -203,7 +190,7 @@
 
             					} else {
 									log.innerHTML += "<b>Your browser does not support WebSockets.</b><br />";
-									log.scrollTop = log.scrollHeight;
+									/*log.scrollTop = log.scrollHeight;*/
 								}
 							}
 							
@@ -284,7 +271,7 @@
 								window.setTimeout(function () {
 									//log.innerHTML = "";
 									log.scrollTop = log.scrollHeight;
-								},5000);								
+								},5000);				
 							}
 							
 							function startEngine() {

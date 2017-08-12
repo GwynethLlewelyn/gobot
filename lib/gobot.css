@@ -22,15 +22,16 @@
 }
 
 #engineResponse {
-	overflow-y: scroll; height:400px;
+	overflow-y: scroll;
+	height:400px;
 }
 
 /* stick navigation bar to the top */
 .navbar {
-    position: fixed;
-    top: 0;
-    width: 100%;
-    z-index: 999;
+	position: fixed;
+	top: 0;
+	width: 100%;
+	z-index: 999;
 }
 
 /* Place Gravatar Hovercards over everything else */
