@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/fsnotify/fsnotify"
 	"github.com/fatih/color" // allows ANSI escaping for logging in colour! (20170806)
+	"github.com/op/go-logging"
 	"github.com/Pallinder/go-randomdata"
 	"github.com/spf13/viper" // to read config files
 	"golang.org/x/net/websocket"
@@ -21,13 +22,16 @@ import (
 	"syscall"
 )
 
-
 var (
 	// Default configurations, hopefully exported to other files and packages
 	// we probably should have a struct for this
 	Host, GoBotDSN, URLPathPrefix, PDO_Prefix, PathToStaticFiles,
 	ServerPort, FrontEnd, MapURL, LSLSignaturePIN string
 	ShowPopulation bool = true
+	Log = logging.MustGetLogger("gobot")	// configuration for the go-loggin logger
+	logFormat = logging.MustStringFormatter(
+			`%{color}%{time:2006/01/02 15:04:05.0} %{shortfunc} ▶ %{level:.4s} %{id:03x}%{color:reset} %{message}`,
+		)
 )
 
 const NullUUID = "00000000-0000-0000-0000-000000000000" // always useful when we deal with SL/OpenSimulator...
@@ -81,6 +85,24 @@ func main() {
 	// to change the flags on the default logger
 	// see https://stackoverflow.com/a/24809859/1035977
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
+	
+	// Setup the go-logging Logger (20170812)
+	backendStderr	:= logging.NewLogBackend(os.Stderr, "", 0)
+	backendFile		:= logging.NewLogBackend(os.Stderr, "", 0)
+	backendSyslog,_	:= logging.newSysLogBackend("")
+
+	// For messages written to backend2 we want to add some additional
+	// information to the output, including the used log level and the name of
+	// the function.
+	backendStderrFormatter	:= logging.NewBackendFormatter(backendStderr, logFormat)
+	backendFileFormatter	:= logging.NewBackendFormatter(backendFile, logFormat)
+
+	// Only errors and more severe messages should be sent to backend1
+	backendSyslogLeveled := logging.AddModuleLevel(backendSyslog)
+	backendSyslogLeveled.SetLevel(logging.CRITICAL, "gobot")
+
+	// Set the backends to be used.
+	logging.SetBackend(backendStderrFormatter, backendFileFormatter, backendSyslogLeveled)
 
 	loadConfiguration() // this gets loaded always, on the first time it runs
 

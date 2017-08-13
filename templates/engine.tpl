@@ -8,7 +8,7 @@
 		<div id="page-wrapper">
 			<div class="container-fluid">
 				<div class="row">
-				<h1 class="page-header">{{.Title}}</h1>
+				<h4 class="page-header">{{.Title}}</h4>
 					<div class="panel panel-default">
 						<!--<div class="panel-heading">Send manual commands to engine</div>-->
 						<div class="panel-body">

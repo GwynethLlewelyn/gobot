@@ -1565,6 +1565,11 @@ func movementWorker() {
 		// ask the avatar where it is
 		curPosResult, err := callURL(nextPoint.agentPermURL, "command=osNpcGetPos")
 		checkErr(err)
+		if err != nil {
+			// we have to assume this will never work, so we skip to the next case
+			continue
+		}
+		
 		// convert string result to array of floats
 		_, err = fmt.Sscanf(strings.Trim(curPosResult, " ()<>"), "%f,%f,%f", &curPos[0], &curPos[1], &curPos[2])
 		checkErr(err)
@@ -1583,6 +1588,11 @@ func movementWorker() {
 					fmt.Sprintf("command=osNpcMoveToTarget&vector=<%v,%v,%v>&integer=1",
 					nextPoint.destPoint.x, nextPoint.destPoint.y, nextPoint.destPoint.z))
 		checkErr(err)
+		if err != nil {
+			// we lost the ability to send messages; what to do now? Well, we can ignore this, the GA will
+			//  just require a new cycle
+			continue
+		}
 
 		sendMessageToBrowser("status", "", fmt.Sprintf("[%s]: In-world result call from moving %s to (%v, %v, %v): %s<br />",
 			funcName(), nextPoint.agentUUID, nextPoint.destPoint.x, nextPoint.destPoint.y, nextPoint.destPoint.z, moveResult), "")
