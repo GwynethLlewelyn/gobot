@@ -84,7 +84,7 @@ More to come...
 
 ## Hidden Easter Eggs
 
-Changing the configuration notecard and saving it will get the application to reload it, and changes will take immediate effect; there is no need to kill the application for that. Note that this might not be true for the logging options!
+Changing the configuration notecard and saving it will get the application to reload it, and changes will take immediate effect; there is no need to kill the application for that. This allows to change the display severity of the logging on the go, as well as starting/stopping the engine and increasing its verbosity.
 
 Sending a _SIGHUP_ will also try to stop the engine. Note that this might not happen immediately: the engine might run one whole iteration of the whole genetic algorithm before stopping; and messages queued to be sent in-world will probably continue to be sent until the buffer flushes out.
 
