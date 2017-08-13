@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/jaytaylor/html2text" // converts HTML to pretty-printed text! (20170807)
+	"github.com/spf13/viper"
 	"golang.org/x/net/websocket"
 	"gopkg.in/guregu/null.v3/zero"
 	"html/template"
@@ -383,6 +384,13 @@ func engine() {
 
 		if EngineRunning.Load().(bool) {
 			// Open database
+			// sanity check first, I have no idea why this happens sometimes:
+			if PDO_Prefix == "" {
+				PDO_Prefix = viper.GetString("gobot.PDO_Prefix")
+			}
+			if GoBotDSN == "" {
+				GoBotDSN = viper.GetString("gobot.GoBotDSN")
+			}
 			db, err := sql.Open(PDO_Prefix, GoBotDSN)
 			checkErr(err)
 
