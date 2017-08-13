@@ -44,13 +44,8 @@ type templateParameters map[string]interface{}
 // It's a separate function because we want to be able to do a killall -HUP gobot to force the configuration to be read again.
 // Also, if the configuration file changes, this ought to read it back in again without the need of a HUP signal (20170811).
 func loadConfiguration() {
-	fmt.Println("Reading Gobot configuration...")	// note that we might not have go-logging active as yet, so we use fmt
+	fmt.Print("Reading Gobot configuration")	// note that we might not have go-logging active as yet, so we use fmt
 	// Open our config file and extract relevant data from there
-	viper.SetConfigName("config")
-	viper.SetConfigType("toml") // just to make sure; it's the same format as OpenSimulator (or MySQL) config files
-	viper.AddConfigPath("$HOME/go/src/gobot/") // that's how I have it
-	viper.AddConfigPath("$HOME/go/src/github.com/GwynethLlewelyn/gobot/") // that's how you'll have it
-	viper.AddConfigPath(".")               // optionally look for config in the working directory
 	err := viper.ReadInConfig() // Find and read the config file
 	if err != nil {
 		fmt.Println("Error reading config file:", err)
@@ -82,7 +77,7 @@ func loadConfiguration() {
 	// logging options
 	viper.SetDefault("log.FileName", "log/gobot.log")
 	logFileName = viper.GetString("log.FileName"); fmt.Print(".")
-	viper.SetDefault("log.Format", `%{color}%{time:2006/01/02 15:04:05.0} %{shortfile} - %{shortfunc} ▶ %{level:.4s} %{id:03x}%{color:reset} %{message}`)
+	viper.SetDefault("log.Format", `%{color}%{time:2006/01/02 15:04:05.0} %{shortfile} - %{shortfunc} ▶ %{level:.4s}%{color:reset} %{message}`)
 	logFormat = logging.MustStringFormatter(viper.GetString("log.Format")); fmt.Print(".")
 	viper.SetDefault("log.MaxSize", 500)
 	logMaxSize = viper.GetInt("log.MaxSize"); fmt.Print(".")
@@ -106,6 +101,7 @@ func loadConfiguration() {
 			logSeverityStderr = logging.DEBUG
 		// default case is handled directly by viper
 	}
+	fmt.Print(".")
 	viper.SetDefault("log.SeverityFile", logging.DEBUG)
 	switch viper.GetString("log.SeverityFile") {
 		case "CRITICAL":
@@ -121,6 +117,7 @@ func loadConfiguration() {
     	case "DEBUG":
 			logSeverityFile = logging.DEBUG
 	}
+	fmt.Print(".")
 	viper.SetDefault("log.SeveritySyslog", logging.CRITICAL) // we don't want to swamp syslog with debugging messages!!
 	switch viper.GetString("log.SeveritySyslog") {
 		case "CRITICAL":
@@ -135,26 +132,11 @@ func loadConfiguration() {
 			logSeveritySyslog = logging.INFO
     	case "DEBUG":
 			logSeveritySyslog = logging.DEBUG
-	}	
-	viper.WatchConfig() // if the config file is changed, this is supposed to reload it (20170811)
-	viper.OnConfigChange(func(e fsnotify.Event) {
-		if (Log == nil) {
-			fmt.Println("Config file changed:", e.Name) // if we couldn't configure the logging subsystem, it's better to print it to the console
-		} else {
-			Log.Info("Config file changed:", e.Name)
-		} 
-	})
-}
-
-// main() starts here.
-func main() {
-	// to change the flags on the default logger
-	// see https://stackoverflow.com/a/24809859/1035977
-	log.SetFlags(log.LstdFlags | log.Lshortfile)
-
-	loadConfiguration() // this gets loaded always, on the first time it runs
+	}
+	fmt.Print(".")
+	fmt.Println("read!")	// note that we might not have go-logging active as yet, so we use fmt
 	
-	// Setup the lumberjack rotating logger. This is because we need it for the go-logging logger when writing to files. (20170813)
+		// Setup the lumberjack rotating logger. This is because we need it for the go-logging logger when writing to files. (20170813)
 	rotatingLogger := &lumberjack.Logger{
 	    Filename:   logFileName,	// this is an option set on the config.yaml file, eventually the others will be so, too.
 	    MaxSize:    logMaxSize, // megabytes
@@ -181,7 +163,34 @@ func main() {
 
 	// Set the backends to be used. Logging should commence now.
 	logging.SetBackend(backendStderrLeveled, backendFileLeveled, backendSyslogLeveled)
+	fmt.Println("Logging set up.")
+}
 
+// main() starts here.
+func main() {
+	// to change the flags on the default logger
+	// see https://stackoverflow.com/a/24809859/1035977
+	log.SetFlags(log.LstdFlags | log.Lshortfile)
+
+	// Config viper, which reads in the configuration file every time it's needed.
+	// Note that we need some hard-coded variables for the path and config file name.
+	viper.SetConfigName("config")
+	viper.SetConfigType("toml") // just to make sure; it's the same format as OpenSimulator (or MySQL) config files
+	viper.AddConfigPath("$HOME/go/src/gobot/") // that's how I have it
+	viper.AddConfigPath("$HOME/go/src/github.com/GwynethLlewelyn/gobot/") // that's how you'll have it
+	viper.AddConfigPath(".")               // optionally look for config in the working directory
+
+	loadConfiguration() // this gets loaded always, on the first time it runs
+	viper.WatchConfig() // if the config file is changed, this is supposed to reload it (20170811)
+	viper.OnConfigChange(func(e fsnotify.Event) {
+		if (Log == nil) {
+			fmt.Println("Config file changed:", e.Name) // if we couldn't configure the logging subsystem, it's better to print it to the console
+		} else {
+			Log.Info("Config file changed:", e.Name)
+		}
+		loadConfiguration() // I think that this needs to be here, or else, how does Viper know what to call?
+	})
+	
 	// prepares a special channel to look for termination signals
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGHUP, syscall.SIGUSR1, syscall.SIGUSR2, syscall.SIGCONT)
@@ -214,7 +223,7 @@ func main() {
 
 	// do some database tests. If it fails, it means the database is broken or corrupted and it's worthless
 	//  to run this application anyway!
-	Log.Info("\nTesting opening database connection at ", GoBotDSN, "\nPath to static files is:", PathToStaticFiles)
+	Log.Info("Testing opening database connection at ", GoBotDSN, "\nPath to static files is:", PathToStaticFiles)
 
 	db, err := sql.Open(PDO_Prefix, GoBotDSN) // presumes mysql for now (supercedes old sql3lite)
 	checkErr(err) // abort if it cannot even open the database
@@ -233,7 +242,7 @@ func main() {
 	rows.Close()
 	db.Close()
 
-	Log.Info("\n\nDatabase tests ended, last error was:", err, "\n\nStarting Gobot application at port", ServerPort, "\nfor URL:", URLPathPrefix)
+	Log.Infof("\n\nDatabase tests ended, last error was %v:\n\nStarting gobot application at: http://%s%v%s\n\n", err, Host, ServerPort, URLPathPrefix)
 
 	// this was just to make tests; now start the engine as a separate goroutine in the background
 	

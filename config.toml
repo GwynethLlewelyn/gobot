@@ -17,7 +17,7 @@ ShowPopulation = false
 [log]
 # Showing what logging options are available and the defaults for each
 # FileName = "log/gobot.log"
-# Format = "%{color}%{time:2006/01/02 15:04:05.0} %{shortfile} - %{shortfunc} ▶ %{level:.4s} %{id:03x}%{color:reset} %{message}"
+# Format = "%{color}%{time:2006/01/02 15:04:05.0} %{shortfile} - %{shortfunc} ▶ %{level:.4s}%{color:reset} %{message}"
 # MaxSize = 500 # MBytes, integer
 # MaxBackups = 3 # integer
 # MaxAge = 28 # days, integer
