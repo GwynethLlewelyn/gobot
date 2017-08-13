@@ -1489,7 +1489,7 @@ func callURL(url string, encodedRequest string) (string, error) {
 		if string(rsBody) == "No response could be obtained" { // weird case, but apparently it can happen!
 			err = errors.New("No response could be obtained")
 		}
-		Log.Debugf("Reply from in-world object %s; error was %v\n", rsBody, err)
+		Log.Debugf("Reply from in-world object: '%s'; error was %v\n", rsBody, err)
 		return string(rsBody), err
 	}
 }

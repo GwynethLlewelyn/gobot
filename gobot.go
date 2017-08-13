@@ -44,7 +44,7 @@ type templateParameters map[string]interface{}
 // It's a separate function because we want to be able to do a killall -HUP gobot to force the configuration to be read again.
 // Also, if the configuration file changes, this ought to read it back in again without the need of a HUP signal (20170811).
 func loadConfiguration() {
-	fmt.Print("Reading Gobot configuration")	// note that we might not have go-logging active as yet, so we use fmt
+	fmt.Print("Reading Gobot configuration:")	// note that we might not have go-logging active as yet, so we use fmt
 	// Open our config file and extract relevant data from there
 	err := viper.ReadInConfig() // Find and read the config file
 	if err != nil {
@@ -56,8 +56,10 @@ func loadConfiguration() {
 	EngineRunning.Store(viper.GetBool("gobot.EngineRunning")); fmt.Print(".")
 	viper.SetDefault("gobot.Host", "localhost") // to prevent bombing out with panics
 	Host = viper.GetString("gobot.Host"); fmt.Print(".")
+	viper.SetDefault("gobot.URLPathPrefix", "/go")
 	URLPathPrefix = viper.GetString("gobot.URLPathPrefix"); fmt.Print(".")
 	GoBotDSN = viper.GetString("gobot.GoBotDSN"); fmt.Print(".")
+	viper.SetDefault("PDO_Prefix", "mysql") // for now, nothing else will work anyway...
 	PDO_Prefix = viper.GetString("gobot.PDO_Prefix"); fmt.Print(".")
 	viper.SetDefault("gobot.PathToStaticFiles", "~/go/src/gobot")
 	path, err := expandPath(viper.GetString("gobot.PathToStaticFiles")); fmt.Print(".")
@@ -226,17 +228,17 @@ func main() {
 	Log.Info("Testing opening database connection at ", GoBotDSN, "\nPath to static files is:", PathToStaticFiles)
 
 	db, err := sql.Open(PDO_Prefix, GoBotDSN) // presumes mysql for now (supercedes old sql3lite)
-	checkErr(err) // abort if it cannot even open the database
+	checkErrPanic(err) // abort if it cannot even open the database
 
 	// query
 	rows, err := db.Query("SELECT UUID, Name, Location, Position FROM Agents")
-	checkErr(err) // if select fails, probably the table doesn't even exist
+	checkErrPanic(err) // if select fails, probably the table doesn't even exist; we abort because the database is corrupted!
 
  	var agent AgentType // type defined on ui.go to be used on database requests
 
 	for rows.Next() {
 		err = rows.Scan(&agent.UUID, &agent.Name, &agent.Location, &agent.Position)
-		checkErr(err) // if we get some errors here, we will get in trouble later on
+		checkErr(err) // if we get some errors here, we will get in trouble later on; but we might have an empty database, so that's ok.
 		Log.Debug("Agent '", *agent.Name.Ptr(), "' (", *agent.UUID.Ptr(), ") at", *agent.Location.Ptr(), "Position:", *agent.Position.Ptr())
 	}
 	rows.Close()
