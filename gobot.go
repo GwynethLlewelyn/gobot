@@ -6,11 +6,11 @@ import (
 	"database/sql"
 	"fmt"
 	"github.com/fsnotify/fsnotify"
-	"github.com/fatih/color" // allows ANSI escaping for logging in colour! (20170806)
-	"github.com/op/go-logging"
+	"github.com/op/go-logging" // more complete package to log to different outputs; we start with file, syslog, and stderr; later: WebSockets?
 	"github.com/Pallinder/go-randomdata"
 	"github.com/spf13/viper" // to read config files
 	"golang.org/x/net/websocket"
+	"gopkg.in/natefinch/lumberjack.v2" // rolling file logs
 	"log"
 	"net/http"
 	"os"
@@ -24,14 +24,15 @@ import (
 
 var (
 	// Default configurations, hopefully exported to other files and packages
-	// we probably should have a struct for this
+	// we probably should have a struct for this (or even several)
 	Host, GoBotDSN, URLPathPrefix, PDO_Prefix, PathToStaticFiles,
 	ServerPort, FrontEnd, MapURL, LSLSignaturePIN string
+	logFileName string = "log/gobot.log"
+	logMaxSize, logMaxBackups, logMaxAge int // configuration for the go-logging logger
+	logSeverityStderr, logSeverityFile, logSeveritySyslog logging.Level // more configuration for the go-logging logger
 	ShowPopulation bool = true
-	Log = logging.MustGetLogger("gobot")	// configuration for the go-loggin logger
-	logFormat = logging.MustStringFormatter(
-			`%{color}%{time:2006/01/02 15:04:05.0} %{shortfunc} ▶ %{level:.4s} %{id:03x}%{color:reset} %{message}`,
-		)
+	Log = logging.MustGetLogger("gobot")	// configuration for the go-logging logger, must be available everywhere
+	logFormat logging.Formatter	// must be initialised or all hell breaks loose
 )
 
 const NullUUID = "00000000-0000-0000-0000-000000000000" // always useful when we deal with SL/OpenSimulator...
@@ -43,7 +44,7 @@ type templateParameters map[string]interface{}
 // It's a separate function because we want to be able to do a killall -HUP gobot to force the configuration to be read again.
 // Also, if the configuration file changes, this ought to read it back in again without the need of a HUP signal (20170811).
 func loadConfiguration() {
-	log.Print("Reading Gobot configuration...")
+	fmt.Println("Reading Gobot configuration...")	// note that we might not have go-logging active as yet, so we use fmt
 	// Open our config file and extract relevant data from there
 	viper.SetConfigName("config")
 	viper.SetConfigType("toml") // just to make sure; it's the same format as OpenSimulator (or MySQL) config files
@@ -51,8 +52,10 @@ func loadConfiguration() {
 	viper.AddConfigPath("$HOME/go/src/github.com/GwynethLlewelyn/gobot/") // that's how you'll have it
 	viper.AddConfigPath(".")               // optionally look for config in the working directory
 	err := viper.ReadInConfig() // Find and read the config file
-	checkErr(err) // Handle errors reading the config file
-
+	if err != nil {
+		fmt.Println("Error reading config file:", err)
+		return	// we might still get away with this!
+	}
 	// Without these set, we cannot do anything
 	viper.SetDefault("gobot.EngineRunning", true) // try to set this as quickly as possible, or the engine WILL run!
 	EngineRunning.Store(viper.GetBool("gobot.EngineRunning")); fmt.Print(".")
@@ -63,7 +66,10 @@ func loadConfiguration() {
 	PDO_Prefix = viper.GetString("gobot.PDO_Prefix"); fmt.Print(".")
 	viper.SetDefault("gobot.PathToStaticFiles", "~/go/src/gobot")
 	path, err := expandPath(viper.GetString("gobot.PathToStaticFiles")); fmt.Print(".")
-	checkErr(err)
+	if err != nil {
+		fmt.Println("Error expanding path:", err)
+		path = ""	// we might get awat with this as well
+	}
 	PathToStaticFiles = path
 	viper.SetDefault("gobot.ServerPort", ":3000")
 	ServerPort = viper.GetString("gobot.ServerPort"); fmt.Print(".")
@@ -73,10 +79,70 @@ func loadConfiguration() {
 	LSLSignaturePIN = viper.GetString("opensim.LSLSignaturePIN"); fmt.Print(".")
 	viper.SetDefault("gobot.ShowPopulation", true) // try to set this as quickly as possible, or the engine WILL run!
 	ShowPopulation = viper.GetBool("gobot.ShowPopulation"); fmt.Print(".")
-	
+	// logging options
+	viper.SetDefault("log.FileName", "log/gobot.log")
+	logFileName = viper.GetString("log.FileName"); fmt.Print(".")
+	viper.SetDefault("log.Format", `%{color}%{time:2006/01/02 15:04:05.0} %{shortfile} - %{shortfunc} ▶ %{level:.4s} %{id:03x}%{color:reset} %{message}`)
+	logFormat = logging.MustStringFormatter(viper.GetString("log.Format")); fmt.Print(".")
+	viper.SetDefault("log.MaxSize", 500)
+	logMaxSize = viper.GetInt("log.MaxSize"); fmt.Print(".")
+	viper.SetDefault("log.MaxBackups", 3)
+	logMaxBackups = viper.GetInt("log.MaxBackups"); fmt.Print(".")
+	viper.SetDefault("log.MaxAge", 28)
+	logMaxAge = viper.GetInt("log.MaxAge"); fmt.Print(".")
+	viper.SetDefault("log.SeverityStderr", logging.DEBUG)
+	switch viper.GetString("log.SeverityStderr") {
+		case "CRITICAL":
+			logSeverityStderr = logging.CRITICAL
+    	case "ERROR":
+			logSeverityStderr = logging.ERROR
+    	case "WARNING":
+			logSeverityStderr = logging.WARNING
+    	case "NOTICE":
+			logSeverityStderr = logging.NOTICE
+    	case "INFO":
+			logSeverityStderr = logging.INFO
+    	case "DEBUG":
+			logSeverityStderr = logging.DEBUG
+		// default case is handled directly by viper
+	}
+	viper.SetDefault("log.SeverityFile", logging.DEBUG)
+	switch viper.GetString("log.SeverityFile") {
+		case "CRITICAL":
+			logSeverityFile = logging.CRITICAL
+    	case "ERROR":
+			logSeverityFile = logging.ERROR
+    	case "WARNING":
+			logSeverityFile = logging.WARNING
+    	case "NOTICE":
+			logSeverityFile = logging.NOTICE
+    	case "INFO":
+			logSeverityFile = logging.INFO
+    	case "DEBUG":
+			logSeverityFile = logging.DEBUG
+	}
+	viper.SetDefault("log.SeveritySyslog", logging.CRITICAL) // we don't want to swamp syslog with debugging messages!!
+	switch viper.GetString("log.SeveritySyslog") {
+		case "CRITICAL":
+			logSeveritySyslog = logging.CRITICAL
+    	case "ERROR":
+			logSeveritySyslog = logging.ERROR
+    	case "WARNING":
+			logSeveritySyslog = logging.WARNING
+    	case "NOTICE":
+			logSeveritySyslog = logging.NOTICE
+    	case "INFO":
+			logSeveritySyslog = logging.INFO
+    	case "DEBUG":
+			logSeveritySyslog = logging.DEBUG
+	}	
 	viper.WatchConfig() // if the config file is changed, this is supposed to reload it (20170811)
 	viper.OnConfigChange(func(e fsnotify.Event) {
-		log.Println("Config file changed:", e.Name)
+		if (Log == nil) {
+			fmt.Println("Config file changed:", e.Name) // if we couldn't configure the logging subsystem, it's better to print it to the console
+		} else {
+			Log.Info("Config file changed:", e.Name)
+		} 
 	})
 }
 
@@ -85,26 +151,36 @@ func main() {
 	// to change the flags on the default logger
 	// see https://stackoverflow.com/a/24809859/1035977
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
-	
-	// Setup the go-logging Logger (20170812)
-	backendStderr	:= logging.NewLogBackend(os.Stderr, "", 0)
-	backendFile		:= logging.NewLogBackend(os.Stderr, "", 0)
-	backendSyslog,_	:= logging.newSysLogBackend("")
 
-	// For messages written to backend2 we want to add some additional
-	// information to the output, including the used log level and the name of
-	// the function.
+	loadConfiguration() // this gets loaded always, on the first time it runs
+	
+	// Setup the lumberjack rotating logger. This is because we need it for the go-logging logger when writing to files. (20170813)
+	rotatingLogger := &lumberjack.Logger{
+	    Filename:   logFileName,	// this is an option set on the config.yaml file, eventually the others will be so, too.
+	    MaxSize:    logMaxSize, // megabytes
+	    MaxBackups: logMaxBackups,
+	    MaxAge:     logMaxAge, //days
+	}
+	// Setup the go-logging Logger. (20170812) We have three loggers: one to stderr, one to a logfile, one to syslog for critical stuff. (20170813
+	backendStderr	:= logging.NewLogBackend(os.Stderr, "", 0)
+	backendFile		:= logging.NewLogBackend(rotatingLogger, "", 0)
+	backendSyslog,_	:= logging.NewSyslogBackend("")
+
+	// Set formatting for stderr and file (basically the same). I'm assuming syslog has its own format, but I'll have to see what happens (20170813).
 	backendStderrFormatter	:= logging.NewBackendFormatter(backendStderr, logFormat)
 	backendFileFormatter	:= logging.NewBackendFormatter(backendFile, logFormat)
 
-	// Only errors and more severe messages should be sent to backend1
+	// Check if we're overriding the default severity for each backend. This is user-configurable. By default: DEBUG, DEBUG, CRITICAL.
+	// TODO(gwyneth): What about a WebSocket backend using https://github.com/cryptix/exp/wslog ? (20170813)
+	backendStderrLeveled := logging.AddModuleLevel(backendStderrFormatter)
+	backendStderrLeveled.SetLevel(logSeverityStderr, "gobot")
+	backendFileLeveled := logging.AddModuleLevel(backendFileFormatter)
+	backendFileLeveled.SetLevel(logSeverityFile, "gobot")
 	backendSyslogLeveled := logging.AddModuleLevel(backendSyslog)
-	backendSyslogLeveled.SetLevel(logging.CRITICAL, "gobot")
+	backendSyslogLeveled.SetLevel(logSeveritySyslog, "gobot")
 
-	// Set the backends to be used.
-	logging.SetBackend(backendStderrFormatter, backendFileFormatter, backendSyslogLeveled)
-
-	loadConfiguration() // this gets loaded always, on the first time it runs
+	// Set the backends to be used. Logging should commence now.
+	logging.SetBackend(backendStderrLeveled, backendFileLeveled, backendSyslogLeveled)
 
 	// prepares a special channel to look for termination signals
 	sigs := make(chan os.Signal, 1)
@@ -114,7 +190,7 @@ func main() {
 	go func() {
 		for {
 	        sig := <-sigs
-	        log.Println("Got signal", sig)
+	        Log.Notice("Got signal", sig)
 	        switch sig {
 		        case syscall.SIGUSR1:
 		        	sendMessageToBrowser("status", "", randomdata.FullName(randomdata.Female) + "<br />", "") // defined on engine.go for now
@@ -123,46 +199,41 @@ func main() {
 		        case syscall.SIGHUP:
 		        	// HACK(gwyneth): if the engine dies, send a SIGHUP to get it running again (20170811).
 		        	//  Moved to HUP (instead of CONT done 20170723) because the configuration is now automatically re-read.
-		        	sendMessageToBrowser("status", "warning", "<code>SIGHUP</code> caught:", "")
-		        	if EngineRunning.Load() != nil {
-		        		EngineRunning.Store(!EngineRunning.Load().(bool))
-		        		sendMessageToBrowser("status", "warning", fmt.Sprintf("Engine running: %v", EngineRunning.Load().(bool)), "")
-		        	} else {
-			        	sendMessageToBrowser("status", "error", "No idea what's happened to the engine. Try again later?", "")
-		        	}
+		        	// NOTE(gwyneth): Noticed that when the app is suspended with a Ctrl-Z from the shell, it will get a HUP
+		        	//  and after that, when putting it in the background, it will get a CONT. So we change the logic appropriately!
+		        	sendMessageToBrowser("status", "warning", "<code>SIGHUP</code> caught, stopping engine.", "")
+		        	EngineRunning.Store(false)
 		        case syscall.SIGCONT:
-			        log.Println("SIGHUP caught") // unused for now
+		        	sendMessageToBrowser("status", "warning", "<code>SIGCONT</code> caught, restarting engine.", "")
+		        	EngineRunning.Store(true)
 				default:
-		        	log.Println("Unknown UNIX signal", sig, "caught!! Ignoring...")
+		        	Log.Warning("Unknown UNIX signal", sig, "caught!! Ignoring...")
 	        }
         }
     }()
 
 	// do some database tests. If it fails, it means the database is broken or corrupted and it's worthless
 	//  to run this application anyway!
-	log.Println("\nTesting opening database connection at ", GoBotDSN, "\nPath to static files is:", PathToStaticFiles)
+	Log.Info("\nTesting opening database connection at ", GoBotDSN, "\nPath to static files is:", PathToStaticFiles)
 
-	db, err := sql.Open(PDO_Prefix, GoBotDSN) // presumes sqlite3 for now
+	db, err := sql.Open(PDO_Prefix, GoBotDSN) // presumes mysql for now (supercedes old sql3lite)
 	checkErr(err) // abort if it cannot even open the database
 
 	// query
 	rows, err := db.Query("SELECT UUID, Name, Location, Position FROM Agents")
 	checkErr(err) // if select fails, probably the table doesn't even exist
 
- 	var agent AgentType; // type defined on ui.go to be used on database requests
+ 	var agent AgentType // type defined on ui.go to be used on database requests
 
 	for rows.Next() {
 		err = rows.Scan(&agent.UUID, &agent.Name, &agent.Location, &agent.Position)
 		checkErr(err) // if we get some errors here, we will get in trouble later on
-		log.Println(agent.UUID)
-		log.Println(agent.Name)
-		log.Println(agent.Location)
-		log.Println(agent.Position)
+		Log.Debug("Agent '", *agent.Name.Ptr(), "' (", *agent.UUID.Ptr(), ") at", *agent.Location.Ptr(), "Position:", *agent.Position.Ptr())
 	}
 	rows.Close()
 	db.Close()
 
-	log.Println("\n\nDatabase tests ended.\n\nStarting Gobot application at port", ServerPort, "\nfor URL:", URLPathPrefix)
+	Log.Info("\n\nDatabase tests ended, last error was:", err, "\n\nStarting Gobot application at port", ServerPort, "\nfor URL:", URLPathPrefix)
 
 	// this was just to make tests; now start the engine as a separate goroutine in the background
 	
@@ -245,10 +316,8 @@ func main() {
 // checkErrPanic logs a fatal error and panics.
 func checkErrPanic(err error) {
 	if err != nil {
-		color.Set(color.FgRed)
-		defer color.Unset()
 		pc, file, line, ok := runtime.Caller(1)
-		log.Panicln("gobot", filepath.Base(file), ":", line, ":", pc, ok, " - panic:", err)
+		Log.Panic(filepath.Base(file), ":", line, ":", pc, ok, " - panic:", err)
 	}
 }
 
@@ -256,10 +325,8 @@ func checkErrPanic(err error) {
 //  this is for 'normal' situations when we want to get a log if something goes wrong but do not need to panic
 func checkErr(err error) {
 	if err != nil {
-		color.Set(color.FgYellow)
 		pc, file, line, ok := runtime.Caller(1)
-		log.Panicln("gobot", filepath.Base(file), ":", line, ":", pc, ok, " - error:", err)
-		color.Unset()
+		Log.Error(filepath.Base(file), ":", line, ":", pc, ok, " - error:", err)
 	}
 }
 

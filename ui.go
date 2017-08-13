@@ -5,10 +5,8 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"github.com/fatih/color" // allows ANSI escaping for logging in colour! (20170806)
 	"gopkg.in/guregu/null.v3/zero"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"path/filepath"
 	"runtime"
@@ -20,10 +18,8 @@ import (
 func checkErrHTTP(w http.ResponseWriter, httpStatus int, errorMessage string, err error) {
 	if err != nil {
 		http.Error(w, fmt.Sprintf(errorMessage, err), httpStatus)
-		color.Set(color.FgYellow)
 		pc, file, line, ok := runtime.Caller(1)
-		log.Println("(", http.StatusText(httpStatus), ") ", filepath.Base(file), ":", line, ":", pc, ok, " - error:", errorMessage, err)	
-		color.Unset()	
+		Log.Error("(", http.StatusText(httpStatus), ") ", filepath.Base(file), ":", line, ":", pc, ok, " - error:", errorMessage, err)	
 	}
 }
 
@@ -31,10 +27,8 @@ func checkErrHTTP(w http.ResponseWriter, httpStatus int, errorMessage string, er
 func checkErrPanicHTTP(w http.ResponseWriter, httpStatus int, errorMessage string, err error) {
 	if err != nil {
 		http.Error(w, fmt.Sprintf(errorMessage, err), httpStatus)
-		color.Set(color.FgRed)
-		defer color.Unset()
 		pc, file, line, ok := runtime.Caller(1)
-		log.Panicln("(", http.StatusText(httpStatus), ") ", filepath.Base(file), ":", line, ":", pc, ok, " - panic:", errorMessage, err)
+		Log.Panic("(", http.StatusText(httpStatus), ") ", filepath.Base(file), ":", line, ":", pc, ok, " - panic:", errorMessage, err)
 	}
 }
 
@@ -42,9 +36,7 @@ func checkErrPanicHTTP(w http.ResponseWriter, httpStatus int, errorMessage strin
 //  this is mostly to avoid code duplication and make sure that all entries are written similarly 
 func logErrHTTP(w http.ResponseWriter, httpStatus int, errorMessage string) {
 	http.Error(w, errorMessage, httpStatus)
-	color.Set(color.FgRed)
-	log.Print("(" + http.StatusText(httpStatus) + ") " + errorMessage)
-	color.Unset()
+	Log.Error("(" + http.StatusText(httpStatus) + ") " + errorMessage)
 }
 
 // funcName is @Sonia's solution to get the name of the function that Go is currently running.
@@ -112,7 +104,7 @@ func uiObjects(w http.ResponseWriter, r *http.Request) {
 			&Object.BBHi,
 			&Object.BBLo,
 		)
-		//fmt.Println("Row extracted:", Object)
+		// Log.Debug("Row extracted:", Object)
 		rowArr = append(rowArr, Object)
 	}
 	checkErr(err)
@@ -122,9 +114,9 @@ func uiObjects(w http.ResponseWriter, r *http.Request) {
 	if data, err := json.MarshalIndent(rowArr, "", " "); err != nil {
 		checkErr(err)
 	} else {
-		// fmt.Printf("json.MarshalIndent:\n%s\n\n", data)
+		// Log.Debugf("json.MarshalIndent:\n%s\n\n", data)
 		_, err := fmt.Fprintf(w, "%s", data)
-		//if (err == nil) { fmt.Printf("Wrote %d bytes to interface\n", n) } else { checkErr(err) }
+		//if (err == nil) { Log.Debugf("Wrote %d bytes to interface\n", n) } else { checkErr(err) }
 		checkErr(err)
 	}
 	return
@@ -134,11 +126,11 @@ func uiObjects(w http.ResponseWriter, r *http.Request) {
 func uiObjectsUpdate(w http.ResponseWriter, r *http.Request) {
 	body, err := ioutil.ReadAll(r.Body) // from https://stackoverflow.com/questions/15672556/handling-json-post-request-in-go (20170524)
     checkErrPanic(err)
-	// fmt.Println("\nBody is >>", string(body), "<<")
+	// Log.Debug("\nBody is >>", string(body), "<<")
 	var obj ObjectType
     err = json.Unmarshal(body, &obj)
     checkErrPanic(err)
-    //fmt.Println("\nJSON decoded body is >>", obj, "<<")
+    // Log.Debug("\nJSON decoded body is >>", obj, "<<")
     
     // update database
     // open database connection and see if we can update the inventory for this object
@@ -158,7 +150,7 @@ func uiObjectsUpdate(w http.ResponseWriter, r *http.Request) {
 	// w.WriteHeader(http.StatusOK)
 	// w.Header().Set("Content-type", "text/plain; charset=utf-8")
 	// fmt.Fprintln(w, obj, "successfully updated.")
-	// log.Println(obj, "successfully updated.")
+	// Log.Debug(obj, "successfully updated.")
 	return
 }
 
@@ -166,7 +158,7 @@ func uiObjectsUpdate(w http.ResponseWriter, r *http.Request) {
 func uiObjectsRemove(w http.ResponseWriter, r *http.Request) {
 	body, err := ioutil.ReadAll(r.Body)
 	checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Cannot read body of HTTP Request:", err)
-	// log.Println("\nObjects body is >>", string(body), "<<")
+	// Log.Debug("\nObjects body is >>", string(body), "<<")
 	    
     // open database connection and see if we can remove the object UUIDs we got
 	db, err := sql.Open(PDO_Prefix, GoBotDSN)
@@ -177,9 +169,7 @@ func uiObjectsRemove(w http.ResponseWriter, r *http.Request) {
 	_, err = db.Exec(fmt.Sprintf("DELETE FROM Obstacles WHERE UUID IN (%s)", string(body)))
 	checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Objects remove failed:", err)
 
-	color.Set(color.FgGreen)
-	log.Println("Object UUIDs >>", string(body), "<< successfully removed.")
-	color.Unset()
+	Log.Debug("Object UUIDs >>", string(body), "<< successfully removed.")
 }
 
 // agentType is a struct to hold data retrieved from the database.
@@ -286,7 +276,7 @@ func uiAgentsUpdate(w http.ResponseWriter, r *http.Request) {
 func uiAgentsRemove(w http.ResponseWriter, r *http.Request) {
 	body, err := ioutil.ReadAll(r.Body)
     checkErrPanic(err)
-	// fmt.Println("\nAgents Body is >>", string(body), "<<")
+	// Log.Debug("\nAgents Body is >>", string(body), "<<")
 	    
 	db, err := sql.Open(PDO_Prefix, GoBotDSN)
 	checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Connect failed:", err)
@@ -296,9 +286,7 @@ func uiAgentsRemove(w http.ResponseWriter, r *http.Request) {
 	_, err = db.Exec(fmt.Sprintf("DELETE FROM Agents WHERE UUID IN (%s)", string(body)))
 	checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Agents remove failed:", err)
 
-	color.Set(color.FgGreen)
-	log.Println("Agents UUIDs >>", string(body), "<< successfully removed.")
-	color.Unset()
+	Log.Debug("Agents UUIDs >>", string(body), "<< successfully removed.")
 }
 
 // positionType is a struct to hold data retrieved from the database, used by several functions (including JSON).
@@ -401,7 +389,7 @@ func uiPositionsUpdate(w http.ResponseWriter, r *http.Request) {
 func uiPositionsRemove(w http.ResponseWriter, r *http.Request) {
 	body, err := ioutil.ReadAll(r.Body)
     checkErrPanic(err)
-	// log.Println("\nPositions Body is >>", string(body), "<<")
+	// Log.Debug("\nPositions Body is >>", string(body), "<<")
 	    
 	db, err := sql.Open(PDO_Prefix, GoBotDSN)
 	checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Connect failed:", err)
@@ -411,9 +399,7 @@ func uiPositionsRemove(w http.ResponseWriter, r *http.Request) {
 	_, err = db.Exec(fmt.Sprintf("DELETE FROM Positions WHERE UUID IN (%s)", string(body)))
 	checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Positions remove failed:", err)
 
-	color.Set(color.FgGreen)
-	log.Println("Positions UUIDs >>", string(body), "<< successfully removed.")
-	color.Unset()
+	Log.Debug("Positions UUIDs >>", string(body), "<< successfully removed.")
 }
 
 // inventoryType is a struct to hold data retrieved from the database, used by several functions (including JSON).
@@ -491,7 +477,7 @@ func uiInventoryUpdate(w http.ResponseWriter, r *http.Request) {
 func uiInventoryRemove(w http.ResponseWriter, r *http.Request) {
 	body, err := ioutil.ReadAll(r.Body)
     checkErrPanic(err)
-	// fmt.Println("\nInventory Body is >>", string(body), "<<")
+	// Log.Debug("\nInventory Body is >>", string(body), "<<")
 	    
 	db, err := sql.Open(PDO_Prefix, GoBotDSN)
 	checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Connect failed:", err)
@@ -501,9 +487,7 @@ func uiInventoryRemove(w http.ResponseWriter, r *http.Request) {
 	_, err = db.Exec(fmt.Sprintf("DELETE FROM Inventory WHERE UUID IN (%s)", string(body)))
 	checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Inventory remove failed:", err)
 
-	color.Set(color.FgGreen)
-	log.Println("Inventory UUIDs >>", string(body), "<< successfully removed.")
-	color.Unset()
+	Log.Debug("Inventory UUIDs >>", string(body), "<< successfully removed.")
 }
 
 
@@ -576,7 +560,7 @@ func uiUserManagementUpdate(w http.ResponseWriter, r *http.Request) {
 func uiUserManagementRemove(w http.ResponseWriter, r *http.Request) {
 	body, err := ioutil.ReadAll(r.Body)
     checkErrPanic(err)
-	// fmt.Println("\nInventory Body is >>", string(body), "<<")
+	// Log.Debug("\nInventory Body is >>", string(body), "<<")
 	    
 	db, err := sql.Open(PDO_Prefix, GoBotDSN)
 	checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Connect failed:", err)
@@ -586,7 +570,5 @@ func uiUserManagementRemove(w http.ResponseWriter, r *http.Request) {
 	_, err = db.Exec(fmt.Sprintf("DELETE FROM Users WHERE Email IN (%s)", string(body)))
 	checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Users remove failed:", err)
 
-	color.Set(color.FgGreen)
-	log.Println("User(s) Email(s) >>", string(body), "<< successfully removed.")
-	color.Unset()
+	Log.Debug("User(s) Email(s) >>", string(body), "<< successfully removed.")
 }

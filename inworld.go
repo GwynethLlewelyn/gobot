@@ -8,7 +8,6 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"fmt"
-//	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -72,19 +71,19 @@ func updateInventory(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "Root URL is: %s\n", updateInventory()) // send data to client side
 	
     r.ParseForm()  // parse arguments, you have to call this by yourself
-    log.Println(r.Form)  // print form information in server side
-    log.Println("header connection: ", r.Header.Get("Connection"))
-    log.Println("all headers:")
+    Log.Debug(r.Form)  // print form information in server side
+    Log.Debug("header connection: ", r.Header.Get("Connection"))
+    Log.Debug("all headers:")
     for k, v := range r.Header {
-        log.Println("key:", k)
-        log.Println("val:", strings.Join(v, ""))
+        Log.Debug("key:", k)
+        Log.Debug("val:", strings.Join(v, ""))
     }
-    log.Println("path", r.URL.Path)
-    log.Println("scheme", r.URL.Scheme)
-    log.Println(r.Form["url-long"])
+    Log.Debug("path", r.URL.Path)
+    Log.Debug("scheme", r.URL.Scheme)
+    lLog.Debugr.Form["url-long"])
     for k, v := range r.Form {
-        log.Println("key:", k)
-        log.Println("val:", strings.Join(v, ""))
+        Log.Debug("key:", k)
+        Log.Debug("val:", strings.Join(v, ""))
     }
 	if r.Form["signature"] != nil {
 	    fmt.Fprintf(w, "Signature is %s\n", r.Form.Get("signature"))
@@ -161,10 +160,10 @@ func registerPosition(w http.ResponseWriter, r *http.Request) {
 	// get all parameters in array
 	err := r.ParseForm()
 	checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Extracting parameters failed:", err)
-	// log.Println("Received: ", r) // we know this works well (20170725)
+	// Log.Debug("Received: ", r) // we know this works well (20170725)
 	
 	if r.Header.Get("X-Secondlife-Object-Key") == "" {
-		// fmt.Printf("Got '%s'\n", r.Header["X-Secondlife-Object-Key"])
+		// Log.Debugf("Got '%s'\n", r.Header["X-Secondlife-Object-Key"])
 		logErrHTTP(w, http.StatusForbidden, funcName() + ": Not called from within the virtual world.") 
 		return		
 	}
@@ -177,7 +176,7 @@ func registerPosition(w http.ResponseWriter, r *http.Request) {
 		}
 		
 		signature := GetMD5Hash(r.Header.Get("X-Secondlife-Object-Key") + r.Form.Get("timestamp") + ":" +  LSLSignaturePIN)
-		/*log.Printf("%s: Calculating signature and comparing with what we got: Object Key: '%s' Timestamp: '%s' PIN: '%s' LSL signature: '%s' Our signature: %s\n",
+		/* Log.Debugf("%s: Calculating signature and comparing with what we got: Object Key: '%s' Timestamp: '%s' PIN: '%s' LSL signature: '%s' Our signature: %s\n",
 			funcName(),
 			r.Header.Get("X-Secondlife-Object-Key"),
 			r.Form.Get("timestamp"),
@@ -225,7 +224,7 @@ func registerPosition(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Header().Set("Content-type", "text/plain; charset=utf-8")
 		fmt.Fprintf(w, "'%s' successfully updated!", r.Header.Get("X-Secondlife-Object-Name"))
-		// log.Printf("These are the headers I got: %v\nAnd these are the parameters %v\n", r.Header, r.Form)
+		// Log.Debugf("These are the headers I got: %v\nAnd these are the parameters %v\n", r.Header, r.Form)
 		return
 	} else {
 		logErrHTTP(w, http.StatusForbidden, funcName() + ": Signature not found") 
@@ -245,7 +244,7 @@ func registerAgent(w http.ResponseWriter, r *http.Request) {
 	checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Extracting parameters failed:", err)
 	
 	if r.Header.Get("X-Secondlife-Object-Key") == "" {
-		// fmt.Printf("Got '%s'\n", r.Header["X-Secondlife-Object-Key"])
+		// Log.Debugf("Got '%s'\n", r.Header["X-Secondlife-Object-Key"])
 		logErrHTTP(w, http.StatusForbidden, funcName() + ": Only in-world requests allowed.")
 		return		
 	}
@@ -370,7 +369,7 @@ func processCube(w http.ResponseWriter, r *http.Request) {
 	
 	defer db.Close()
 	
-	fmt.Println("processCube called, avatar UUID is", r.Form.Get("avatar"), "cube UUID is", r.Header.Get("X-Secondlife-Object-Key"))
+	Log.Debug("processCube called, avatar UUID is", r.Form.Get("avatar"), "cube UUID is", r.Header.Get("X-Secondlife-Object-Key"))
 	
 	var agent AgentType
 	err = db.QueryRow("SELECT * FROM Agents WHERE OwnerKey=?", r.Form.Get("avatar")).Scan(
@@ -433,7 +432,7 @@ func processCube(w http.ResponseWriter, r *http.Request) {
     if (err != nil) {
 	    sendMessageToBrowser("status", "error", fmt.Sprintf("Agent '%s' could not be updated in-world with new energy settings; in-world reply was: '%s'", *agent.Name.Ptr(), rsBody), "")
 	} else {
-		fmt.Println("Result from updating energy of ", *agent.Name.Ptr(), ":", rsBody)
+		Log.Debug("Result from updating energy of ", *agent.Name.Ptr(), ":", rsBody)
 	}
 	// now do it for money!
 	moneyAgent, err := strconv.ParseFloat(*agent.Money.Ptr(), 64)
@@ -445,7 +444,7 @@ func processCube(w http.ResponseWriter, r *http.Request) {
     if (err != nil) {
 	    sendMessageToBrowser("status", "error", fmt.Sprintf("Agent '%s' could not be updated in-world with new money settings; in-world reply was: '%s'", *agent.Name.Ptr(), rsBody), "")
 	} else {
-		fmt.Println("Result from updating money of ", *agent.Name.Ptr(), ":", rsBody)
+		Log.Debug("Result from updating money of ", *agent.Name.Ptr(), ":", rsBody)
 	}
 	// last but not least, make the agent more happy!
 	happinessAgent, err := strconv.ParseFloat(*agent.Happiness.Ptr(), 64)
@@ -457,14 +456,14 @@ func processCube(w http.ResponseWriter, r *http.Request) {
     if (err != nil) {
 	    sendMessageToBrowser("status", "error", fmt.Sprintf("Agent '%s' could not be updated in-world with new happiness settings; in-world reply was: '%s'", *agent.Name.Ptr(), rsBody), "")
 	} else {
-		fmt.Println("Result from updating happiness of ", *agent.Name.Ptr(), ":", rsBody)
+		Log.Debug("Result from updating happiness of ", *agent.Name.Ptr(), ":", rsBody)
 	}
 	// stand up the bot, he's done his work
 	rsBody, err = callURL(*agent.PermURL.Ptr(), "command=osNpcStand")
     if (err != nil) {
 	    sendMessageToBrowser("status", "error", fmt.Sprintf("Agent '%s' could not be made to stand-up; in-world reply was: '%s'", *agent.Name.Ptr(), rsBody), "")
 	} else {
-		fmt.Println("Result from making", *agent.Name.Ptr(), "stand up:", rsBody)
+		Log.Debug("Result from making", *agent.Name.Ptr(), "stand up:", rsBody)
 	}
 	
 	// the next step is to update the database with the new values
@@ -482,7 +481,7 @@ func processCube(w http.ResponseWriter, r *http.Request) {
 	    sendMessageToBrowser("status", "error", fmt.Sprintf("Agent '%s' could not be updated in database with new energy/money/happiness settings; database reply was: '%v'", *agent.Name.Ptr(), err), "")
 	}	
 	
-	fmt.Println("Agent", *agent.Name.Ptr(), "updated database with new energy:", energyAgent, "money:", moneyAgent, "happiness:", happinessAgent)
+	Log.Debug("Agent", *agent.Name.Ptr(), "updated database with new energy:", energyAgent, "money:", moneyAgent, "happiness:", happinessAgent)
 	
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-type", "text/plain; charset=utf-8")

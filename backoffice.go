@@ -8,13 +8,10 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"fmt"
-	"github.com/fatih/color" // allows ANSI escaping for logging in colour! (20170806)
 	"github.com/gorilla/securecookie"
 	"github.com/heatxsink/go-gravatar"
-	// "gopkg.in/guregu/null.v3/zero"
 	"html/template"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -102,12 +99,10 @@ func setSession(userName string, response http.ResponseWriter) {
 			Value: encoded,
 			Path:	"/",
 		}
-		// fmt.Println("Encoded cookie:", cookie)
+		// Log.Debug("Encoded cookie:", cookie)
 		http.SetCookie(response, cookie)
 	} else {
-		color.Set(color.FgYellow)
-		log.Println("Error encoding cookie:", err)
-		color.Unset()
+		Log.Error("Error encoding cookie:", err)
 	}
  }
  
@@ -413,7 +408,7 @@ func backofficeUserManagement(w http.ResponseWriter, r *http.Request) {
 
 // backofficeLogin deals with authentication.
 func backofficeLogin(w http.ResponseWriter, r *http.Request) {
-	//fmt.Println("Entered backoffice login for URL:", r.URL, "using method:", r.Method)
+	// Log.Debug("Entered backoffice login for URL:", r.URL, "using method:", r.Method)
 	if r.Method == "GET" {
 		tplParams := templateParameters{ "Title": "Gobot Administrator Panel - login",
 				"URLPathPrefix": URLPathPrefix,
@@ -426,8 +421,8 @@ func backofficeLogin(w http.ResponseWriter, r *http.Request) {
         email		:= r.Form.Get("email")
         password	:= r.Form.Get("password")
         
-        //fmt.Println("email:", email)
-        //fmt.Println("password:", password)
+        // Log.Debug("email:", email)
+        // Log.Debug("password:", password)
         
         if email == "" || password == "" { // should never happen, since the form checks this
 	        http.Redirect(w, r, URLPathPrefix + "/", 302)        
@@ -550,7 +545,7 @@ func backofficeCommandsExec(w http.ResponseWriter, r *http.Request) {
 	    content += "<p class=\"text-success\">" + rsBody + "</p>"
     }
     
-    // log.Printf("Sending to in-world object %s ... %s\n", r.Form.Get("PermURL"), body) // debug
+    Log.Debugf("Sending to in-world object %s ... %s\n", r.Form.Get("PermURL"), body) // debug
     
     /*
     rs, err := http.Post(r.Form.Get("PermURL"), "application/x-www-form-urlencoded", bytes.NewBuffer(body))
@@ -561,10 +556,10 @@ func backofficeCommandsExec(w http.ResponseWriter, r *http.Request) {
 	rsBody, err := ioutil.ReadAll(rs.Body)
 	if (err != nil) {
 		errMsg := fmt.Sprintf("Error response from in-world object: %s", err)
-		log.Println(errMsg)
+		Log.Error(errMsg)
 		content += "<p class=\"text-danger\">" + errMsg + "</p>"
 	} else {
-	    log.Printf("Reply from in-world object %s\n", rsBody)
+	    Log.Debugf("Reply from in-world object %s\n", rsBody)
 		content += "<p class=\"text-success\">" + string(rsBody) + "</p>"
 	}
 	*/
@@ -661,7 +656,7 @@ func backofficeControllerCommandsExec(w http.ResponseWriter, r *http.Request) {
     	r.Form.Get("param1") + "=" + r.Form.Get("data1") + "&" +
     	r.Form.Get("param2") + "=" + r.Form.Get("data2"))
     
-    fmt.Printf("Sending to agent %s via Bot Controller %s ... %s\n", r.Form.Get("NPC"),
+    Log.Debugf("Sending to agent %s via Bot Controller %s ... %s\n", r.Form.Get("NPC"),
     	r.Form.Get("PermURL"), body)
     
     rs, err := http.Post(r.Form.Get("PermURL"), "application/x-www-form-urlencoded", bytes.NewBuffer(body))
@@ -673,10 +668,10 @@ func backofficeControllerCommandsExec(w http.ResponseWriter, r *http.Request) {
 	rsBody, err := ioutil.ReadAll(rs.Body)
 	if (err != nil) {
 		errMsg := fmt.Sprintf("Error response from in-world object: %s", err)
-		log.Println(errMsg)
+		Log.Error(errMsg)
 		content += "<p class=\"text-danger\">" + errMsg + "</p>"
 	} else {
-	    log.Printf("Reply from in-world object %s\n", rsBody)
+	    Log.Debugf("Reply from in-world object %s\n", rsBody)
 		content += "<p class=\"text-success\">" + string(rsBody) + "</p>"
 	}
 	

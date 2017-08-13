@@ -8,13 +8,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/fatih/color" // allows ANSI escaping for logging in colour! (20170806)
 	"github.com/jaytaylor/html2text" // converts HTML to pretty-printed text! (20170807)
 	"golang.org/x/net/websocket"
 	"gopkg.in/guregu/null.v3/zero"
 	"html/template"
 	"io/ioutil"
-	"log"
 	"math"
 	"math/rand"
 	"net/http"
@@ -108,7 +106,7 @@ func serveWs(ws *websocket.Conn) {
 	var err error // to avoid constant redeclarations in tight loop below
 
 	if ws == nil {
-		log.Panic("Received nil WebSocket — I have no idea why or how this happened!")
+		Log.Panic("Received nil WebSocket — I have no idea why or how this happened!")
 	}
 
 	/*
@@ -126,9 +124,7 @@ func serveWs(ws *websocket.Conn) {
 			sendMessage := <-wsSendMessage
 
 			if err = websocket.JSON.Send(ws, sendMessage); err != nil {
-				color.Set(color.FgRed)
-				defer color.Unset()
-				log.Println("Can't send; error:", err)
+				Log.Error("Can't send; error:", err)
 				break
 			}
 		}
@@ -139,16 +135,10 @@ func serveWs(ws *websocket.Conn) {
 
 	for {
 		if err = websocket.JSON.Receive(ws, &receiveMessage); err != nil {
-			color.Set(color.FgRed)
-			defer color.Unset()
-			log.Println("Can't receive; error:", err)
+			Log.Error("Can't receive; error:", err)
 			break
 		}
-		// log.Println("Received message", receiveMessage)
-
-		// log.Printf("Received back from client: type '%s' subtype '%s' text '%s' id '%s'\n", *receiveMessage.Type.Ptr(), *receiveMessage.SubType.Ptr(), *receiveMessage.Text.Ptr(), *receiveMessage.Id.Ptr())
-		// To-Do Next: client will tell us when it's ready, and send us an agent and a destination cube
-
+		// Log.Debugf("Received back from client: type '%s' subtype '%s' text '%s' id '%s'\n", *receiveMessage.Type.Ptr(), *receiveMessage.SubType.Ptr(), *receiveMessage.Text.Ptr(), *receiveMessage.Id.Ptr())
 		wsReceiveMessage <- receiveMessage
 	}
 }
@@ -206,8 +196,6 @@ func backofficeEngine(w http.ResponseWriter, r *http.Request) {
 	rows, err = db.Query("SELECT Name, UUID, Location, Position FROM Agents ORDER BY Name")
 	checkErr(err)
 
-	// defer rows.Close() // already deferred above
-
 	var uuidAgent, agentNames = "", ""
 	agentNames = "\t\t\t\t\t\t\t\t\t\t\t\t\t<option value=\"" + NullUUID + "\">Clean selection (let engine figure out next agent)</option>\n"
 
@@ -237,18 +225,18 @@ func backofficeEngine(w http.ResponseWriter, r *http.Request) {
 }
 
 // EngineRunning is the equivalent of a semaphore which starts or stops the engine.
-// This is now an exported global variable because we need to access it from the configuration function and from the SIGHUP (20170811)
-var EngineRunning atomic.Value 
+// This is now an exported global variable because we need to access it from the configuration function and from the SIGHUP/SIGCONT (20170811).
+var EngineRunning atomic.Value
 
 // engine does everything but the kitchen sink.
-// Notably, it does not only run the GA. It also deals on a separate goroutine with message handling for WebSockets, which also includes 
-//  the ability to start or stop the GA. And it launches another goroutine to deal with buffering commands to the virtual world. It really does
-//  a lot, and possibly it ought to be simplified somehow. But this is the core, the essence, the kernel, the locus of all the rest!
+// Notably, it does not only run the GA. It also deals on a separate goroutine with message handling for WebSockets, which also includes
+//	the ability to start or stop the GA. And it launches another goroutine to deal with buffering commands to the virtual world. It really does
+//	a lot, and possibly it ought to be simplified somehow. But this is the core, the essence, the kernel, the locus of all the rest!
 func engine() {
 	// we use sync/atomic for making sure we can read a value that is set by a different goroutine
 	//	 see https://texlution.com/post/golang-lock-free-values-with-atomic-value/ among others (20170704)
 	var (
-		receiveMessage WsMessageType 
+		receiveMessage WsMessageType
 		userDestCube atomic.Value // using sync/atomic to make values consistent among goroutines (20170704)
 		curAgent atomic.Value
 	)
@@ -307,18 +295,15 @@ func engine() {
 									sendMessageToBrowser("htmlControl", "disable", "", "stopEngine")
 							}
 						case "gone": // The client has gone, we have no more websocket for this one (20170704)
-							color.Set(color.FgCyan)
-							fmt.Println("Client just told us that it went away, we continue on our own")
-							color.Unset()
+							Log.Info("Client just told us that it went away, we continue on our own")
 							webSocketActive.Store(false)
 						default: // no other special functions for now, just echo what the client has sent...
-							//unknownMessage := *receiveMessage.Text.Ptr() // better not...
-							//fmt.Println("Received from client unknown status message with subtype",
-							//	messageSubType, "and text: >>", unknownMessage, "<< — ignoring...")
-							color.Set(color.FgYellow)
-							fmt.Println("Received from client unknown status message with subtype",
-								messageSubType, " — ignoring...")
-							color.Unset()
+							unknownMessage := "<nil>"
+							if receiveMessage.Text.Ptr() != nil {
+								unknownMessage = *receiveMessage.Text.Ptr()
+							}
+							Log.Warning("Received from client unknown status message with subtype",
+								messageSubType, "text:", unknownMessage, " — ignoring...")
 					}
 				case "formSubmit":
 					var messageText string
@@ -352,9 +337,7 @@ func engine() {
 					sendMessageToBrowser("status", "", "Engine " + messageSubType + "<br />", "")
 
 				default:
-					color.Set(color.FgYellow)
-					log.Println("Unknown message type", messageType)
-					color.Unset()
+					Log.Warning("Unknown message type", messageType)
 			}
 		}
 	}()
@@ -396,32 +379,32 @@ func engine() {
 		//  worth it (20170801).
 		// NOTE(gwyneth): From 20170807 onwards, the for loop runs forever, each cycle one Agent is picked to run
 		// Note that the Agent table does not get reloaded each cycle, only a list of UUIDs, one of which is picked randomly and just one
-		//  Agent is loaded (20170807). 
+		//  Agent is loaded (20170807).
 
 		if EngineRunning.Load().(bool) {
 			// Open database
 			db, err := sql.Open(PDO_Prefix, GoBotDSN)
 			checkErr(err)
-	
+
 			defer db.Close() // needed?
-	
+
 			// load in Agents! We need them to call the movement algorithm for each one
 			// BUG(gwyneth): what if the number of agents _change_ while we're running the engine? We need a way to reset the engine somehow. We have a hack at the moment: send a SIGCONT, it will try to restart the engine in a new goroutine
 			// Changes 20170807: we now pick one agent randomly
-			
+
 			// First check if the end-user hasn't sent us an Agent UUID to use:
 			userSetAgentUUID := curAgent.Load().(string)
 			possibleAgentUUID := NullUUID
-			// log.Println("userSetAgent is", userSetAgent)
+			// Log.Debug("userSetAgent is", userSetAgent)
 			if userSetAgentUUID == NullUUID {
 				// we need to pick one agent at random
-				
+
 				// Since apparenty MySQL is not very efficient at picking a row randomly, we load in a temporary number of UUIDs and
-				//  select one randomly in Go; then we just get the row from the database (20170807)
+				//	select one randomly in Go; then we just get the row from the database (20170807)
 				rows, err := db.Query("SELECT UUID FROM Agents")
 				checkErr(err)
 				defer rows.Close() // needed? The problem here is with a continue on the check below...
-		
+
 				var agentUUIDs []string
 				tempUUID := ""
 				for rows.Next() {
@@ -436,11 +419,11 @@ func engine() {
 					sendMessageToBrowser("status", "error", "Error: no Agents found. Engine cannot run. Aborted. Add an Agent and try sending a <code>SIGCONT</code> to restart engine again<br />"," ")
 					time.Sleep(10 * time.Second)
 					continue // now we simply wait...
-				}				
-				log.Println("We got a bunch of UUIDs:", agentUUIDs)
+				}
+				// Log.Debug("We got a bunch of UUIDs:", agentUUIDs)
 				possibleAgentUUID = agentUUIDs[0] // make sure we have at least a valid UUID!!
 				// Generate a random index, search for it in agentUUIDs; if it's the same one as last time, try again; test for edge case,
-				//  i.e. that we have just 1 Agent in the database. (20170807)
+				//	i.e. that we have just 1 Agent in the database. (20170807)
 				if len(agentUUIDs) > 1 && lastAgentToRunUUID != NullUUID {	// edge case: on initialisation, both are set to NullID, so both are equal
 					for index := 0; lastAgentToRunUUID == possibleAgentUUID; {
 						index = rand.Intn(len(agentUUIDs))
@@ -448,7 +431,7 @@ func engine() {
 						//if lastAgentToRunUUID != possibleAgentUUID {
 						//	break
 						//}
-						log.Println("Index picked:", index, "possibleAgentUUID", possibleAgentUUID, "Last agent was", lastAgentToRunUUID)
+						// Log.Debug("Index picked:", index, "possibleAgentUUID", possibleAgentUUID, "Last agent was", lastAgentToRunUUID)
 					}
 				}
 			} else {
@@ -457,7 +440,7 @@ func engine() {
 			}
 			lastAgentToRunUUID = possibleAgentUUID
 			if possibleAgentUUID == NullUUID {
-				log.Println("My logic is still borked!!")
+				Log.Critical("My logic is still borked!!") // NOTE(gwyneth): if this situation still happens, I need to revisit this! (20170813)
 			}
 			err = db.QueryRow("SELECT * FROM Agents where UUID=?", possibleAgentUUID).Scan(
 				&Agent.UUID,
@@ -487,12 +470,12 @@ func engine() {
 			// do the magic to extract the actual coords
 			Agent.Coords_xyz = strings.Split(strings.Trim(*Agent.Position.Ptr(), "() \t\n\r"), ",")
 			// we should extract the region name from Agent.Location, but I'm lazy!
-	
-			log.Println("Starting to manipulate Agent", *Agent.Name.Ptr(), " (", *Agent.UUID.Ptr(), ")")
+
+			Log.Info("Starting to manipulate Agent", *Agent.Name.Ptr(), " (", *Agent.UUID.Ptr(), ")")
 			// We need to refresh all the data about cubes and positions again!
 
 			// do stuff while it runs, e.g. open databases, search for agents and so forth
-			log.Println("Reloading database for Cubes (Positions) and Obstacles...")
+			Log.Debug("Reloading database for Cubes (Positions) and Obstacles...")
 
 			// Load in the 'special' objects (cubes). Because the Master Controllers can be somewhere in here, to save code.
 			//  and a database query, we simply skip all the Master Controllers until we get the most recent one, which gets saved
@@ -532,9 +515,7 @@ func engine() {
 			}
 			// we need at least ONE masterController, this will be nil if got none (20170807).
 			if !masterController.PermURL.Valid {
-				color.Set(color.FgRed)
-				log.Println(funcName() + ": Major error with database, we need at least one valid masterController to proceed. Sleeping for 10 seconds for user to correct this...")
-				color.Unset()
+				Log.Error(funcName() + ": Major error with database, we need at least one valid masterController to proceed. Sleeping for 10 seconds for user to correct this...")
 				time.Sleep(10 * time.Second)
 				continue // go to next iteration, this one has borked data (20170801)
 			}
@@ -570,7 +551,9 @@ func engine() {
 			rows.Close()
 
 			// Do not trust the database with the exact Agent position: ask the master controller directly
-			log.Println("master controller URL:", *masterController.PermURL.Ptr(), "Agent:", *Agent.Name.Ptr(), "Agent's OwnerKey:", *Agent.OwnerKey.Ptr())
+			// NOTE(gwyneth): Perhaps it's better to try asking the agent first, and if it refuses answering, try the master controller. (20170813)
+			//  I believe we go through the master controller because the agent might be too busy informing the database about sensor data.
+			Log.Debug("master controller URL:", *masterController.PermURL.Ptr(), "Agent:", *Agent.Name.Ptr(), "Agent's OwnerKey:", *Agent.OwnerKey.Ptr())
 			// WHY Agent.Ownerkey?!?! Why not Agent.UUID?!?!?
 			// The answer is NOT obvious: NPCs created by the master controller are owned by the avatar owning the master controller
 			//  and somehow to contact them we need the ownerkey, which is weird; newer versions of OpenSim are supposed to have fixed
@@ -580,7 +563,7 @@ func engine() {
 			// NOTE(gwyneth): Apparently the web server will reply to ALL possible requests, even if the Agent doesn't exist any more;
 			//  I still don't know what to do in that situation, so we skip this cycle and try the next one (20170730).
 			if curPos_raw == "" || curPos_raw == "No response could be obtained" || err != nil {
-				log.Println("Error in figuring out the response for agent", *Agent.Name.Ptr(), "so we will try to skip this cycle...")
+				Log.Error("Error in figuring out the response for agent", *Agent.Name.Ptr(), "so we will try to skip this cycle...")
 				continue
 			}
 
@@ -596,18 +579,18 @@ func engine() {
 			Agent.Coords_xyz = strings.Split(strings.Trim(curPos_raw, " <>()\t\n\r"), ",")
 			curPos := make([]float64, 3) // to be more similar to the PHP version
 
-			log.Println("curPos_raw is", curPos_raw)
+			Log.Debug("curPos_raw is", curPos_raw)
 			_, err = fmt.Sscanf(curPos_raw, "<%f, %f, %f>", &curPos[0], &curPos[1], &curPos[2]) // best way to convert strings to floats! (20170728)
 			checkErr(err)
 
 			sendMessageToBrowser("status", "", fmt.Sprintf("Avatar '%s' (%s) raw position was %v; recalculated to: %v<br />", *Agent.Name.Ptr(), *Agent.Name.Ptr(), curPos_raw, curPos), "")
-			
+
 			// Now we select where to go to!
 			// This will eventually become more complex and *possibly* part of the GA (20170811).
 			// For now, we just see what attribute is more 'urgent' and choose a cube of the appropriate type.
-			
+
 			whatCubeTypeNext := "energy" // by default it will be energy
-			
+
 			// convert to floats, we could actually change that in the database but I'm lazy... (20170811)
 			energyAgent, err := strconv.ParseFloat(*Agent.Energy.Ptr(), 64)
 			checkErr(err)
@@ -615,7 +598,7 @@ func engine() {
 			checkErr(err)
 			happinessAgent, err := strconv.ParseFloat(*Agent.Happiness.Ptr(), 64)
 			checkErr(err)
-			
+
 			// Simple way to make a choice, but this will get much more complicated in the future (I hope!) (20170811)
 			if moneyAgent < energyAgent {
 				whatCubeTypeNext = "money"
@@ -624,8 +607,8 @@ func engine() {
 				whatCubeTypeNext = "happiness"
 			}
 
-			log.Println(*Agent.Name.Ptr(), "has energy:", energyAgent, "money:", moneyAgent, "happiness:", happinessAgent, "so obviously we will pick a", whatCubeTypeNext, "cube to move to.")
-			
+			Log.Debug(*Agent.Name.Ptr(), "has energy:", energyAgent, "money:", moneyAgent, "happiness:", happinessAgent, "so obviously we will pick a", whatCubeTypeNext, "cube to move to.")
+
 			// calculate distances to nearest obstacles and cubes
 
 			// TODO(gwyneth): these might become globals, outside the loop, so we don't need to declare them
@@ -720,17 +703,16 @@ func engine() {
 
 			// BUG(gwyneth): Somehow, the code below will just be valid once! (20170728) - this needs more testing, I think
 			//  it was a clear somewhere at the end of the iteration, but we got to check it. Also, the submit button for
-			//  changing cube/agent does not go away and the visual feedback is weird (20170806)
-			color.Set(color.FgCyan)
-			fmt.Println("User-set destination cube for", *Agent.Name.Ptr(), ":", userDestCube.Load().(string), "(NullUUID means no destination manually set)")
+			//  changing cube/agent does not go away and the visual feedback is weird (20170806).
+			//  Still working on it, it somehow works sometimes, but it's hard to debug because the GA does so many things (20170813).
+			Log.Info("User-set destination cube for", *Agent.Name.Ptr(), ":", userDestCube.Load().(string), "(NullUUID means no destination manually set)")
 			if userDestCube.Load().(string) != NullUUID {
 				destCube = Cubes[userDestCube.Load().(string)]
-				log.Println("User has supplied us with a destination cube for", *Agent.Name.Ptr(), "named:", *destCube.Name.Ptr())
+				Log.Info("User has supplied us with a destination cube for", *Agent.Name.Ptr(), "named:", *destCube.Name.Ptr())
 			} else {
 				destCube = nearestCube
-				log.Println("Automatically selecting nearest cube for", *Agent.Name.Ptr(), "to go:", *destCube.Name.Ptr())
+				Log.Info("Automatically selecting nearest cube for", *Agent.Name.Ptr(), "to go:", *destCube.Name.Ptr())
 			}
-			color.Unset()
 
 			// This is just a test without the GA (20170725)
 			// Commented out in 20170730 — forgot completely about this!!
@@ -740,16 +722,16 @@ func engine() {
 			checkErr(err)
 			*/
 			time_start := time.Now()
-
+			
 			// Genetic algorithm for movement
 			// generate 50 strings (= individuals in the population) with 28 random points (= 1 chromosome) at curpos ± 10m
 
 			population := make([]popType, POPULATION_SIZE) // create a population; unlike PHP, Go has to have a few clues about what is being created (20170726)
-			// fmt.Println("population len", len(population))
+			// Log.Debug("population len", len(population))
 			// initialise the slices of chromosomes; Go needs this to know how much memory to allocate (unlike PHP)
 			for k := range population {
 				population[k].chromosomes = make([]chromosomeType, CHROMOSOMES)
-				//fmt.Println("Chromosome", k, "population len", len(population[k].chromosomes))
+				// Log.Debug("Chromosome", k, "population len", len(population[k].chromosomes))
 			}
 
 			// We calculate now the distance from each point to the destination
@@ -799,7 +781,7 @@ func engine() {
 					// edge cases: first point, which is the distance to the current position of the agent
 					// and last point, which is the distance between the last point and the target
 					// that's why the first and last point have been inserted differently in the population
-					// fmt.Println("i", i, "y", y)
+					// Log.Debug("i", i, "y", y)
 					if y == 0 { // first point is (approx.) current position
 						population[i].chromosomes[y].x = math.Trunc(curPos[0])
 						population[i].chromosomes[y].y = math.Trunc(curPos[1])
@@ -894,7 +876,6 @@ func engine() {
 					// NOTE(gwyneth): these is still the old PHP comments, kept here for historical reasons
 					// global $centerPoint;
 
-
 					/* Attempt #1: Ruhe's algorithm
 
 					$theta_a = atan2($a.y - $centerPoint.y, $a.x - $centerPoint.x);
@@ -946,7 +927,6 @@ func engine() {
 					*/
 
 					// Attempt #4: order by shortest distance to the target?
-
 					return pop[a].distance < pop[b].distance
 				})
 			} // endfor i
@@ -972,7 +952,7 @@ func engine() {
 
 		for generation := 0; generation < GENERATIONS; generation++	{
 			// Calculate fitness
-			// log.Println("Generating fitness for generation ", generation, " (out of ", GENERATIONS, ") for agent", *Agent.Name.Ptr(), "...")
+			// Log.Debug("Generating fitness for generation ", generation, " (out of ", GENERATIONS, ") for agent", *Agent.Name.Ptr(), "...")
 
 			// When calculating a new population, each element will have its chromosomes reordered
 			//  So we have no choice but to calculate fitness for all population elements _again_
@@ -984,7 +964,6 @@ func engine() {
 				// note that first point is current location; we start from the second point onwards
 				for y := 1; y < CHROMOSOMES; y++ {
 					// Sub-function of Path Length (using Shi & Cui)
-
 					distLastPoint := calcDistance([]float64 {
 								population[i].chromosomes[y].x,
 								population[i].chromosomes[y].y,
@@ -998,11 +977,9 @@ func engine() {
 
 					// Eduardo: suggests using square distance, means path will have more
 					//	 distributed points. (20140704 - 2004)
-
 					fitnessW1 += distLastPoint * distLastPoint
 
 					// Sub-function of Path Security (using Shi & Cui) — obstacle proximity
-
 					fitnessW2 += population[i].chromosomes[y].obstacle
 
 					// Sub-function of Smoothness (using Shi & Cui)
@@ -1044,13 +1021,11 @@ func engine() {
 			//  to calculate the rest of the path, too, which is "the best path so far which the bot plans to travel"
 			//  even if at every iteration, it will get calculated over and over again
 
+			time_end := time.Now()
+			diffTime := time_end.Sub(time_start)
+
+			Log.Debug("CPU time used after fitness calculations for generation ", generation, ": ", diffTime)
 			/*
-			$time_end = microtime(true);
-			$time = $time_end - $time_start;
-
-			echo "<p>CPU time used after fitness calculations for generation " . $generation . ": " . $time
-				. " seconds</p>\n";
-
 			showPopulation(population, fmt.Sprintf("Generation %v] - Before ordering:", generation))
 			*/
 
@@ -1067,17 +1042,15 @@ func engine() {
 			// TODO(gwyneth): to comment out later (20170727)
 			showPopulation(population, fmt.Sprintf("Population for agent '%s' [generation %v] after calculating fitness and ordering by fitness follows:", *Agent.Name.Ptr(), generation))
 
-			time_end := time.Now()
-			diffTime := time_end.Sub(time_start)
+			time_end = time.Now()
+			diffTime = time_end.Sub(time_start)
 			sendMessageToBrowser("status", "", fmt.Sprintf("CPU time used after sorting generation %v for agent '%s': %v<br />\n", generation, *Agent.Name.Ptr(), diffTime), "")
 
 			// Selection step. We're using fitness rank
-
 			newPopulation := make([]popType, POPULATION_SIZE) // create a new population; see comments above
 			for k := range newPopulation {
 				newPopulation[k].chromosomes = make([]chromosomeType, CHROMOSOMES)
 			}
-
 			// To introduce elitism, we will move the first 2 elements to the new population:
 			newPopulation[0] = population[0]
 			newPopulation[1] = population[1]
@@ -1092,7 +1065,7 @@ func engine() {
 					child0 := make([]chromosomeType, CHROMOSOMES)
 					child1 := make([]chromosomeType, CHROMOSOMES)
 
-					// echo "Generation " . $generation . " - Crossover for " . i . " and " . (i + 1) . " happening at crossover point: " . $crossover_point . "</br>\n";
+					// Log.Debug("Generation ", generation, " - Crossover for ", i, " and ", (i + 1), " happening at crossover point: ", crossover_point)
 
 					// now copy the chromosomes from the first parent, up to the crossover point, to child0
 					//	 and the remaining chromosomes go to the second child
@@ -1108,11 +1081,8 @@ func engine() {
 							child1[chromosome] = population[i].chromosomes[chromosome]
 						}
 						/*
-						echo "Pop " . i . ", chromosome: " . $chromosome . " Original chromosome: ";
-						print_r(population[i][$chromosome]);
-						echo " Child 0 chromosome: ";
-						print_r(child0[$chromosome]);
-						echo "<br />\n";
+						Log.Debug("Pop ", i, ", chromosome: ", chromosome, " Original chromosome: ", population[i].chromosomes[chromosome],
+							"Child 0 chromosome: ", child0[chromosome])
 						*/
 					} // endif chromosomes
 
@@ -1158,7 +1128,7 @@ func engine() {
 							random distance to it
 						*/
 						first_chromosome	:= int(math.Trunc(rand.Float64() * (CHROMOSOMES-1)))
-						second_chromosome := int(math.Trunc(rand.Float64() * (CHROMOSOMES-1)))
+						second_chromosome	:= int(math.Trunc(rand.Float64() * (CHROMOSOMES-1)))
 
 						child0[first_chromosome].x += (rand.Float64() * 2)*RADIUS/2 - RADIUS/2
 						if child0[first_chromosome].x < 0 {
@@ -1187,11 +1157,8 @@ func engine() {
 					} // endif mutation
 
 					/*
-					echo "Generation " . $generation . " - New children for population " . i . ": ";
-					print_r(child0);
-					echo " and " . (i + 1) . ": ";
-					print_r(child1);
-					echo "</br>\n";
+					Log.Debug("Generation ", generation, " - New children for population ", i, ": ", child0, "\nand ",
+						(i + 1), ": ", child1)
 					*/
 
 					/* we need to sort the points on the two childs AGAIN. Duh. And recalculate the angles.
@@ -1242,18 +1209,17 @@ func engine() {
 					newPopulation[i+1].chromosomes	= population[i+1].chromosomes
 					// echo "No crossover for " . i . " and " . (i + 1) . " - moving parents to new population<br />\n";
 				}
-				// echo "<hr />\n<p>Pop " . i . " finished</p><hr />\n";
+				// Log.Debug("Pop ", i, "finished")
 
 			}
-/*
-			echo "<hr />\n<p>Generation " . $generation . " finished</p><hr />\n";
+			Log.Debug("Generation ", generation, " finished")
 
 			population = newPopulation; // prepare population
+/*
+			time_end = time.Now()
+			diffTime = time_end.Sub(time_start)
 
-			$time_end = microtime(true);
-			$time = $time_end - $time_start;
-
-			echo "<p>CPU time used after crossover and mutation up to generation " . $generation	 . ": "	 . $time ." seconds</p>\n<hr />\n";
+			Log.Debug("CPU time used after crossover and mutation up to generation ", generation, ": ", diffTime)
 */
 		}	 // for generation
 
@@ -1403,26 +1369,26 @@ func engine() {
 
 			// output something to console so that we know this is being run in parallel
 			/*
-			  fmt.Print("\r|")
-			  time.Sleep(1000 * time.Millisecond)
-			  fmt.Print("\r/")
-			  time.Sleep(1000 * time.Millisecond)
-			  fmt.Print("\r-")
-			  time.Sleep(1000 * time.Millisecond)
-			  fmt.Print("\r\\")
-			  time.Sleep(1000 * time.Millisecond)
-			  */
+				 fmt.Print("\r|")
+				 time.Sleep(1000 * time.Millisecond)
+				 fmt.Print("\r/")
+				 time.Sleep(1000 * time.Millisecond)
+				 fmt.Print("\r-")
+				 time.Sleep(1000 * time.Millisecond)
+				 fmt.Print("\r\\")
+				 time.Sleep(1000 * time.Millisecond)
+				 */
 		} else {
 			// stop everything!!!
 			// in theory this is used to deal with reconfigurations etc.
-			  fmt.Print("\r𝔷")
-			  time.Sleep(1000 * time.Millisecond)
-			  fmt.Print("\rz")
-			  time.Sleep(1000 * time.Millisecond)
-			  fmt.Print("\rZ")
-			  time.Sleep(1000 * time.Millisecond)
-			  fmt.Print("\rℤ")
-			  time.Sleep(1000 * time.Millisecond)
+				 fmt.Print("\r𝔷")
+				 time.Sleep(1000 * time.Millisecond)
+				 fmt.Print("\rz")
+				 time.Sleep(1000 * time.Millisecond)
+				 fmt.Print("\rZ")
+				 time.Sleep(1000 * time.Millisecond)
+				 fmt.Print("\rℤ")
+				 time.Sleep(1000 * time.Millisecond)
 		}
 	} // end for (endless loop here)
 
@@ -1434,6 +1400,8 @@ func engine() {
 // In the case of special status messages (info, success, warning, error) we also send the same message to the log.
 // If no WebSocket is active (and we check that in two different ways!) the message simply goes to the log instead.
 func sendMessageToBrowser(msgType string, msgSubType string, msgText string, msgId string) {
+	text, err := html2text.FromString(msgText) // prettify eventual HTML inside msgText
+	checkErr(err)
 	if webSocketActive.Load() != nil && webSocketActive.Load().(bool) == true { // no point in sending if nobody is there to receive
 		var msgToSend WsMessageType
 
@@ -1442,45 +1410,58 @@ func sendMessageToBrowser(msgType string, msgSubType string, msgText string, msg
 		// Go idiomatic programming: 'select' parallels the output of the two cases and picks the one which finishes; in this case, either
 		// we are able to send a message via the channel, or there is a timeout, and Go picks what happens first
 		select {
-			  case wsSendMessage <- msgToSend:
+			case wsSendMessage <- msgToSend:
 				// we use this so often as info/warning/error message that we may better send it also to the log
 				if msgType == "status" && msgSubType != "" {
 					switch msgSubType {
 						case "info":
-							color.Set(color.FgCyan)
-							defer color.Unset()
+							Log.Info("(connected via WebSocket)", msgType, "-", msgSubType, "-", text, "-", msgId)
+						case "notice":
+							Log.Notice("(connected via WebSocket)", msgType, "-", msgSubType, "-", text, "-", msgId)
 						case "success":
-							color.Set(color.FgGreen)
-							defer color.Unset()
+							Log.Notice("(connected via WebSocket)", msgType, "-", msgSubType, "-", text, "-", msgId)
 						case "warning":
-							color.Set(color.FgYellow)
-							defer color.Unset()
+							Log.Warning("(connected via WebSocket)", msgType, "-", msgSubType, "-", text, "-", msgId)
 						case "error":
-							color.Set(color.FgRed)
-							defer color.Unset()
+							Log.Error("(connected via WebSocket)", msgType, "-", msgSubType, "-", text, "-", msgId)
+						case "critical":
+							Log.Critical("(connected via WebSocket)", msgType, "-", msgSubType, "-", text, "-", msgId)
+						default:
+							Log.Debug("(connected via WebSocket)", msgType, "-", msgSubType, "-", text, "-", msgId)
 					}
-					// prettify eventual HTML inside msgText
-					text, err := html2text.FromString(msgText)
-					checkErr(err)
-					log.Println("(connected via WebSocket)", msgType, "-", msgSubType, "-", text, "-", msgId)
-				}
-				// 'common' messages have the nil string subtype, so we ignore these and don't log them
-				//	we might have a Debug facility in the future which allows for more verbosity!
- 			   case <-time.After(time.Second * 10):
- 			   	// this case exists only if we failed to figure out if the WebSocket is active or not; in most cases, we will
- 			   	//	be able to know that in advance, but here we catch the edge cases.
- 			   	color.Set(color.FgYellow)
- 			   	text, err := html2text.FromString(msgText)
- 			   	checkErr(err)
-				  log.Println("WebSocket timeout after 10 seconds; coudn't send message:", msgType, "-", msgSubType, "-", text, "-", msgId)
-				  color.Unset()
+				} else {
+					Log.Debug("(connected via WebSocket)", msgType, "-", msgSubType, "-", text, "-", msgId)
+				} 
+			// 'common' messages have the nil string subtype, so we ignore these and don't log them
+			//	we might have a Debug facility in the future which allows for more verbosity!
+			case <-time.After(time.Second * 10):
+				// this case exists only if we failed to figure out if the WebSocket is active or not; in most cases, we will
+				//	be able to know that in advance, but here we catch the edge cases.
+				Log.Warning("WebSocket timeout after 10 seconds; coudn't send message:", msgType, "-", msgSubType, "-", text, "-", msgId)
 		}
 	} else {
 		// No active WebSocket? Just dump it to the log. Note that this will be the most usual case, since we hardly expect users to be 24/7 in
 		//  front of their browsers...
-		text, err := html2text.FromString(msgText)
-		checkErr(err)
-		log.Println("(no WebSocket connection)", msgType, "-", msgSubType, "-", text, "-", msgId)
+		if msgType == "status" && msgSubType != "" {
+			switch msgSubType {
+				case "info":
+					Log.Info("(no WebSocket connection)", msgType, "-", msgSubType, "-", text, "-", msgId)
+				case "notice":
+					Log.Notice("(no WebSocket connection)", msgType, "-", msgSubType, "-", text, "-", msgId)
+				case "success":
+					Log.Notice("(no WebSocket connection)", msgType, "-", msgSubType, "-", text, "-", msgId)
+				case "warning":
+					Log.Warning("(no WebSocket connection)", msgType, "-", msgSubType, "-", text, "-", msgId)
+				case "error":
+					Log.Error("(no WebSocket connection)", msgType, "-", msgSubType, "-", text, "-", msgId)
+				case "critical":
+					Log.Critical("(no WebSocket connection)", msgType, "-", msgSubType, "-", text, "-", msgId)
+				default:
+					Log.Debug("(no WebSocket connection)", msgType, "-", msgSubType, "-", text, "-", msgId)
+			}
+		} else {
+			Log.Debug("(no WebSocket connection)", msgType, "-", msgSubType, "-", text, "-", msgId)
+		}
 	}
 }
 
@@ -1488,31 +1469,27 @@ func sendMessageToBrowser(msgType string, msgSubType string, msgText string, msg
 func callURL(url string, encodedRequest string) (string, error) {
 	//	 HTTP request as per http://moazzam-khan.com/blog/golang-make-http-requests/
 	body := []byte(encodedRequest)
-	//log.Printf("%s: URL: %s Encoded Request: %s\n", funcName(), url, encodedRequest)
+	// Log.Debugf("%s: URL: %s Encoded Request: %s\n", funcName(), url, encodedRequest)
 
 	rs, err := http.Post(url, "application/x-www-form-urlencoded", bytes.NewBuffer(body))
-	// Code to process response (written in Get request snippet) goes here
-
-	if err != nil {
-		color.Set(color.FgRed)
-		log.Printf("HTTP call to %s failed; error was: '%v'", url, err)
-		color.Unset()
-		return fmt.Sprintf("HTTP call to %s failed; error was: '%v'", url, err), err	
+	
+	if err != nil {		errMsg := fmt.Sprintf("HTTP call to %s failed; error was: '%v'", url, err)
+		Log.Error(errMsg)
+		return errMsg, err
 	}
 	defer rs.Body.Close()
 
 	rsBody, err := ioutil.ReadAll(rs.Body)
+	// Check for errors; if errors found, then send the error message back to the caller
 	if err != nil {
 		errMsg := fmt.Sprintf("Error response from in-world object: '%v'", err)
-		color.Set(color.FgRed)
-		log.Println(errMsg)
-		color.Unset()
+		Log.Error(errMsg)
 		return errMsg, err
 	} else {
 		if string(rsBody) == "No response could be obtained" { // weird case, but apparently it can happen!
 			err = errors.New("No response could be obtained")
 		}
-		log.Printf("Reply from in-world object %s; error was %v\n", rsBody, err)
+		Log.Errorf("Reply from in-world object %s; error was %v\n", rsBody, err)
 		return string(rsBody), err
 	}
 }
@@ -1520,10 +1497,10 @@ func callURL(url string, encodedRequest string) (string, error) {
 // showPopulation is adapted from the PHP code to pretty-print a whole population
 // new version creates HTML tables
 func showPopulation(popul []popType, popCaption string) {
-	if !ShowPopulation { // this might be the beginning of a debug level configuration type
+	if !ShowPopulation { // this might be the beginning of a debug level configuration type; currently we have the options from the go-logging pkg (20170813).
 		return
 	}
-	
+
 	outputBuffer := "<div class='table-responsive'><table class='table table-striped table-bordered table-hover'><caption>" + popCaption + "</caption><thead><tr><th>Pop #</th><th>Fitness</th><th>Chromossomes</th></tr></thead><tbody>\n"
 
 	for p, pop := range popul {
@@ -1535,9 +1512,7 @@ func showPopulation(popul []popType, popCaption string) {
 		outputBuffer += "</tr>\n"
 	}
 	outputBuffer += "</tbody><tfoot><tr><th>Pop #</th><th>Fitness</th><th>Chromossomes</th></tr></tfoot></table></div>\n"
-	color.Set(color.FgBlue)
 	sendMessageToBrowser("status", "", outputBuffer, "")
-	color.Unset()
 }
 
 // movementWorker reads one point from the movementJobChannel and sends a command to the avatar to move to it, and recalculates energy.
@@ -1569,7 +1544,7 @@ func movementWorker() {
 			// we have to assume this will never work, so we skip to the next case
 			continue
 		}
-		
+
 		// convert string result to array of floats
 		_, err = fmt.Sscanf(strings.Trim(curPosResult, " ()<>"), "%f,%f,%f", &curPos[0], &curPos[1], &curPos[2])
 		checkErr(err)
@@ -1597,52 +1572,52 @@ func movementWorker() {
 		sendMessageToBrowser("status", "", fmt.Sprintf("[%s]: In-world result call from moving %s to (%v, %v, %v): %s<br />",
 			funcName(), nextPoint.agentUUID, nextPoint.destPoint.x, nextPoint.destPoint.y, nextPoint.destPoint.z, moveResult), "")
 		time.Sleep(time.Second * time.Duration(timeToTravel))
-		
+
 		// ask the avatar AGAIN where it is, since it MIGHT not have reached the destination we expect it to reach (20170811).
 		newPosResult, err := callURL(nextPoint.agentPermURL, "command=osNpcGetPos")
 		checkErr(err)
 		// convert string result to array of floats
 		_, err = fmt.Sscanf(strings.Trim(newPosResult, " ()<>"), "%f,%f,%f", &newPos[0], &newPos[1], &newPos[2])
 		checkErr(err)
-		
+
 		travelled := calcDistance(newPos, curPos) // see how much we've actually travelled
 		// calculate how much energy we've lost so far
 		energyLost := travelled / WALKING_SPEED // some stupid formula, it doesn't matter, it's just to affect the counters
 		// let the bloody avatar subtract some energy!
-		
+
 		energyResult, err := callURL(nextPoint.agentPermURL, "command=getEnergy")
 		checkErr(err)
-		
+
 		energyAgent, err := strconv.ParseFloat(energyResult, 64)
 		checkErr(err)
 		sendMessageToBrowser("status", "", fmt.Sprintf("[%s]: %s had %f energy; lost %f on movement<br />", funcName(), nextPoint.agentUUID, energyAgent, energyLost), "")
-		
+
 		energyAgent -= energyLost
 		energyResult, err = callURL(nextPoint.agentPermURL, fmt.Sprintf("command=setEnergy&float=%f", energyAgent))
 		checkErr(err)
 		sendMessageToBrowser("status", "", fmt.Sprintf("[%s]: %s updated to new energy level %f; in.world reply: %v<br />", funcName(), nextPoint.agentUUID, energyAgent, energyResult), "")
-		
+
 		// update on database as well
 		db, err := sql.Open(PDO_Prefix, GoBotDSN)
 		checkErr(err)
-		
+
 		defer db.Close()
 		stmt, err := db.Prepare("UPDATE Agents SET `Energy`=? WHERE OwnerKey=?")
-	    if (err != nil) {
-		    sendMessageToBrowser("status", "error", fmt.Sprintf("Agent '%s' could not be prepared in database with new energy settings; database reply was: '%v'", nextPoint.agentUUID, err), "")
-		}	
+		 if (err != nil) {
+			  sendMessageToBrowser("status", "error", fmt.Sprintf("Agent '%s' could not be prepared in database with new energy settings; database reply was: '%v'", nextPoint.agentUUID, err), "")
+		}
 		defer stmt.Close()
-	
+
 		execResult, err := stmt.Exec(energyAgent, nextPoint.agentUUID)
-	    if (err != nil) {
-		    sendMessageToBrowser("status", "error", fmt.Sprintf("Agent '%s' could not be updated in database with new energy settings; database reply was: '%v'", nextPoint.agentUUID, err), "")
+		 if (err != nil) {
+			  sendMessageToBrowser("status", "error", fmt.Sprintf("Agent '%s' could not be updated in database with new energy settings; database reply was: '%v'", nextPoint.agentUUID, err), "")
 		} else {
 			id, err := execResult.LastInsertId()
 			rowsAffected, err2 := execResult.RowsAffected()
-			fmt.Println("Result from executing the energy update was:", id, err, "Rows affected:", rowsAffected, err2)
+			Log.Debug("Result from executing the energy update was:", id, err, "Rows affected:", rowsAffected, err2)
 		}
-		
-		fmt.Println("Agent", nextPoint.agentUUID, "updated database with new energy:", energyAgent)
+
+		Log.Debug("Agent", nextPoint.agentUUID, "updated database with new energy:", energyAgent)
 		stmt.Close()
 		db.Close()
 	}

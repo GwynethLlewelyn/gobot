@@ -4,8 +4,6 @@ package main
 import (
 	_ "github.com/go-sql-driver/mysql"
 	"database/sql"
-	"fmt"
-	"log"
 	"strings"
 	"time"
 )
@@ -13,7 +11,7 @@ import (
 // garbageCollector goes through the database every few hours or so, pings the objects and sees if they're alive, checks their timestamps,
 //  and if they are too old
 func garbageCollector() {
-	log.Println("Garbage Collector called.")
+	Log.Info("Garbage Collector called.")
 	
 	// use a ticker
 	ticker := time.NewTicker(time.Hour * 4)
@@ -25,7 +23,7 @@ func garbageCollector() {
 		var callResult string
 
         for t := range ticker.C {
-            log.Println("\n\n\n\n\n" + "running at", t)
+            Log.Debug("\n\n\n\n\nrunning at", t)
             
             // see which Agents are dead
             db, err := sql.Open(PDO_Prefix, GoBotDSN)
@@ -48,7 +46,7 @@ func garbageCollector() {
 				
 				// now call the ping on this Agent
 				callResult, err = callURL(*agent.PermURL.Ptr(), "command=ping")
-				log.Println("Agent", *agent.UUID.Ptr(), "Result of calling", *agent.PermURL.Ptr(), ":", callResult, "Error:", err)
+				Log.Debug("Agent", *agent.UUID.Ptr(), "Result of calling", *agent.PermURL.Ptr(), ":", callResult, "Error:", err)
 				if err != nil || callResult != "pong" {
 					// either dead, zombie, or misbehaving, kill this agent by placing it in the list
 					toDeleteUUIDs = append(toDeleteUUIDs, "'" + *agent.UUID.Ptr() + "'")
@@ -58,17 +56,17 @@ func garbageCollector() {
 			
 			if len(toDeleteUUIDs) > 0 {
 				killAgents := strings.Join(toDeleteUUIDs, ",")
-				log.Println(funcName(), "The following agents did not reply to the ping command: ", killAgents)
+				Log.Warning("The following agents did not reply to the ping command: ", killAgents)
 				result, err := db.Exec("DELETE FROM `Agents` WHERE `UUID` IN (" + killAgents + ")")
 				checkErr(err)
 				rowsAffected, err := result.RowsAffected()
 				if err == nil {
-					log.Println("deleted", rowsAffected, "zombie agents with UUIDs: ", killAgents) // probably not needed
+					Log.Info("deleted", rowsAffected, "zombie agents with UUIDs: ", killAgents) // probably not needed
 				} else {
-					log.Println("deleted an unknown number of zombie agents with UUIDs: ", killAgents)
+					Log.Warning("deleted an unknown number of zombie agents with UUIDs: ", killAgents)
 				}
 			} else {
-				log.Println("no agents to delete")
+				Log.Debug("no agents to delete")
 			}			
 
 			// see which Cubes (positions) are dead			
@@ -86,7 +84,7 @@ func garbageCollector() {
 				
 				// now call the ping on this cube
 				callResult, err = callURL(*position.PermURL.Ptr(), "command=ping")
-				log.Println("Cube", *position.UUID.Ptr(), "Result of calling", *position.PermURL.Ptr(), ":", callResult, "Error:", err)
+				Log.Debug("Cube", *position.UUID.Ptr(), "Result of calling", *position.PermURL.Ptr(), ":", callResult, "Error:", err)
 				if err != nil || callResult != "pong" {
 					// either dead, zombie, or misbehaving, kill this cube by placing it in the list
 					toDeleteUUIDs = append(toDeleteUUIDs, "'" + *position.UUID.Ptr() + "'")
@@ -100,12 +98,12 @@ func garbageCollector() {
 				checkErr(err)
 				rowsAffected, err := result.RowsAffected()
 				if err == nil {
-					log.Println("deleted", rowsAffected, "zombie cubes with UUIDs: ", killPositions)
+					Log.Info("deleted", rowsAffected, "zombie cubes with UUIDs: ", killPositions)
 				} else {
-					log.Println("deleted an unknown number of cubes with UUIDs: ", killPositions)
+					Log.Warning("deleted an unknown number of cubes with UUIDs: ", killPositions)
 				}
 			} else {
-				fmt.Println("no cubes to delete")
+				Log.Debug("no cubes to delete")
 			}			
 
 			// see which Objects (positions) are dead
@@ -118,9 +116,9 @@ func garbageCollector() {
 			checkErr(err)
 			rowsAffected, err := result.RowsAffected()
 			if err == nil {
-				fmt.Println("deleted", rowsAffected, "obstacles which haven't been seen in the past 4 hours")
+				Log.Info("deleted", rowsAffected, "obstacles which haven't been seen in the past 4 hours")
 			} else {
-				fmt.Println("Couldn't delete any obstacles; reason:", err)
+				Log.Warning("Couldn't delete any obstacles; reason:", err)
 			}
 						
 			db.Close()
