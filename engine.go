@@ -410,7 +410,11 @@ func engine() {
 				// Since apparenty MySQL is not very efficient at picking a row randomly, we load in a temporary number of UUIDs and
 				//	select one randomly in Go; then we just get the row from the database (20170807)
 				rows, err := db.Query("SELECT UUID FROM Agents")
-				checkErr(err)
+				if err != nil { // NOTE(gwyneth): caught that error when the grid is not operational yet! (20170816)
+					sendMessageToBrowser("status", "error", fmt.Sprintf("Database error when selecting Agent to run: %v", err)," ")
+					time.Sleep(10 * time.Second)
+					continue // now we simply wait...
+				}
 				defer rows.Close() // needed? The problem here is with a continue on the check below...
 
 				var agentUUIDs []string

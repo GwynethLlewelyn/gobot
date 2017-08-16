@@ -138,7 +138,7 @@ func loadConfiguration() {
 	fmt.Print(".")
 	fmt.Println("read!")	// note that we might not have go-logging active as yet, so we use fmt
 	
-		// Setup the lumberjack rotating logger. This is because we need it for the go-logging logger when writing to files. (20170813)
+	// Setup the lumberjack rotating logger. This is because we need it for the go-logging logger when writing to files. (20170813)
 	rotatingLogger := &lumberjack.Logger{
 	    Filename:   logFileName,	// this is an option set on the config.yaml file, eventually the others will be so, too.
 	    MaxSize:    logMaxSize, // megabytes
