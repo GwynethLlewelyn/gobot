@@ -12,7 +12,7 @@ GoBotDSN = "btopensim:betaopenmv2008!@/gobot"
 PDO_Prefix = "mysql"
 
 EngineRunning = false
-ShowPopulation = false
+ShowPopulation = false # sends tons of data for the population on each iteration of the GA
 
 [log]
 # Showing what logging options are available and the defaults for each
