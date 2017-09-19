@@ -226,8 +226,9 @@ func backofficeEngine(w http.ResponseWriter, r *http.Request) {
 }
 
 // EngineRunning is the equivalent of a semaphore which starts or stops the engine.
-// This is now an exported global variable because we need to access it from the configuration function and from the SIGHUP/SIGCONT (20170811).
-var EngineRunning atomic.Value
+// OneStep allows the engine to run once, and then it stops.
+// These are an exported global (atomic) variables because we need to access it from the configuration function and from the SIGHUP/SIGCONT (20170811, 20170919).
+var EngineRunning, OneStep atomic.Value
 
 // engine does everything but the kitchen sink.
 // Notably, it does not only run the GA. It also deals on a separate goroutine with message handling for WebSockets, which also includes
@@ -246,6 +247,7 @@ func engine() {
 								// now we let this be set via configuration file; the default is true; and a SIGHUP will start/stop the engine (20170811)
 	userDestCube.Store(NullUUID) // we start to nullify these atomic values, either they will be changed by the user,
 	curAgent.Store(NullUUID)	//  or the engine will simply go through all agents (20170725)
+	OneStep.Store(false)		// in theory, the engine starts or stops; one step is a special case if the client is connected (20170919)
 	webSocketActive.Store(false)	// as soon as we know that we have a connection to the client, we set this to true (20170728)
 
 	sendMessageToBrowser("status", "info", "Entering the engine goroutine", "") // browser might not even know we're sending messages to it, so this will just gracefully timeout and be ignored and just appear on the log; changed message to display that we don't know if the engine is going to run or not (20170811)
@@ -287,12 +289,15 @@ func engine() {
 							switch EngineRunning.Load().(bool) {
 								case true:
 									sendMessageToBrowser("htmlControl", "disable", "", "startEngine")
+									sendMessageToBrowser("htmlControl", "disable", "", "oneStep")
 									sendMessageToBrowser("htmlControl", "enable", "", "stopEngine")
 								case false:
 									sendMessageToBrowser("htmlControl", "enable", "", "startEngine")
+									sendMessageToBrowser("htmlControl", "enable", "", "oneStep")
 									sendMessageToBrowser("htmlControl", "disable", "", "stopEngine")
-								default: // should never happen, but turn both buttons off just in case
+								default: // should never happen, but turn all buttons off just in case
 									sendMessageToBrowser("htmlControl", "disable", "", "startEngine")
+									sendMessageToBrowser("htmlControl", "disable", "", "oneStep")
 									sendMessageToBrowser("htmlControl", "disable", "", "stopEngine")
 							}
 						case "gone": // The client has gone, we have no more websocket for this one (20170704)
@@ -324,16 +329,31 @@ func engine() {
 					switch messageSubType {
 						case "start":
 							sendMessageToBrowser("htmlControl", "disable", "", "startEngine")
+							sendMessageToBrowser("htmlControl", "disable", "", "oneStep")
 							sendMessageToBrowser("htmlControl", "enable", "", "stopEngine")
 							EngineRunning.Store(true)
+							OneStep.Store(false)
+						case "one-step":
+							sendMessageToBrowser("htmlControl", "disable", "", "startEngine")
+							sendMessageToBrowser("htmlControl", "disable", "", "oneStep")
+							sendMessageToBrowser("htmlControl", "enable", "", "stopEngine")
+							EngineRunning.Store(true)
+							OneStep.Store(true)
+							Log.Debug("OneStep is now", OneStep.Load().(bool))
+/*
 						case "stop":
 							sendMessageToBrowser("htmlControl", "enable", "", "startEngine")
+							sendMessageToBrowser("htmlControl", "enable", "", "oneStep")
 							sendMessageToBrowser("htmlControl", "disable", "", "stopEngine")
 							EngineRunning.Store(false)
-						default: // anything will stop the engine!
+							OneStep.Store(false)
+*/
+						default: // anything else will stop the engine!
 							sendMessageToBrowser("htmlControl", "enable", "", "startEngine")
+							sendMessageToBrowser("htmlControl", "enable", "", "oneStep")
 							sendMessageToBrowser("htmlControl", "disable", "", "stopEngine")
 							EngineRunning.Store(false)
+							OneStep.Store(false)
 					}
 					sendMessageToBrowser("status", "", "Engine " + messageSubType + "<br />", "")
 
@@ -1390,6 +1410,14 @@ func engine() {
 				 fmt.Print("\r\\")
 				 time.Sleep(1000 * time.Millisecond)
 				 */
+					// if we're set to run only once then stop, change atomic values accordingly
+			if OneStep.Load().(bool) == true {
+				OneStep.Store(false)
+				EngineRunning.Store(false)
+				sendMessageToBrowser("htmlControl", "enable", "", "startEngine")
+				sendMessageToBrowser("htmlControl", "enable", "", "oneStep")
+				sendMessageToBrowser("htmlControl", "disable", "", "stopEngine")		
+			}
 		} else {
 			// stop everything!!!
 			// in theory this is used to deal with reconfigurations etc.

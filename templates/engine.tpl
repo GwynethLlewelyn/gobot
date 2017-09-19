@@ -55,6 +55,7 @@
 									<div class="panel-body">
 											<button type="button" id="clearLog" class="btn btn-default btn-circle"><i class="fa fa-trash-o" onclick="clearLog()"></i></button>
 											<button type="button" id="startEngine" class="btn btn-success btn-circle"><i class="fa fa-check-circle" onclick="startEngine()"></i></button>
+											<button type="button" id="oneStep" class="btn btn-warning btn-circle"><i class="fa fa-step-forward" onclick="oneStep()"></i></button>
 											<button type="button" id="stopEngine" class="btn btn-danger btn-circle"><i class="fa fa-times-circle" onclick="stopEngine()"></i></button>
 									</div> <!-- ./panel-body -->
 								</div> <!-- ./panel -->
@@ -303,6 +304,23 @@
 								document.getElementById("alertMessage").style.display = 'block';
 								return false;
 							}
+
+							function oneStep() {
+								if (conn.readyState === WebSocket.OPEN) {
+									var msg = {
+											type: "engineControl",
+											subtype: "one-step",
+											text: "Run Engine once, then stop",
+											id: "oneStep"
+										};
+									conn.send(JSON.stringify(msg));
+									return true;
+								}
+								document.getElementById("message").innerHTML = "WebSocket not connected!";
+								document.getElementById("alertMessage").style.display = 'block';
+								return false;
+							}
+
 
 							function stopEngine() {
 								if (conn.readyState === WebSocket.OPEN) {
