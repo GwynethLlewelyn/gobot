@@ -92,6 +92,7 @@ Sending a _SIGCONT_ will try to start the engine (again, if it had stopped befor
 
 _SIGUSR1_ will send a randomly generated female name to appear on the Engine page; _SIGUSR2_ will place a random country. Why? Well, this was the only way to get *something* to appear there while testing the code (and without creating a new backoffice just for testing purposes). Now if I only came up with pipes and more esoteric stuff... 😉
 
+The current version also allows the simulation to run just one step, and then stop (similar to how the old PHP code worked, just one step at the time). This allows for easier debugging (the logs are huge!).
 
 ## License
 
