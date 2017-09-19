@@ -1412,7 +1412,7 @@ func engine() {
 // In the case of special status messages (info, success, warning, error) we also send the same message to the log.
 // If no WebSocket is active (and we check that in two different ways!) the message simply goes to the log instead.
 func sendMessageToBrowser(msgType string, msgSubType string, msgText string, msgId string) {
-	text, err := html2text.FromString(msgText) // prettify eventual HTML inside msgText
+	text, err := html2text.FromString(msgText, html2text.Options{PrettyTables: true}) // prettify eventual HTML inside msgText
 	checkErr(err)
 	if webSocketActive.Load() != nil && webSocketActive.Load().(bool) == true { // no point in sending if nobody is there to receive
 		var msgToSend WsMessageType
