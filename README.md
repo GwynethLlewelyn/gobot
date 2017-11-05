@@ -28,9 +28,9 @@ If you're placing `gobot` behind a nginx server, [this is the configuration you'
 
 If you wish to run `gobot` as a systemd service under Ubuntu, then just do  
 
-  cd /etc/systemd/system/multi-user.target.wants
-  ln -s {Your Root Directory Where You Placed The Gobot Files}/gobot.service
-  systemctl daemon-reload
+	cd /etc/systemd/system/multi-user.target.wants
+	ln -s {Your Root Directory Where You Placed The Gobot Files}/gobot.service
+	systemctl daemon-reload
   
 From then on, you can just use `service gobot start|stop` to launch or stop `gobot` as any other service (yes, `journalctl -u gobot.service` will work as well); to disable it from starting on reboot, use `systemctl disable gobot.service` or remove the symlink. 
 
