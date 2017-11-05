@@ -9,7 +9,7 @@ Type=simple
 User=bot
 Group=client6
 WorkingDirectory=/var/www/clients/client6/web61/home/bot
-ExecStart=/var/www/clients/client6/web61/home/bot/go/bin gobot
+ExecStart=/var/www/clients/client6/web61/home/bot/go/bin/gobot
 Restart=always
 Environment=USER=bot HOME=/var/www/clients/client6/web61/home/bot
 
