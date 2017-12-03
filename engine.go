@@ -1053,10 +1053,7 @@ func engine() {
 			//  to calculate the rest of the path, too, which is "the best path so far which the bot plans to travel"
 			//  even if at every iteration, it will get calculated over and over again
 
-			time_end := time.Now()
-			diffTime := time_end.Sub(time_start)
-
-			Log.Debug("CPU time used after fitness calculations for generation ", generation, ": ", diffTime)
+			Log.Debug("CPU time used after fitness calculations for generation ", generation, ": ", time.Since(time_start))
 			/*
 			showPopulation(population, fmt.Sprintf("Generation %v] - Before ordering:", generation))
 			*/
@@ -1074,9 +1071,7 @@ func engine() {
 			// TODO(gwyneth): to comment out later (20170727)
 			showPopulation(population, fmt.Sprintf("Population for agent '%s' [generation %v] after calculating fitness and ordering by fitness follows:", *Agent.Name.Ptr(), generation))
 
-			time_end = time.Now()
-			diffTime = time_end.Sub(time_start)
-			sendMessageToBrowser("status", "", fmt.Sprintf("CPU time used after sorting generation %v for agent '%s': %v<br />\n", generation, *Agent.Name.Ptr(), diffTime), "")
+			sendMessageToBrowser("status", "", fmt.Sprintf("CPU time used after sorting generation %v for agent '%s': %v<br />\n", generation, *Agent.Name.Ptr(), time.Since(time_start)), "")
 
 			// Selection step. We're using fitness rank
 			newPopulation := make([]popType, POPULATION_SIZE) // create a new population; see comments above
@@ -1247,12 +1242,8 @@ func engine() {
 			Log.Debug("Generation ", generation, " finished")
 
 			population = newPopulation; // prepare population
-/*
-			time_end = time.Now()
-			diffTime = time_end.Sub(time_start)
+//			Log.Debug("CPU time used after crossover and mutation up to generation ", generation, ": ", time.Since(time_start))
 
-			Log.Debug("CPU time used after crossover and mutation up to generation ", generation, ": ", diffTime)
-*/
 		}	 // for generation
 
 		//showPopulation(population, fmt.Sprintf("Final result (%v generation(s)):", GENERATIONS))
@@ -1395,9 +1386,7 @@ func engine() {
 			//userDestCube.Store(NullUUID)
 			//curAgent.Store(NullUUID)
 
-			time_end := time.Now()
-			diffTime := time_end.Sub(time_start)
-			sendMessageToBrowser("status", "info", fmt.Sprintf("CPU time used: %v", diffTime), "")
+			sendMessageToBrowser("status", "info", fmt.Sprintf("CPU time used: %v", time.Since(time_start)), "")
 
 			// output something to console so that we know this is being run in parallel
 			/*
