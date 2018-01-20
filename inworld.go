@@ -112,7 +112,7 @@ func updateSensor(w http.ResponseWriter, r *http.Request) {
 			r.Form.Get("key"),
 			r.Form.Get("name"),
 			r.Header.Get("X-Secondlife-Object-Key"), 
-			r.Header.Get("X-Secondlife-Owner-Name"), 
+			r.Header.Get("X-Secondlife-Object-Name"), 
 			r.Form.Get("type"),
 			r.Form.Get("origin"),
 			strings.Trim(r.Form.Get("pos"), "<>()"),
