@@ -49,7 +49,7 @@ func (wsM *WsMessageType) New(msgType string, msgSubType string, msgText string,
 // TODO(gwyneth): Have these constants as variables which are read from the configuration file.
 
 const OS_NPC_SIT_NOW = "0"
-// for genetic algorithm
+// Constants used in genetic algorithm.
 const RADIUS = 10.0 // this is the size of the grid that is thrown around the avatar
 const POPULATION_SIZE = 50 // was 50
 const GENERATIONS = 20 // was 20 for 20x20 grid
