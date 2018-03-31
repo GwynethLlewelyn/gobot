@@ -65,7 +65,7 @@ func loadConfiguration() {
 	path, err := expandPath(viper.GetString("gobot.PathToStaticFiles")); fmt.Print(".")
 	if err != nil {
 		fmt.Println("Error expanding path:", err)
-		path = ""	// we might get awat with this as well
+		path = ""	// we might get away with this as well
 	}
 	PathToStaticFiles = path
 	viper.SetDefault("gobot.ServerPort", ":3000")
