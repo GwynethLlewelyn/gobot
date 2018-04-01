@@ -85,8 +85,9 @@
 	<meta name="application-name" content="Gobot">
 	<meta name="msapplication-TileColor" content="#00a300">
 	<meta name="msapplication-TileImage" content="{{.URLPathPrefix}}/mstile-144x144.png">
-	<meta name="theme-color" content="#ffffff"></head>
+	<meta name="theme-color" content="#ffffff">
 	<!-- favicons end here -->
+</head>
 <body>
 {{ if .Gravatar }}
 <!-- Gravatar Hovercards are sneaky, they add their own CSS at the top of the header! -->
