@@ -8,7 +8,8 @@
     <script src="{{.URLPathPrefix}}/lib/bootstrap/js/bootstrap.min.js"></script>
     
     <!-- Bootstrap-Dialog -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap3-dialog/1.34.7/js/bootstrap-dialog.min.js"></script>
+    <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap3-dialog/1.34.7/js/bootstrap-dialog.min.js"></script> -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap3-dialog/1.35.4/js/bootstrap-dialog.min.js" integrity="sha256-IpgnbT7iaNM6j9WjtXKI8VMJ272WM9VvFYkZdu1umOA=" crossorigin="anonymous"></script>
     
     <!-- Metis Menu Plugin JavaScript -->
     <script src="{{.URLPathPrefix}}/lib/startbootstrap-sb-admin-2/vendor/metisMenu/metisMenu.min.js"></script>
@@ -20,6 +21,16 @@
 	<!-- this does not work yet -->
 	<script src="{{.URLPathPrefix}}/lib/gobot-js/gprofiles.js"></script>
 	<script src="{{.URLPathPrefix}}/lib/gobot-js/wpgroho.js"></script>
+	{{ end }}
+	
+	{{ if .MapURL }}
+	<script src="https://unpkg.com/leaflet@1.5.1/dist/leaflet.js"
+		integrity="sha512-GffPMF3RvMeYyc1LWMHtK8EbPv0iNZ8/oTtHPx9/cc2ILxQ+u905qIwdpULaqDkyBKgOaB57QTMg7ztg8Jm2Og=="
+		crossorigin="">
+	</script>
+	
+	<!-- This is to get cute markers on Leaflet maps -->
+	<script src="{{.URLPathPrefix}}/lib/Leaflet.vector-markers/dist/leaflet-vector-markers.min.js"></script>
 	{{ end }}
 
 	{{ if .ObstaclePieChart }}
