@@ -22,16 +22,6 @@
 	<script src="{{.URLPathPrefix}}/lib/gobot-js/gprofiles.js"></script>
 	<script src="{{.URLPathPrefix}}/lib/gobot-js/wpgroho.js"></script>
 	{{ end }}
-	
-	{{ if .MapURL }}
-	<script src="https://unpkg.com/leaflet@1.5.1/dist/leaflet.js"
-		integrity="sha512-GffPMF3RvMeYyc1LWMHtK8EbPv0iNZ8/oTtHPx9/cc2ILxQ+u905qIwdpULaqDkyBKgOaB57QTMg7ztg8Jm2Og=="
-		crossorigin="">
-	</script>
-	
-	<!-- This is to get cute markers on Leaflet maps -->
-	<script src="{{.URLPathPrefix}}/lib/Leaflet.vector-markers/dist/leaflet-vector-markers.min.js"></script>
-	{{ end }}
 
 	{{ if .ObstaclePieChart }}
     <!-- Flot Charts JavaScript -->
