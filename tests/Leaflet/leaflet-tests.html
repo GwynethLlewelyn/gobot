@@ -88,11 +88,11 @@ const tile_url = "http://opensim.betatechnologies.info:8002";
     // Turn on the map debugger
 const map_debug = true;
 
-    // The maximum width/height of the SL grid in regions:
+    // The maximum width/height of the grid in regions:
     // 2^20 regions on a side = 1,048,576    ("This should be enough for anyone")
     // *NOTE: This must be a power of 2 and divisible by 2^(max zoom) = 256
 //     map_grid_edge_size: 1048576,
-const map_grid_edge_size: 5000;
+const map_grid_edge_size = 5000;
 
 
 var mapDiv = "map"; // change as needed!
@@ -131,7 +131,9 @@ var map = L.map(mapDiv, {
     minZoom: MIN_ZOOM_LEVEL,
     maxZoom: MAX_ZOOM_LEVEL,
     maxBounds: [[0, 0], [map_grid_edge_size, map_grid_edge_size]],
-    layers: [tiles]
+    layers: [tiles],
+    center: [3650, 3650],
+    zoom: MIN_ZOOM_LEVEL
 });
 
 /*
