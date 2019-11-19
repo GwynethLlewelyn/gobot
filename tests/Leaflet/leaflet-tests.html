@@ -1,38 +1,40 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="utf-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="Leaflet Tests">
-    <meta name="author" content="Gwyneth Llewelyn">
+	<meta charset="utf-8">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<meta name="description" content="Leaflet Tests">
+	<meta name="author" content="Gwyneth Llewelyn">
 
-    <title>Leaflet/OpenSimulator Maps Integration</title>
+	<title>Leaflet/OpenSimulator Maps Integration</title>
 
 	<!-- Google Web Fonts -->
-	<link rel="stylesheet" type="text/css" href="https://fonts.googleapis.com/css?family=Cantarell|Cardo">
+<!-- 	<link rel="stylesheet" type="text/css" href="https://fonts.googleapis.com/css?family=Cantarell|Cardo"> -->
 
-    <!-- Bootstrap -->
+	<!-- Bootstrap -->
+<!--
 	<script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
 	<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
 	<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
 	<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
+-->
 
 	<!-- Bootstrap-Dialog -->
-	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap3-dialog/1.35.4/css/bootstrap-dialog.min.css" integrity="sha256-wstTM1F5dOf7cgnlRHIW3bmoRAAGh6jL7tMIvqTuFZE=" crossorigin="anonymous" />
+<!-- 	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap3-dialog/1.35.4/css/bootstrap-dialog.min.css" integrity="sha256-wstTM1F5dOf7cgnlRHIW3bmoRAAGh6jL7tMIvqTuFZE=" crossorigin="anonymous" /> -->
 
-    <!-- Call Leaflet.js to deal with maps -->
-    <!-- Bumped to Leaflet 1.5.1 (gwyneth 20191116) -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.5.1/dist/leaflet.css"
-    	integrity="sha512-xwE/Az9zrjBIphAcBb3F6JVqxf46+CDLwfLMHloNu6KEQCAWi6HcDUbeOfBIptF7tcCzusKFjFw2yuvEpDL9wQ=="
-    	crossorigin=""/>
+	<!-- Call Leaflet.js to deal with maps -->
+	<!-- Bumped to Leaflet 1.5.1 (gwyneth 20191116) -->
+	<link rel="stylesheet" href="https://unpkg.com/leaflet@1.5.1/dist/leaflet.css"
+		integrity="sha512-xwE/Az9zrjBIphAcBb3F6JVqxf46+CDLwfLMHloNu6KEQCAWi6HcDUbeOfBIptF7tcCzusKFjFw2yuvEpDL9wQ=="
+		crossorigin=""/>
 	<script src="https://unpkg.com/leaflet@1.5.1/dist/leaflet.js"
 		integrity="sha512-GffPMF3RvMeYyc1LWMHtK8EbPv0iNZ8/oTtHPx9/cc2ILxQ+u905qIwdpULaqDkyBKgOaB57QTMg7ztg8Jm2Og=="
 		crossorigin="">
 	</script>
 
 	<!-- Our own CSS -->	
-	<link rel="stylesheet" href="../../lib/gobot.css" />
+<!-- 	<link rel="stylesheet" href="../../lib/gobot.css" /> -->
 </head>
 <body>
 	<h1>Leaflet/OpenSimulator Maps Integration</h1>
@@ -43,55 +45,58 @@ var mapMinZoom = 1;
 var mapMaxZoom = 6;
 
 L.Projection.Direct = {
-    project: function(latlng) {
-        return new L.Point(latlng.lat * 256, latlng.lng * 256);
-    },
+	project: function(latlng) {
+		return new L.Point(latlng.lat * 256, latlng.lng * 256);
+	},
 
-    unproject: function(point) {
-        return new L.LatLng(point.x / 256, point.y / 256);
-    }
+	unproject: function(point) {
+		return new L.LatLng(point.x / 256, point.y / 256);
+	}
 };
 
 L.CRS.OpenSim = L.extend({}, L.CRS, {
-    projection: L.Projection.Direct,
-    transformation: new L.Transformation(1, 0, 1, 0),
+	projection: L.Projection.Direct,
+	transformation: new L.Transformation(1, 0, 1, 0),
 
-    scale: function(zoom) {
-        return 1; // OpenSim zoom
-    }
+	scale: function(zoom) {
+		return 1; // OpenSim zoom
+	}
 });
 
 var map = L.map('map', {
-    minZoom: mapMinZoom,
-    maxZoom: mapMaxZoom,
-    crs: L.CRS.OpenSim
+	minZoom: mapMinZoom,
+	maxZoom: mapMaxZoom,
+	crs: L.CRS.OpenSim
 });
 
 map.setView([1000, 1000], 1);
 
 L.tileLayer('http://opensim.betatechnologies.info:8002/map-{z}-{x}-{y}-objects.jpg', {
-    maxZoom: mapMaxZoom,
-    continuousWorld: true,
-    noWrap: true,
-    tileSize: 256,
-    crs: L.CRS.OpenSim,
-    attribution: 'opensim',
-    id: 'opensim',
+	maxZoom: mapMaxZoom,
+	continuousWorld: true,
+	noWrap: true,
+	tileSize: 256,
+	crs: L.CRS.OpenSim,
+	attribution: 'opensim',
+	id: 'opensim',
 }).addTo(map);
 
 map.panTo([3650, 3650]);
 */
+
+/* Doing it the SL way */
+/*
 // === Constants ===
 const os_base_url = "https://opensim.betatechnologies.info/";
 const tile_url = "http://opensim.betatechnologies.info:8002";
 
-    // Turn on the map debugger
+	// Turn on the map debugger
 const map_debug = true;
 
-    // The maximum width/height of the grid in regions:
-    // 2^20 regions on a side = 1,048,576    ("This should be enough for anyone")
-    // *NOTE: This must be a power of 2 and divisible by 2^(max zoom) = 256
-//     map_grid_edge_size: 1048576,
+	// The maximum width/height of the grid in regions:
+	// 2^20 regions on a side = 1,048,576	 ("This should be enough for anyone")
+	// *NOTE: This must be a power of 2 and divisible by 2^(max zoom) = 256
+//	   map_grid_edge_size: 1048576,
 const map_grid_edge_size = 5000;
 
 
@@ -102,48 +107,74 @@ var MAX_ZOOM_LEVEL = 6;
 
 
 var SLTileLayer = L.TileLayer.extend({
-    getTileUrl: function (coords) {
-        var data = {
-            r: L.Browser.retina ? '@2x' : '',
-            s: this._getSubdomain(coords),
-            z: this._getZoomForUrl()
-        };
+	getTileUrl: function (coords) {
+		var data = {
+			r: L.Browser.retina ? '@2x' : '',
+			s: this._getSubdomain(coords),
+			z: this._getZoomForUrl()
+		};
 
-        var regionsPerTileEdge = Math.pow(2, data['z'] - 1);
-        data['region_x'] = coords.x * regionsPerTileEdge;
-        data['region_y'] = (Math.abs(coords.y) - 1) * regionsPerTileEdge;
+		var regionsPerTileEdge = Math.pow(2, data['z'] - 1);
+		data['region_x'] = coords.x * regionsPerTileEdge;
+		data['region_y'] = (Math.abs(coords.y) - 1) * regionsPerTileEdge;
 
-        return L.Util.template(this._url, L.extend(data, this.options));
-    }
+		return L.Util.template(this._url, L.extend(data, this.options));
+	}
 });
 var tiles = new SLTileLayer(tile_url + "/map-{z}-{region_x}-{region_y}-objects.jpg", {
-    crs: L.CRS.Simple,
-    minZoom: MIN_ZOOM_LEVEL,
-    maxZoom: MAX_ZOOM_LEVEL,
-    zoomOffset: 1,
-    zoomReverse: true,
-    bounds: [[0, 0], [map_grid_edge_size, map_grid_edge_size]],
-    attribution: "<a href='" + os_base_url + "'>Beta Technologies OpenSimulator Grid</a>"
+	crs: L.CRS.Simple,
+	minZoom: MIN_ZOOM_LEVEL,
+	maxZoom: MAX_ZOOM_LEVEL,
+	zoomOffset: 1,
+	zoomReverse: true,
+	bounds: [[0, 0], [map_grid_edge_size, map_grid_edge_size]],
+	attribution: "<a href='" + os_base_url + "'>Beta Technologies OpenSimulator Grid</a>"
 });
 
 var map = L.map(mapDiv, {
-    crs: L.CRS.Simple,
-    minZoom: MIN_ZOOM_LEVEL,
-    maxZoom: MAX_ZOOM_LEVEL,
-    maxBounds: [[0, 0], [map_grid_edge_size, map_grid_edge_size]],
-    layers: [tiles],
-    center: [3650, 3650],
-    zoom: MIN_ZOOM_LEVEL
+	crs: L.CRS.Simple,
+	minZoom: MIN_ZOOM_LEVEL,
+	maxZoom: MAX_ZOOM_LEVEL,
+	maxBounds: [[0, 0], [map_grid_edge_size, map_grid_edge_size]],
+	layers: [tiles],
+	center: [3650, 3650],
+	zoom: MIN_ZOOM_LEVEL
 });
 
-/*
 map.on('click', function (event) {
-    gotoSLURL(event.latlng.lng, event.latlng.lat, map);
-});
-*/    
+	gotoSLURL(event.latlng.lng, event.latlng.lat, map);
+}); 
 map.panTo([3650, 3650]);
+*/
+	var mapMaxZoom = 2;
+	var mapMinZoom = 1;
 
+	var map = L.map('map', {
+	  maxZoom: mapMaxZoom,
+	  minZoom: mapMinZoom,
+	  crs: L.CRS.Simple
+	});
+	
+	map.setView(map.unproject([3650, 3650], mapMinZoom), mapMinZoom);
+	 
+	var mapBounds = new L.LatLngBounds(
+		map.unproject([0, 10000], mapMaxZoom),
+		map.unproject([10000, 0], mapMaxZoom));
+	
+	L.tileLayer('http://opensim.betatechnologies.info:8002/map-{z}-{x}-{y}-objects.jpg', {
+		minZoom: mapMinZoom,
+		maxZoom: mapMaxZoom,
+		zoomReverse: true,
+		zoomOffset: 1,
+		continuousWorld: true,
+		reuseTiles: true,
+		noWrap: true,
+		attribution: 'Beta Technologies OpenSim Grid',
+		bounds: mapBounds,
+		tms: true
+	}).addTo(map);
 
+	// map.panTo([3650, 3650]);
 	</script>
 </body>
 </html>
