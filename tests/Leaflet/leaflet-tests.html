@@ -32,16 +32,19 @@
 		integrity="sha512-GffPMF3RvMeYyc1LWMHtK8EbPv0iNZ8/oTtHPx9/cc2ILxQ+u905qIwdpULaqDkyBKgOaB57QTMg7ztg8Jm2Og=="
 		crossorigin="">
 	</script>
-	<script src="https://raw.githubusercontent.com/commenthol/leaflet-rastercoords/master/rastercoords.js" crossorigin="anonymous"> <!-- direct from GitHub! (20191120) -->
+	<script src="leaflet-rastercoords.js"></script> <!-- direct from GitHub! (20191120) -->
 
 	<!-- Our own CSS -->	
 <!-- 	<link rel="stylesheet" href="../../lib/gobot.css" /> -->
 </head>
 <body>
 	<h1>Leaflet/OpenSimulator Maps Integration</h1>
+	<hr />
 	<div id="map"></div>
 	<script type="text/javascript">
-/*
+
+// Solution from opensim-dev
+
 var mapMinZoom = 1;
 var mapMaxZoom = 6;
 
@@ -66,24 +69,27 @@ L.CRS.OpenSim = L.extend({}, L.CRS, {
 
 var map = L.map('map', {
 	minZoom: mapMinZoom,
-	maxZoom: mapMaxZoom,
-	crs: L.CRS.OpenSim
+	maxZoom: mapMaxZoom
 });
 
-map.setView([1000, 1000], 1);
-
 L.tileLayer('http://opensim.betatechnologies.info:8002/map-{z}-{x}-{y}-objects.jpg', {
+	minZoom: mapMinZoom,
 	maxZoom: mapMaxZoom,
-	continuousWorld: true,
+	continuousWorld: false,
 	noWrap: true,
+//	zoomReverse: true,
+//	zoomOffset: 1,
+	reuseTiles: true,
+	tms: true,
 	tileSize: 256,
 	crs: L.CRS.OpenSim,
 	attribution: 'opensim',
 	id: 'opensim',
 }).addTo(map);
 
-map.panTo([3650, 3650]);
-*/
+// map.panTo([3650, 3650], 1);
+// map.setView([3650, 3650], 2);
+map.setView(map.project([3650, 3650]), mapMinZoom);
 
 /* Doing it the SL way */
 /*
@@ -179,15 +185,15 @@ map.panTo([3650, 3650]);
 
 	// map.panTo([3650, 3650]);
 	*/
-	
+
+/*	
 	// Using rastercoords (20191120)
 	// See: https://commenthol.github.io/leaflet-rastercoords/
 		
 	// for use with browserify / webpack
-	var L = require('leaflet');
-	L.RasterCoords = require('leaflet-rastercoords');
 	
-	mapSize = 2^15 * 256; // arbitrary size
+	// const mapSize = 2^15 * 256; // arbitrary size
+	const mapSize = 2^15 * 256; // arbitrary size
 	
 	var img = [
 	  mapSize,  // original width of image (here from `example/karta.jpg`)
@@ -202,7 +208,8 @@ map.panTo([3650, 3650]);
 	map.setMaxZoom(rc.zoomLevel());
 	// all coordinates need to be unprojected using the `unproject` method
 	// set the view in the lower right edge of the image
-	map.setView(rc.unproject([img[0], img[1]]), 2);
+	// map.setView(rc.unproject([img[0], img[1]]), 2);
+	map.setView(rc.unproject([3650, 3650]), 2);
 	
 	// set markers on click events in the map
 	map.on('click', function (event) {
@@ -217,7 +224,8 @@ map.panTo([3650, 3650]);
 	L.tileLayer('http://opensim.betatechnologies.info:8002/map-{z}-{x}-{y}-objects.jpg', {
 	  noWrap: true
 	}).addTo(map);
-	
+*/	
 	</script>
+	<hr />
 </body>
 </html>

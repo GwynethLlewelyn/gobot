@@ -1,0 +1,197 @@
+
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+	<meta charset="utf-8">
+	<title>OpenSimulator Map</title>
+
+
+	<link rel="stylesheet" href="https://secondlife-maps-lecs.akamaized.net/agni/application-7923856e2569f11d86c377d1f0094783.css" type="text/css">
+
+	<script type="text/javascript">
+		// Set a global var assets_url for use by all the js libraries that follow
+		assetsURL = 'https://secondlife-maps-lecs.akamaized.net/agni/';
+	</script>
+	<script
+		src="https://code.jquery.com/jquery-3.4.1.min.js"
+		integrity="sha256-CSXorXvZcTkaix6Yvo6HppcZGetbYMGWSFlBw8HfCJo="
+		crossorigin="anonymous"></script>
+	<!-- <script src="https://raw.github.com/jonnyreeves/jquery-Mustache/master/jquery.mustache.js" crossorigin="anonymous"></script> -->
+	<script src="mustache.js"></script>
+	<link rel="stylesheet" href="https://unpkg.com/leaflet@1.5.1/dist/leaflet.css"
+		integrity="sha512-xwE/Az9zrjBIphAcBb3F6JVqxf46+CDLwfLMHloNu6KEQCAWi6HcDUbeOfBIptF7tcCzusKFjFw2yuvEpDL9wQ=="
+		crossorigin=""/>
+	<script src="https://unpkg.com/leaflet@1.5.1/dist/leaflet.js"
+		integrity="sha512-GffPMF3RvMeYyc1LWMHtK8EbPv0iNZ8/oTtHPx9/cc2ILxQ+u905qIwdpULaqDkyBKgOaB57QTMg7ztg8Jm2Og=="
+		crossorigin="">
+	</script>
+	<script type="text/javascript" src="sl-application.js"></script>
+
+</head>
+<body data-region-coords-default="true">
+		<div id="header">
+			<div id='header_inner'>
+				<div id='logo'>
+					<a href="/">Second Life</a>
+				</div>
+				<ul id='navigation'>
+					<li class='separator'></li>
+					<li class='top_level'>
+						<a href="https://secondlife.com/whatis?lang=en-US" target="_blank">What is Second Life?</a>
+					</li>
+					<li class='separator'></li>
+					<li class='top_level'>
+						<a href="https://secondlife.com/destinations?lang=en-US" target="_blank">Destinations</a>
+					</li>
+					<li class='separator'></li>
+					<li class='top_level'>
+						<a href="https://marketplace.secondlife.com?lang=en-US" target="_blank">Shopping</a>
+					</li>
+					<li class='separator'></li>
+				</ul>
+				<div id='search'>
+					<form action='https://search.secondlife.com/web/search/' id='search_form' method='get' onsubmit="return removeDefault('#q');">
+						<span class='search_button'><i></i></span>
+						<input class='default_text' data-default='Search' id='q' maxlength='255' name='q' type='text' value='Search'>
+						<input name='s' type='hidden' value='secondlife_com'>
+						<input name='m' type='hidden' value='N'>
+						<input name='lang' type='hidden' value='en-US'>
+					</form>
+				</div>
+			</div>
+		</div>
+
+	<div class="container showgrid">
+		<div id="content">
+			<div id="search-container" class="search collapse">
+		
+	<div id="map-search-results">
+		<div id="collapse-new">
+			<div id="btn-slidetoggle"></div>
+		</div>
+		
+		<script type="text/javascript">
+			var queryPage = '/showcase.php';
+			var queryParams = urlParams;
+
+			if (queryParams['q'] != undefined) {
+				queryPage = '/search_results.php';
+			} else {
+				if (slurl_data['region']['default'] == false) {
+					// Add in the location so we can click it in the sidebar if we get lost
+					var originSidebar = '';
+					originSidebar = "<h2 id=\"location-heading\">Your Location</h2>";
+					originSidebar = "<div id=\"marker0\" class=\"original-location result\">";
+
+					var imageurl = slurl_data['sidebarcontent']['img'];
+					originSidebar += "<a href=\"\"><img src=\"" + assetsURL + "/images/default-new.jpg\" border=\"0\"></a>";
+					originSidebar += "<h3><a class=\"sl-map-trigger-title\" href=\"\"></a></h3>";
+					originSidebar += "<p></p>";
+					originSidebar += "</div><br class=\"clear\" />";
+
+					var $sidebar = $('#map-search-results').append(originSidebar);
+					$sidebar.find('a.sl-map-trigger-title').text(slurl_data['sidebarcontent']['title']);
+
+					var $img = $sidebar.find('img');
+					$img.one('error', function () { $(this).attr('src', assetsURL + "/images/default-new.jpg") });
+					$img.attr('src', imageurl);
+
+					var $p = $sidebar.find('p');
+					var msg = slurl_data['sidebarcontent']['msg'];
+					// Preserve possible 'strong' tag in the default message, since we trust it.
+					if (msg == $.sl.maps.config.default_msg) {
+						$p.html(msg);
+					}
+					else {
+						$p.text(msg);
+					}
+
+					queryPage = '/showcase.php';
+					queryParams = 'null';
+				}
+				else {
+					$('#map-search-results').append("<div id=\"marker0\" class=\"original-location result \" style='display:none;'></div>");
+				}
+			}               
+		</script>
+		<div class="loader">
+			<p>Loading</p>
+			<img src="https://secondlife-maps-lecs.akamaized.net/agni/ajax-loader-523069e249e407b1e7c8a52542dd51ce.gif" width="32" height="32" alt="Please wait">
+		</div>
+		
+	</div>
+</div>
+			<div id="map-container" class="map-search-opened"></div>
+		</div>
+		<div id="head">
+			<div id="map-header">
+	<form method="get" action="/index.php" accept-charset="utf-8" id="SearchContainer">
+		<div id="search-input-container">
+			<div id="search-input-wrapper">
+				<input type="text" name="q" value="" id="query_term" />
+			</div>
+		</div>
+		<div id="searchcontrols">
+			<select id="search_select" name="s">
+				<option value="Places">SL Places</option>
+				<option value="Events">SL Events</option>
+			</select><button type="submit">Search</button>
+		</div>
+	</form>
+	<ul class="slurl-info">
+		<li class="slurl-info-tab">
+			<a class="slurl-build" href="/build.php">Create Your<br />Own Map Link</a>
+		</li>
+		<li class="slurl-info-tab">
+			<a href="/about.php">About Second Life Maps</a>
+		</li>
+	</ul>
+</div>
+		</div>
+	</div>
+
+	<div id="fanced">
+		<div id="fanced-content"></div>
+	</div>
+
+	<script type="text/javascript">
+	//<![CDATA[
+
+	var $map = SLMap(document.getElementById('map-container'));
+
+	$(function() {
+		mapExtensions();
+		loadmap();
+		loadquery(queryPage, queryParams);
+		
+		$(".slurl-info-tab a").click(function (e) {
+			var $link = $(this);
+			var href = $link.attr('href');
+
+			$.ajax({
+				url: href,
+				type: "GET",
+				success: function(data) {
+					if (!data) return;
+					$('#fanced-content').empty().append(data);
+					$('#fanced').show();
+				}
+			});
+
+			return false;
+		});
+		$('#fanced').click(function (e) {
+			$('#fanced').hide();
+			return false;
+		});
+		$('#fanced-content').click(function (e) {
+			e.stopPropagation();
+			return true;
+		});
+	});
+
+	//]]>
+	</script>
+</body>
+</html>
