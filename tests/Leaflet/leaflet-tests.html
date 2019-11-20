@@ -32,6 +32,7 @@
 		integrity="sha512-GffPMF3RvMeYyc1LWMHtK8EbPv0iNZ8/oTtHPx9/cc2ILxQ+u905qIwdpULaqDkyBKgOaB57QTMg7ztg8Jm2Og=="
 		crossorigin="">
 	</script>
+	<script src="https://raw.githubusercontent.com/commenthol/leaflet-rastercoords/master/rastercoords.js" crossorigin="anonymous"> <!-- direct from GitHub! (20191120) -->
 
 	<!-- Our own CSS -->	
 <!-- 	<link rel="stylesheet" href="../../lib/gobot.css" /> -->
@@ -146,6 +147,8 @@ map.on('click', function (event) {
 }); 
 map.panTo([3650, 3650]);
 */
+
+/*
 	var mapMaxZoom = 2;
 	var mapMinZoom = 1;
 
@@ -158,8 +161,8 @@ map.panTo([3650, 3650]);
 	map.setView(map.unproject([3650, 3650], mapMinZoom), mapMinZoom);
 	 
 	var mapBounds = new L.LatLngBounds(
-		map.unproject([0, 10000], mapMaxZoom),
-		map.unproject([10000, 0], mapMaxZoom));
+		map.unproject([0, 2560000], mapMaxZoom),
+		map.unproject([2560000, 0], mapMaxZoom));
 	
 	L.tileLayer('http://opensim.betatechnologies.info:8002/map-{z}-{x}-{y}-objects.jpg', {
 		minZoom: mapMinZoom,
@@ -175,6 +178,46 @@ map.panTo([3650, 3650]);
 	}).addTo(map);
 
 	// map.panTo([3650, 3650]);
+	*/
+	
+	// Using rastercoords (20191120)
+	// See: https://commenthol.github.io/leaflet-rastercoords/
+		
+	// for use with browserify / webpack
+	var L = require('leaflet');
+	L.RasterCoords = require('leaflet-rastercoords');
+	
+	mapSize = 2^15 * 256; // arbitrary size
+	
+	var img = [
+	  mapSize,  // original width of image (here from `example/karta.jpg`)
+	  mapSize   // original height of image
+	]
+	// create the map
+	var map = L.map('map');
+	
+	// assign map and image dimensions
+	var rc = new L.RasterCoords(map, img);
+	// set max zoom Level (might be `x` if gdal2tiles was called with `-z 0-x` option)
+	map.setMaxZoom(rc.zoomLevel());
+	// all coordinates need to be unprojected using the `unproject` method
+	// set the view in the lower right edge of the image
+	map.setView(rc.unproject([img[0], img[1]]), 2);
+	
+	// set markers on click events in the map
+	map.on('click', function (event) {
+	  // any position in leaflet needs to be projected to obtain the image coordinates
+	  var coords = rc.project(event.latlng);
+	  var marker = L.marker(rc.unproject(coords))
+	    .addTo(map);
+	  marker.bindPopup('[' + Math.floor(coords.x) + ',' + Math.floor(coords.y) + ']')
+	    .openPopup();
+	});
+	
+	L.tileLayer('http://opensim.betatechnologies.info:8002/map-{z}-{x}-{y}-objects.jpg', {
+	  noWrap: true
+	}).addTo(map);
+	
 	</script>
 </body>
 </html>
