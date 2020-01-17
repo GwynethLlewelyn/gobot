@@ -227,7 +227,7 @@ func main() {
 	//  to run this application anyway!
 	Log.Info("Testing opening database connection at ", GoBotDSN, "\nPath to static files is:", PathToStaticFiles)
 
-	db, err := sql.Open(PDO_Prefix, GoBotDSN) // presumes mysql for now (supercedes old sql3lite)
+	db, err := sql.Open(PDO_Prefix, GoBotDSN) // presumes mysql for now (supercedes old sqlite3)
 	checkErrPanic(err) // abort if it cannot even open the database
 
 	// query
