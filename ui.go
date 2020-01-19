@@ -289,7 +289,7 @@ func uiAgentsRemove(w http.ResponseWriter, r *http.Request) {
 	Log.Debug("Agents UUIDs >>", string(body), "<< successfully removed.")
 }
 
-// positionType is a struct to hold data retrieved from the database, used by several functions (including JSON).
+// PositionType is a struct to hold data retrieved from the database, used by several functions (including JSON).
 type PositionType struct {
 	PermURL zero.String
 	UUID zero.String

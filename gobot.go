@@ -168,7 +168,7 @@ func loadConfiguration() {
 	fmt.Println("Logging set up.")
 }
 
-// main() starts here.
+// main starts here.
 func main() {
 	// to change the flags on the default logger
 	// see https://stackoverflow.com/a/24809859/1035977

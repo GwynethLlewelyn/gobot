@@ -104,9 +104,9 @@ func setSession(userName string, response http.ResponseWriter) {
 	} else {
 		Log.Error("Error encoding cookie:", err)
 	}
- }
+}
  
- // getUserName sees if we have a session cookie with an encoded user name, returning nil if not found.
+// getUserName sees if we have a session cookie with an encoded user name, returning nil if not found.
 func getUserName(request *http.Request) (userName string) {
 	if cookie, err := request.Cookie("session"); err == nil {
 		cookieValue := make(map[string]string)
