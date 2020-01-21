@@ -2,42 +2,14 @@ package main
 
 import (
     "fmt"
+ //   "io"
     "log"
     "net/http"
-    "github.com/gorilla/websocket"
+ //   "github.com/gorilla/websocket"
 )
-
-// We'll need to define an Upgrader
-// this will require a Read and Write buffer size
-var upgrader = websocket.Upgrader{
-    ReadBufferSize:  1024,
-    WriteBufferSize: 1024,
-}
 
 func homePage(w http.ResponseWriter, r *http.Request) {
     fmt.Fprintf(w, "Home Page")
-}
-
-// reader defines a reader which will listen for
-// new messages being sent to our WebSocket
-// endpoint
-func reader(conn *websocket.Conn) {
-    for {
-    // read in a message
-        messageType, p, err := conn.ReadMessage()
-        if err != nil {
-            log.Println(err)
-            return
-        }
-    // print out that message for clarity
-        fmt.Println(string(p))
-
-        if err := conn.WriteMessage(messageType, p); err != nil {
-            log.Println(err)
-            return
-        }
-
-    }
 }
 
 func wsEndpoint(w http.ResponseWriter, r *http.Request) {
@@ -57,7 +29,7 @@ func wsEndpoint(w http.ResponseWriter, r *http.Request) {
         log.Println(err)
     }
 
-    reader(ws)
+    Reader(ws)
 }
 
 func setupRoutes() {
