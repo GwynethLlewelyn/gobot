@@ -12,33 +12,40 @@ func homePage(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "Home Page")
 }
 
-func wsEndpoint(w http.ResponseWriter, r *http.Request) {
-	upgrader.CheckOrigin = func(r *http.Request) bool { return true }
+func serveWs(pool *Pool, w http.ResponseWriter, r *http.Request) {
+    fmt.Println("WebSocket Endpoint Hit")
+    conn, err := Upgrade(w, r)
+    if err != nil {
+        fmt.Fprintf(w, "%+v\n", err)
+    }
 
-	// upgrade this connection to a WebSocket
-	// connection
-	ws, err := upgrader.Upgrade(w, r, nil)
-	if err != nil {
-		log.Println(err)
+	if (conn == nil) {
+		log.Println("Client not using websocket protocol")
+		fmt.Fprintf(w, "%+v\n", err)
+		return
 	}
 
-	// helpful log statement to show connections
-	log.Println("Client Connected")
-	err = ws.WriteMessage(1, []byte("Hi Client!"))
-	if err != nil {
-		log.Println(err)
-	}
+    client := &Client{
+        Conn: conn,
+        Pool: pool,
+    }
 
-	Reader(ws)
+    pool.Register <- client
+    client.Read()
 }
 
 func setupRoutes() {
 	http.HandleFunc("/", homePage)
-	http.HandleFunc("/ws", wsEndpoint)
+    pool := NewPool()
+    go pool.Start()
+
+    http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
+        serveWs(pool, w, r)
+    })
 }
 
 func main() {
-	fmt.Println("Hello World")
-	setupRoutes()
-	log.Fatal(http.ListenAndServe(":8080", nil))
+    fmt.Println("Distributed Chat App v0.01")
+    setupRoutes()
+    log.Fatal(http.ListenAndServe(":8080", nil))
 }
