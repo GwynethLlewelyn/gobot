@@ -47,5 +47,5 @@ func setupRoutes() {
 func main() {
     fmt.Println("Distributed Chat App v0.01")
     setupRoutes()
-    log.Fatal(http.ListenAndServe(":8080", nil))
+    log.Fatal(http.ListenAndServe(":8008", nil))
 }
