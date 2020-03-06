@@ -8,8 +8,7 @@ import (
 	"time"
 )
 
-// garbageCollector goes through the database every few hours or so, pings the objects and sees if they're alive, checks their timestamps,
-//  and if they are too old
+// garbageCollector goes through the database every few hours or so, pings the objects and sees if they're alive, checks their timestamps, and if they are too old, remove them from the database.
 func garbageCollector() {
 	Log.Info("Garbage Collector called.")
 	
