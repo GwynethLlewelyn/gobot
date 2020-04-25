@@ -15,7 +15,7 @@ key registrationRequest;    // used to track down the request for registration
 key updateRequest;    // used to track down the request for registration
 key serverKey; // for inventory updates
 key httpRequestKey;
-integer LSLSignaturePIN = 9876;
+integer LSLSignaturePIN = {{.LSLSignaturePIN}};
 string type = &quot;money&quot;;
 string class = &quot;peasant&quot;;
 float rateEnergy;   // cube configuration parameters; touch on the face
