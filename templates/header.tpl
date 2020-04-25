@@ -12,7 +12,7 @@
 	<title>{{.Title}}</title>
 
 	<!-- Google Web Fonts -->
-	<link rel="stylesheet" type="text/css" href="https://fonts.googleapis.com/css?family=Cantarell|Cardo">
+	<link href="https://fonts.googleapis.com/css2?family=Cantarell&family=Cardo&display=swap" type="text/css" rel="stylesheet">
 
 	<!-- Bootstrap Core CSS 
 	<link href="{{.URLPathPrefix}}/lib/startbootstrap-sb-admin-2/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet"> -->
