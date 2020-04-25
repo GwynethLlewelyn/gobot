@@ -1,13 +1,13 @@
 [gobot]
-Host = "bot.betatechnologies.info"
+Host = "my.server.tld"
 ServerPort = ":3000" # default for go
 FrontEnd = "nginx" # leave empty if you don't have a frontend, will use ServerPort instead
 URLPathPrefix = "/go" # leave empty if you serve from the root URL above; no slash at end
 PathToStaticFiles = "~/go/src/gobot" # where the lib/ and template/ dirs are; change as needed, no slash at end
 
 # Database filename
-# GoBotDSN = "/var/www/bot.betatechnologies.info/web/database/botmover.db?cache=shared&mode=rwc"
-GoBotDSN = "btopensim:betaopenmv2008!@/gobot"
+# GoBotDSN = "/path/to/docroot/database/botmover.db?cache=shared&mode=rwc" # for using a SQLite database
+GoBotDSN = "username:password@/database-name"
 
 PDO_Prefix = "mysql"
 
@@ -29,5 +29,5 @@ SeverityFile	= "DEBUG"
 SeveritySyslog	= "CRITICAL"
 
 [opensim]
-MapURL = "http://opensim.betatechnologies.info:8002/map-1-3646-3645-objects.jpg" # get a map tile
-LSLSignaturePIN = "9876"
+MapURL = "http://opensim.server.tld:8002/map-1-gridx-gridy-objects.jpg" # get a map tile
+LSLSignaturePIN = "0000" # this will have to be the same as in your scripts

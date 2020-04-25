@@ -13,18 +13,19 @@ For now, all you need to know is that this works only on [OpenSimulator](http://
 ## Server-Side Configuration
 
 - Install `gobot` as any other Go application (`go get github.com/GwynethLlewelyn/gobot` should do the trick)
-- Create a database in MySQL using `database/schema.sql`
-- Create a new user in MySQL with an email address and a MD5-hashed password (something like `insert into Users (Email, Password) Values ('valid@email.address', '4405c5984441a1b86bec717dc063ca46');`), you'll need at least one user to login to the backoffice; use `echo "password"|md5sum` or an online MD5 generator to get a valid password hash; afterwards, you can add more users manually 
-- Remember the installation path and change `config.toml` accordingly! (you should also set an URL to grab a map tile from your OpenSimulator environment)
-- Note:
- - The directories `lib/` and `templates/` only have static content, so either you configure `config.toml` to  point to the right directories (if running `gobot` as a standalone Go application) or you get these directories directly served by your webserver/reverse proxy/whatever
- - There has been a move from `sqlite3` to MySQL; `gobot` does not support `sqlite3` any longer because it seems to have problems with locks when there are too many goroutines reading the database file
+- Create a database in MySQL using `database/schema.sql` ([see below](#notes) why SQLite is not recommended any more)
+- Create a new user in MySQL with an email address and a MD5-hashed password (something like `insert into Users (Email, Password) Values ('valid@email.address', '4405c5984441a1b86bec717dc063ca46');`), you'll need at least one user to login to the backoffice; use `echo "password"|md5sum` or an online MD5 generator to get a valid password hash; afterwards, you can add more users manually
+- Copy `config.toml.sample` to `config.toml` and change it — remember the installation path and you should also set an URL to grab a map tile from your OpenSimulator environment) as well as your own 4-digit PIN for `LSLSignaturePIN`
 - In Un*x machines, `gobot` ought to be run either in the background or with `screen` (which will allow you to see the `stderr` console as well)
 - Point your browser to the URL of the `gobot` appplication, login with the email/password, and try things out on the menus
 
+### Notes
+ - The directories `lib/` and `templates/` only have static content, so either you configure `config.toml` to  point to the right directories (if running `gobot` as a standalone Go application) or you get these directories directly served by your webserver/reverse proxy/whatever
+ - There has been a move from `sqlite3` to MySQL; `gobot` does not support `sqlite3` any longer because it seems to have problems with locks when there are too many goroutines reading the database file
+
 If you're placing `gobot` behind a nginx server, [this is the configuration you'll need](nginx-config.md). Note that Go is wonderful as it includes its own webserver, so running it behind a 'real' web server is not necessary, although a real web server should be able to provide things like caching and direct serving of static content (images, JS, CSS...) for the backoffice, to make it even faster.
 
-`gobot` now supports the [go-logging](https://github.com/op/go-logging) logging backend, which will redirect the logs simultaneously to `stderr`, a log file, and (by default) criticalhe  messages to `syslog` as well. The file-based log is rotated automatically with [lumberjack](https://gopkg.in/natefinch/lumberjack.v2). All logging options can be changed on the `config.toml` configuration file as well.
+`gobot` supports the [go-logging](https://github.com/op/go-logging) logging backend, which will redirect the logs simultaneously to `stderr`, a log file, and (by default) criticalhe  messages to `syslog` as well. The file-based log is rotated automatically with [lumberjack](https://gopkg.in/natefinch/lumberjack.v2). All logging options can be changed on the `config.toml` configuration file as well.
 
 If you wish to run `gobot` as a systemd service under Ubuntu, then just do  
 

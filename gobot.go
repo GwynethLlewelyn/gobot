@@ -72,7 +72,7 @@ func loadConfiguration() {
 	ServerPort = viper.GetString("gobot.ServerPort"); fmt.Print(".")
 	FrontEnd = viper.GetString("gobot.FrontEnd"); fmt.Print(".")
 	MapURL = viper.GetString("opensim.MapURL"); fmt.Print(".")
-	viper.SetDefault("gobot.LSLSignaturePIN", "9876") // better than no signature at all
+	viper.SetDefault("gobot.LSLSignaturePIN", "0000") // better than no signature at all
 	LSLSignaturePIN = viper.GetString("opensim.LSLSignaturePIN"); fmt.Print(".")
 	viper.SetDefault("gobot.ShowPopulation", true) // try to set this as quickly as possible, or the engine WILL run!
 	ShowPopulation = viper.GetBool("gobot.ShowPopulation"); fmt.Print(".")
