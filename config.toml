@@ -18,9 +18,9 @@ ShowPopulation = false # sends tons of data for the population on each iteration
 # Showing what logging options are available and the defaults for each
 # FileName = "log/gobot.log"
 # Format = "%{color}%{time:2006/01/02 15:04:05.0} %{shortfile} - %{shortfunc} ▶ %{level:.4s}%{color:reset} %{message}"
-# MaxSize = 500 # MBytes, integer
-# MaxBackups = 3 # integer
-# MaxAge = 28 # days, integer
+MaxSize = 50 # MBytes, integer
+MaxBackups = 3 # integer
+MaxAge = 28 # days, integer
 #
 # Severity logging: accepted values are CRITICAL, ERROR, WARNING, NOTICE, INFO, DEBUG
 #

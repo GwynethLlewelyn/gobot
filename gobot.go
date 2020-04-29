@@ -145,26 +145,32 @@ func loadConfiguration() {
 	    MaxBackups: logMaxBackups,
 	    MaxAge:     logMaxAge, //days
 	}
-	// Setup the go-logging Logger. (20170812) We have three loggers: one to stderr, one to a logfile, one to syslog for critical stuff. (20170813
+	// Setup the go-logging Logger. (20170812) We have three loggers: one to stderr, one to a logfile, one to syslog for critical stuff (20170813).
+	// Update; it's a bad idea to log to both Stderr and Syslog, when gobot might be running from systemd (where stderr is fed to stdout).
+	//  Also, stderr-piped-to-syslog will get messed up if we use fancy colours (?). So for now we'll just log to stderr and a file (20200429)
 	backendStderr	:= logging.NewLogBackend(os.Stderr, "", 0)
 	backendFile		:= logging.NewLogBackend(rotatingLogger, "", 0)
-	backendSyslog,_	:= logging.NewSyslogBackend("")
+	// backendSyslog,_	:= logging.NewSyslogBackend("") // obsoleted, see comment above
 
 	// Set formatting for stderr and file (basically the same). I'm assuming syslog has its own format, but I'll have to see what happens (20170813).
-	backendStderrFormatter	:= logging.NewBackendFormatter(backendStderr, logFormat)
+	// Uodate: what happens is a mess. Now we just have two channels, stderr and file, and stderr gets no colours (20200429).
+	backendStderrFormatter	:= logging.NewBackendFormatter(backendStderr, 
+								logging.MustStringFormatter(`%{shortfile} %{shortfunc} -> %{level:.4s} %{message}`)) // no colors! (20200429)
 	backendFileFormatter	:= logging.NewBackendFormatter(backendFile, logFormat)
+	// backendSyslogFormatter	:= logging.NewBackendFormatter(backendSyslog, syslogFormat) // obsolete, see above
 
 	// Check if we're overriding the default severity for each backend. This is user-configurable. By default: DEBUG, DEBUG, CRITICAL.
 	// TODO(gwyneth): What about a WebSocket backend using https://github.com/cryptix/exp/wslog ? (20170813)
+	// Update: Dropped the syslog formatter. Now we have only two, stderr and file. The WebSocket backend may still be possible! (20200429)
 	backendStderrLeveled := logging.AddModuleLevel(backendStderrFormatter)
 	backendStderrLeveled.SetLevel(logSeverityStderr, "gobot")
 	backendFileLeveled := logging.AddModuleLevel(backendFileFormatter)
 	backendFileLeveled.SetLevel(logSeverityFile, "gobot")
-	backendSyslogLeveled := logging.AddModuleLevel(backendSyslog)
-	backendSyslogLeveled.SetLevel(logSeveritySyslog, "gobot")
+//	backendSyslogLeveled := logging.AddModuleLevel(backendSyslogFormatter)
+//	backendSyslogLeveled.SetLevel(logSeveritySyslog, "gobot")
 
 	// Set the backends to be used. Logging should commence now.
-	logging.SetBackend(backendStderrLeveled, backendFileLeveled, backendSyslogLeveled)
+	logging.SetBackend(backendStderrLeveled, backendFileLeveled /*, backendSyslogLeveled */)
 	fmt.Println("Logging set up.")
 }
 
