@@ -12,6 +12,7 @@ config.toml
 # Icon must end with two \r
 Icon
 
+Icon?
 
 # Thumbnails
 ._*
@@ -31,6 +32,13 @@ Icon
 Network Trash Folder
 Temporary Items
 .apdisk
+
+# Stuff from the Nova editor
+.nova
+node_modules
+package.json
+package-lock.json
+.eslintrc.yml
 
 # Binaries for programs and plugins
 *.exe
