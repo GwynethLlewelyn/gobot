@@ -29,5 +29,5 @@ SeverityFile	= "DEBUG"
 SeveritySyslog	= "CRITICAL"
 
 [opensim]
-MapURL = "https://opensim.betatechnologies.info:8002/map-1-3650-3648-objects.jpg" # get a map tile
+MapURL = "https://opensim.betatechnologies.info:9002/map-1-3650-3648-objects.jpg" # get a map tile
 LSLSignaturePIN = "9876" # this will have to be the same as in your scripts

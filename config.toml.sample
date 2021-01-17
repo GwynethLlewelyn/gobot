@@ -29,5 +29,7 @@ SeverityFile	= "DEBUG"
 SeveritySyslog	= "CRITICAL"
 
 [opensim]
-MapURL = "http://opensim.server.tld:8002/map-1-gridx-gridy-objects.jpg" # get a map tile
+# get a map tile; if you get 'mixed content' errors, you can use nginx to act as a HTTPS proxy
+#  see https://starflowerbracken.wordpress.com/2020/05/03/configuring-secure-https-ports-with-tls-ssl-on-opensim/ for some hints 
+MapURL = "http://opensim.server.tld:8002/map-1-gridx-gridy-objects.jpg"
 LSLSignaturePIN = "0000" # this will have to be the same as in your scripts

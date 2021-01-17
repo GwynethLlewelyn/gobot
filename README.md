@@ -27,7 +27,7 @@ If you're placing `gobot` behind a nginx server, [this is the configuration you'
 
 `gobot` supports the [go-logging](https://github.com/op/go-logging) logging backend, which will redirect the logs simultaneously to `stderr`, a log file, and (by default) criticalhe  messages to `syslog` as well. The file-based log is rotated automatically with [lumberjack](https://gopkg.in/natefinch/lumberjack.v2). All logging options can be changed on the `config.toml` configuration file as well.
 
-If you wish to run `gobot` as a systemd service under Ubuntu, then just do  
+If you wish to run `gobot` as a systemd service under Ubuntu, then copy `gobot.service.sample` to `gobot.service` and change the required paths to reflect your installation; finally, just do  
 
 	cd /etc/systemd/system/multi-user.target.wants
 	ln -s {Your Root Directory Where You Placed The Gobot Files}/gobot.service

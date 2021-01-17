@@ -1,6 +1,7 @@
 log/*
 gobot
 config.toml
+gobot.service
 ~
 # Stupid macOS temporary files
 
