@@ -21,6 +21,7 @@ ShowPopulation = false # sends tons of data for the population on each iteration
 # MaxSize = 500 # MBytes, integer
 # MaxBackups = 3 # integer
 # MaxAge = 28 # days, integer
+# Compress = true # compress rotated logs? boolean
 #
 # Severity logging: accepted values are CRITICAL, ERROR, WARNING, NOTICE, INFO, DEBUG
 #
@@ -30,6 +31,6 @@ SeveritySyslog	= "CRITICAL"
 
 [opensim]
 # get a map tile; if you get 'mixed content' errors, you can use nginx to act as a HTTPS proxy
-#  see https://starflowerbracken.wordpress.com/2020/05/03/configuring-secure-https-ports-with-tls-ssl-on-opensim/ for some hints 
+#  see https://starflowerbracken.wordpress.com/2020/05/03/configuring-secure-https-ports-with-tls-ssl-on-opensim/ for some hints
 MapURL = "http://opensim.server.tld:8002/map-1-gridx-gridy-objects.jpg"
 LSLSignaturePIN = "0000" # this will have to be the same as in your scripts

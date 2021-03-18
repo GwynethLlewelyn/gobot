@@ -28,7 +28,8 @@ var (
 	Host, GoBotDSN, URLPathPrefix, PDO_Prefix, PathToStaticFiles,
 	ServerPort, FrontEnd, MapURL, LSLSignaturePIN string
 	logFileName string = "log/gobot.log"
-	logMaxSize, logMaxBackups, logMaxAge int // configuration for the go-logging logger
+	logMaxSize, logMaxBackups, logMaxAge int // configuration for the lumberjack rotating logger
+	logCompress bool	// compress old log files?
 	logSeverityStderr, logSeverityFile, logSeveritySyslog logging.Level // more configuration for the go-logging logger
 	ShowPopulation bool = true
 	Log = logging.MustGetLogger("gobot")	// configuration for the go-logging logger, must be available everywhere
@@ -87,6 +88,8 @@ func loadConfiguration() {
 	logMaxBackups = viper.GetInt("log.MaxBackups"); fmt.Print(".")
 	viper.SetDefault("log.MaxAge", 28)
 	logMaxAge = viper.GetInt("log.MaxAge"); fmt.Print(".")
+	viper.SetDefault("log.Compress", true)
+	logCompress = viper.GetBool("log.Compress"); fmt.Print(".")
 	viper.SetDefault("log.SeverityStderr", logging.DEBUG)
 	switch viper.GetString("log.SeverityStderr") {
 		case "CRITICAL":
@@ -137,13 +140,14 @@ func loadConfiguration() {
 	}
 	fmt.Print(".")
 	fmt.Println("read!")	// note that we might not have go-logging active as yet, so we use fmt
-	
+
 	// Setup the lumberjack rotating logger. This is because we need it for the go-logging logger when writing to files. (20170813)
 	rotatingLogger := &lumberjack.Logger{
-	    Filename:   logFileName,	// this is an option set on the config.yaml file, eventually the others will be so, too.
-	    MaxSize:    logMaxSize, // megabytes
-	    MaxBackups: logMaxBackups,
-	    MaxAge:     logMaxAge, //days
+	    Filename:   logFileName,	// this is an option set on the config.toml file, eventually the others will be so, too.
+	    MaxSize:    logMaxSize, 	// megabytes
+	    MaxBackups: logMaxBackups,	// # of backups to retain on disk
+	    MaxAge:     logMaxAge,		// days
+		Compress:	logCompress,	// true compresses files with gzip
 	}
 	// Setup the go-logging Logger. (20170812) We have three loggers: one to stderr, one to a logfile, one to syslog for critical stuff (20170813).
 	// Update; it's a bad idea to log to both Stderr and Syslog, when gobot might be running from systemd (where stderr is fed to stdout).
@@ -154,7 +158,7 @@ func loadConfiguration() {
 
 	// Set formatting for stderr and file (basically the same). I'm assuming syslog has its own format, but I'll have to see what happens (20170813).
 	// Uodate: what happens is a mess. Now we just have two channels, stderr and file, and stderr gets no colours (20200429).
-	backendStderrFormatter	:= logging.NewBackendFormatter(backendStderr, 
+	backendStderrFormatter	:= logging.NewBackendFormatter(backendStderr,
 								logging.MustStringFormatter(`%{shortfile} %{shortfunc} -> %{level:.4s} %{message}`)) // no colors! (20200429)
 	backendFileFormatter	:= logging.NewBackendFormatter(backendFile, logFormat)
 	// backendSyslogFormatter	:= logging.NewBackendFormatter(backendSyslog, syslogFormat) // obsolete, see above
@@ -198,7 +202,7 @@ func main() {
 		}
 		loadConfiguration() // I think that this needs to be here, or else, how does Viper know what to call?
 	})
-	
+
 	// prepares a special channel to look for termination signals
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGHUP, syscall.SIGUSR1, syscall.SIGUSR2, syscall.SIGCONT)
@@ -253,9 +257,9 @@ func main() {
 	Log.Infof("\n\nDatabase tests ended, last error was %v:\n\nStarting gobot application at: http://%s%v%s\n\n", err, Host, ServerPort, URLPathPrefix)
 
 	// this was just to make tests; now start the engine as a separate goroutine in the background
-	
+
 	go engine() // run everything but the kitchen sink in parallel; yay goroutines!
-	
+
 	go garbageCollector() // this will periodically remove from the database all old items that are 'dead' (20170730)
 
 	// Now prepare the web interface

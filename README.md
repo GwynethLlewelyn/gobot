@@ -16,7 +16,7 @@ For now, all you need to know is that this works only on [OpenSimulator](http://
 - Create a database in MySQL using `database/schema.sql` ([see below](#notes) why SQLite is not recommended any more)
 - Create a new user in MySQL with an email address and a MD5-hashed password (something like `insert into Users (Email, Password) Values ('valid@email.address', '4405c5984441a1b86bec717dc063ca46');`), you'll need at least one user to login to the backoffice; use `echo "password"|md5sum` or an online MD5 generator to get a valid password hash; afterwards, you can add more users manually
 - Copy `config.toml.sample` to `config.toml` and change it — remember the installation path and you should also set an URL to grab a map tile from your OpenSimulator environment) as well as your own 4-digit PIN for `LSLSignaturePIN`
-- In Un*x machines, `gobot` ought to be run either in the background or with `screen` (which will allow you to see the `stderr` console as well)
+- In Un*x machines, `gobot` ought to be run either in the background (a configuration file for running under systemd is provided below) or with `screen` (which will allow you to see the `stderr` console as well)
 - Point your browser to the URL of the `gobot` appplication, login with the email/password, and try things out on the menus
 
 ### Notes
