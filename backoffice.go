@@ -18,7 +18,7 @@ import (
 )
 
 // GobotTemplatesType expands on template.Template.
-//  need to expand it so I can add a few more methods here 
+//  need to expand it so I can add a few more methods here
 type GobotTemplatesType struct{
 	template.Template
 }
@@ -36,20 +36,20 @@ func (gt *GobotTemplatesType)init(globbedPath string) error {
 }
 
 // gobotRenderer assembles the correct templates together and executes them.
-//  this is mostly to deal with code duplication 
+//  this is mostly to deal with code duplication
 func (gt *GobotTemplatesType)gobotRenderer(w http.ResponseWriter, r *http.Request, tplName string, tplParams templateParameters) error {
 	thisUserName :=  getUserName(r)
-	
+
 	// add cookie to all templates
 	tplParams["SetCookie"] = thisUserName
 
 	// add Gravatar to templates (note that all logins are supposed to be emails)
-	
+
 	// calculate hash for the Gravatar hovercard
 	hasher := md5.Sum([]byte(thisUserName))
 	hash := hex.EncodeToString(hasher[:])
 	tplParams["GravatarHash"] = hash // we ought to cache this somewhere
-	
+
 	// deal with sizes, we want to have a specific size for the top menu
 	var gravatarSize, gravatarSizeMenu = 32, 32
 
@@ -69,14 +69,14 @@ func (gt *GobotTemplatesType)gobotRenderer(w http.ResponseWriter, r *http.Reques
 	// for Retina displays; we could add a multiplication function for Go templates, but I'm lazy (20170706)
 	tplParams["GravatarTwiceSize"] = 2 * gravatarSize
 	tplParams["GravatarTwiceSizeMenu"] = 2 * gravatarSizeMenu
-	
+
 	// Now call the nice library function to get us the URL to the image, for the two sizes
 	g := gravatar.New("identicon", gravatarSize, "g", true)
 	tplParams["Gravatar"] = g.GetImageUrl(thisUserName) // we also ought to cache this somewhere
-	
+
 	g = gravatar.New("identicon", gravatarSizeMenu, "g", true)
 	tplParams["GravatarMenu"] = g.GetImageUrl(thisUserName) // we also ought to cache this somewhere
-	
+
 	w.Header().Set("X-Clacks-Overhead", "GNU Terry Pratchett") // do a tribute to one of my best fantasy authors (see http://www.gnuterrypratchett.com/) (20170807)
 	return gt.ExecuteTemplate(w, tplName, tplParams)
 }
@@ -105,7 +105,7 @@ func setSession(userName string, response http.ResponseWriter) {
 		Log.Error("Error encoding cookie:", err)
 	}
 }
- 
+
 // getUserName sees if we have a session cookie with an encoded user name, returning nil if not found.
 func getUserName(request *http.Request) (userName string) {
 	if cookie, err := request.Cookie("session"); err == nil {
@@ -132,7 +132,7 @@ func clearSession(response http.ResponseWriter) {
 func checkSession(w http.ResponseWriter, r *http.Request) {
 	// valid cookie and no errors?
 	if getUserName(r) == "" {
-		http.Redirect(w, r, URLPathPrefix + "/admin/login/", 302)	
+		http.Redirect(w, r, URLPathPrefix + "/admin/login/", http.StatusFound)
 	}
 }
 
@@ -143,28 +143,28 @@ func checkSession(w http.ResponseWriter, r *http.Request) {
 func backofficeMain(w http.ResponseWriter, r *http.Request) {
 	checkSession(w, r) // make sure we've got a valid cookie, or else send to login page
 	// let's load the main template for now, just to make sure this works
-	
+
 	// Open database just to gather some statistics
 	db, err := sql.Open(PDO_Prefix, GoBotDSN) // presumes sqlite3 for now
 	checkErr(err)
-	
+
 	defer db.Close()
 
 	var (
 		cnt, obstacles, phantom int
 		strAgents, strInventory, strPositions, strObstacles string
 	)
-		
+
 	err = db.QueryRow("select count(*) from Agents").Scan(&cnt)
-	checkErr(err)	
+	checkErr(err)
 	if (cnt != 0) {
 		strAgents = "Agents: " + strconv.Itoa(cnt)
 	} else {
 		strAgents = "No Agents."
 	}
-	
+
 	err = db.QueryRow("select count(*) from Inventory").Scan(&cnt)
-	checkErr(err)	
+	checkErr(err)
 	if (cnt != 0) {
 		strInventory = "Inventory items: " + strconv.Itoa(cnt)
 	} else {
@@ -172,7 +172,7 @@ func backofficeMain(w http.ResponseWriter, r *http.Request) {
 	}
 
 	err = db.QueryRow("select count(*) from Positions").Scan(&cnt)
-	checkErr(err)	
+	checkErr(err)
 	if (cnt != 0) {
 		strPositions = "Positions: " + strconv.Itoa(cnt)
 	} else {
@@ -180,24 +180,24 @@ func backofficeMain(w http.ResponseWriter, r *http.Request) {
 	}
 
 	err = db.QueryRow("select count(*) from Obstacles").Scan(&obstacles)
-	checkErr(err)		
+	checkErr(err)
 	if (obstacles != 0) {
 		strObstacles = "Obstacles: " + strconv.Itoa(obstacles)
 	} else {
 		strObstacles = "No Obstacles."
 	}
 	err = db.QueryRow("select count(*) from Obstacles where Phantom <> 1 AND Type <> 1").Scan(&phantom)
-	checkErr(err)		
+	checkErr(err)
 	if (phantom != 0) {
 		strObstacles += " (" + strconv.Itoa(phantom) + " phantom)"
 	}
 	// Generate markers for the Leaflet-based map (20170605)
-	
+
 	// template: L.marker([127, 127], { title: 'Test' }).bindPopup(
 	//								L.popup({ maxWidth: 180 })
 	//									.setContent('Blah')
 	//							).addTo(map);
-								
+
 	// First, get Agents (there are not many)
 	var (
 		Agent AgentType // this is defined on ui.go, ugh
@@ -206,10 +206,10 @@ func backofficeMain(w http.ResponseWriter, r *http.Request) {
 		//position string
 		coords string
 	)
-	
+
 	rows, err := db.Query("SELECT * FROM Agents")
 	checkErr(err)
-	
+
 	defer rows.Close()
 
 	for rows.Next() {
@@ -232,24 +232,24 @@ func backofficeMain(w http.ResponseWriter, r *http.Request) {
 			&Agent.BestPath,
 			&Agent.SecondBestPath,
 			&Agent.CurrentTarget,
-		)		
+		)
 		// do the magic to extract the actual coords
 		coords = strings.Trim(*Agent.Position.Ptr(), "() \t\n\r")
 		xyz = strings.Split(coords, ",")
-		
+
 		markersOutput += fmt.Sprintf("L.marker([%s, %s], { title: 'Agent: %s', riseOnHover: true, icon: agentMarker }).bindPopup(" +
 										"L.popup({ maxWidth: 180 })" +
 											".setContent('UUID: <a href=\"%s\">%s</a><br />Agent Name: %s<br />Position: %s')" +
-										").addTo(map);", 
+										").addTo(map);",
 								xyz[0], xyz[1], *Agent.Name.Ptr(), URLPathPrefix + "/admin/agents/?UUID=" +
 								*Agent.UUID.Ptr(), *Agent.UUID.Ptr(), *Agent.Name.Ptr(),
 								*Agent.Position.Ptr())
 	}
 	checkErr(err)
-	
+
 	// now do positions
 	var Position PositionType
-	
+
 	rows, err = db.Query("SELECT * FROM Positions")
 	checkErr(err)
 
@@ -273,11 +273,11 @@ func backofficeMain(w http.ResponseWriter, r *http.Request) {
 		)
 		coords = strings.Trim(*Position.Position.Ptr(), "() \t\n\r")
 		xyz = strings.Split(coords, ",")
-		
+
 		markersOutput += fmt.Sprintf("L.marker([%s, %s], { title: 'Position: %s', riseOnHover: true, icon: positionMarker }).bindPopup(" +
 										"L.popup({ maxWidth: 180 })" +
 											".setContent('UUID: <a href=\"%s\">%s</a><br />Position Name: %s<br />Position: %s')" +
-										").addTo(map);", 
+										").addTo(map);",
 								xyz[0], xyz[1], *Position.Name.Ptr(),
 								URLPathPrefix + "/admin/positions/?UUID=" + *Position.UUID.Ptr(),
 								*Position.UUID.Ptr(), *Position.Name.Ptr(), *Position.Position.Ptr())
@@ -286,7 +286,7 @@ func backofficeMain(w http.ResponseWriter, r *http.Request) {
 
 	// and at last add all the stupid obstacles...
 	var Object ObjectType
-	
+
 	rows, err = db.Query("SELECT * FROM Obstacles WHERE Phantom <> 1 AND Type <> 1")
 	checkErr(err)
 
@@ -309,13 +309,13 @@ func backofficeMain(w http.ResponseWriter, r *http.Request) {
 		)
 		coords = strings.Trim(*Object.Position.Ptr(), "() \t\n\r")
 		xyz = strings.Split(coords, ",")
-		
+
 		markersOutput += fmt.Sprintf("L.marker([%s, %s], { title: 'Object: %s', riseOnHover: true, icon: objectMarker }).bindPopup(" +
 										"L.popup({ maxWidth: 180 })" +
 											".setContent('UUID: <a href=\"%s\">%s</a><br />Object Name: %s<br />Position: %s')" +
-										").addTo(map);", 
+										").addTo(map);",
 								xyz[0], xyz[1], *Object.Name.Ptr(), URLPathPrefix + "/admin/objects/?UUID=" +
-								*Object.UUID.Ptr(), *Object.UUID.Ptr(), *Object.Name.Ptr(), 
+								*Object.UUID.Ptr(), *Object.UUID.Ptr(), *Object.Name.Ptr(),
 								*Object.Position.Ptr())
 	}
 	checkErr(err)
@@ -335,7 +335,7 @@ func backofficeMain(w http.ResponseWriter, r *http.Request) {
 	}
 	err = GobotTemplates.gobotRenderer(w, r, "main", tplParams)
 	checkErr(err)
-	return
+	// return
 }
 
 // backofficeAgents lists active agents.
@@ -348,7 +348,7 @@ func backofficeAgents(w http.ResponseWriter, r *http.Request) {
 	}
 	err := GobotTemplates.gobotRenderer(w, r, "agents", tplParams)
 	checkErr(err)
-	return
+	// return
 }
 
 // backofficeObjects lists objects seen as obstacles.
@@ -358,10 +358,10 @@ func backofficeObjects(w http.ResponseWriter, r *http.Request) {
 			"Content": "Hi there, this is the objects template",
 			"URLPathPrefix": URLPathPrefix,
 			"gobotJS": "objects.js",
-	}	
+	}
 	err := GobotTemplates.gobotRenderer(w, r, "objects", tplParams)
 	checkErr(err)
-	return
+	// return
 }
 
 // backofficePositions lists Positions.
@@ -374,7 +374,7 @@ func backofficePositions(w http.ResponseWriter, r *http.Request) {
 	}
 	err := GobotTemplates.gobotRenderer(w, r, "positions", tplParams)
 	checkErr(err)
-	return
+	// return
 }
 
 // backofficeInventory lists the content or inventory currently stored on objects.
@@ -387,7 +387,7 @@ func backofficeInventory(w http.ResponseWriter, r *http.Request) {
 	}
 	err := GobotTemplates.gobotRenderer(w, r, "inventory", tplParams)
 	checkErr(err)
-	return
+	// return
 }
 
 // backofficeUserManagement deals with adding/removing application users. Just login(email) and password right now, no profiles, no email confirmations, etc. etc. etc.
@@ -402,7 +402,7 @@ func backofficeUserManagement(w http.ResponseWriter, r *http.Request) {
 	}
 	err := GobotTemplates.gobotRenderer(w, r, "user-management", tplParams)
 	checkErr(err)
-	return
+	// return
 }
 
 
@@ -420,56 +420,56 @@ func backofficeLogin(w http.ResponseWriter, r *http.Request) {
         // logic part of logging in
         email		:= r.Form.Get("email")
         password	:= r.Form.Get("password")
-        
+
         // Log.Debug("email:", email)
         // Log.Debug("password:", password)
-        
+
         if email == "" || password == "" { // should never happen, since the form checks this
-	        http.Redirect(w, r, URLPathPrefix + "/", 302)        
+	        http.Redirect(w, r, URLPathPrefix + "/", http.StatusFound)
         }
-        
+
         // Check username on database
         db, err := sql.Open(PDO_Prefix, GoBotDSN)
 		checkErr(err)
-		
+
 		defer db.Close()
-	
+
 		// query
 		rows, err := db.Query("SELECT Email, Password FROM Users")
 		checkErr(err)
 
 		defer rows.Close()
-		
+
 		var (
 			Email string
 			Password string
 		)
-	 
+
 		// enhash the received password; I just use MD5 for now because there is no backoffice to create
 		//  new users, so it's easy to generate passwords manually using md5sum;
 		//  however, MD5 is not strong enough for 'real' applications, it's just what we also use to
 		//  communicate with the in-world scripts (20170604)
 		pwdmd5 := fmt.Sprintf("%x", md5.Sum([]byte(password))) //this has the hash we need to check
-	  
+
 		authorised := false // outside of the for loop because of scope
-	
+
 		for rows.Next() {	// we ought just to have one entry, but...
 			_ = rows.Scan(&Email, &Password)
 			// ignore errors for now, either it checks true or any error means no authentication possible
 			if Password == pwdmd5 {
 				authorised = true
 				break
-			}		
+			}
 		}
-		
+
 	    if authorised {
 	        // we need to set a cookie here
 	        setSession(email, w)
 	        // redirect to home
-	        http.Redirect(w, r, URLPathPrefix + "/admin", 302)
+	        http.Redirect(w, r, URLPathPrefix + "/admin", http.StatusFound)
 		} else {
 			// possibly we ought to give an error and then redirect, but I don't know how to do that (20170604)
-			http.Redirect(w, r, URLPathPrefix + "/", 302) // will ask for login again
+			http.Redirect(w, r, URLPathPrefix + "/", http.StatusFound) // will ask for login again
 		}
 		return
 	}
@@ -478,23 +478,23 @@ func backofficeLogin(w http.ResponseWriter, r *http.Request) {
 // backofficeLogout clears session and returns to login prompt.
 func backofficeLogout(w http.ResponseWriter, r *http.Request) {
 	clearSession(w)
-	http.Redirect(w, r, URLPathPrefix + "/", 302)
+	http.Redirect(w, r, URLPathPrefix + "/", http.StatusFound)
 }
 
 // backofficeCommands is a form-based interface to give commands to individual bots.
 func backofficeCommands(w http.ResponseWriter, r *http.Request) {
 	checkSession(w, r)
 	// Collect a list of existing bots and their PermURLs for the form
-	
+
 	db, err := sql.Open(PDO_Prefix, GoBotDSN)
 	checkErr(err)
 
 	// query
 	rows, err := db.Query("SELECT Name, PermURL FROM Agents ORDER BY Name")
 	checkErr(err)
-	
+
 	defer rows.Close()
- 	
+
 	var name, permURL, AvatarPermURLOptions = "", "", ""
 
 	// find all agent (NPC) Names and PermURLs and create select options for each of them
@@ -503,7 +503,7 @@ func backofficeCommands(w http.ResponseWriter, r *http.Request) {
 		checkErr(err)
 		AvatarPermURLOptions += "\t\t\t\t\t\t\t\t\t\t\t<option value=\"" + permURL + "\">" + name + "|" + permURL + "</option>\n"
 	}
-	
+
 	db.Close()
 
 	tplParams := templateParameters{ "Title": "Gobot Administrator Panel - commands",
@@ -513,7 +513,7 @@ func backofficeCommands(w http.ResponseWriter, r *http.Request) {
 	}
 	err = GobotTemplates.gobotRenderer(w, r, "commands", tplParams)
 	checkErr(err)
-	return
+	// return
 }
 
 // backofficeCommandsExec gets the user-selected params from the backofficeCommands form and sends them to the user, giving feedback.
@@ -524,7 +524,7 @@ func backofficeCommandsExec(w http.ResponseWriter, r *http.Request) {
 	checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Extracting parameters failed: %s\n", err)
 
 	var content = ""
-	
+
 	// test: just gather the values from the form, to make sure it works properly
 	for key, values := range r.Form {   // range over map
 		for _, value := range values {    // range over []string
@@ -532,27 +532,27 @@ func backofficeCommandsExec(w http.ResponseWriter, r *http.Request) {
   		}
 	}
 	content += "<p></p><h3>In-world results:</h3>"
-	
+
 	// prepare the call to the agent (OpenSimulator NPC)
-    body := "command=" + r.Form.Get("command") + "&" + 
+    body := "command=" + r.Form.Get("command") + "&" +
     	r.Form.Get("param1") + "=" + r.Form.Get("data1") + "&" +
     	r.Form.Get("param2") + "=" + r.Form.Get("data2")
-    	
+
     rsBody, err := callURL(r.Form.Get("PermURL"), body)
     if (err != nil) {
 	    content += "<p class=\"text-danger\">" + rsBody + "</p>"
     } else {
 	    content += "<p class=\"text-success\">" + rsBody + "</p>"
     }
-    
+
     Log.Debugf("Sending to in-world object %s ... %s\n", r.Form.Get("PermURL"), body) // debug
-    
+
     /*
     rs, err := http.Post(r.Form.Get("PermURL"), "application/x-www-form-urlencoded", bytes.NewBuffer(body))
     // Code to process response (written in Get request snippet) goes here
 
 	defer rs.Body.Close()
-	
+
 	rsBody, err := ioutil.ReadAll(rs.Body)
 	if (err != nil) {
 		errMsg := fmt.Sprintf("Error response from in-world object: %s", err)
@@ -563,7 +563,7 @@ func backofficeCommandsExec(w http.ResponseWriter, r *http.Request) {
 		content += "<p class=\"text-success\">" + string(rsBody) + "</p>"
 	}
 	*/
-	
+
 	tplParams := templateParameters{ "Title": "Gobot Administrator Panel - Commands Exec Result",
 		"Preamble": template.HTML("<p>Results coming from in-world object:</p>"),
 		"Content": template.HTML(content),
@@ -573,23 +573,23 @@ func backofficeCommandsExec(w http.ResponseWriter, r *http.Request) {
 	}
 	err = GobotTemplates.gobotRenderer(w, r, "main", tplParams)
 	checkErr(err)
-	return
+	// return
 }
 
 // backofficeControllerCommands is a form-based interface to give commands to the Bot Controller.
 func backofficeControllerCommands(w http.ResponseWriter, r *http.Request) {
 	checkSession(w, r)
 	// Collect a list of existing bots and their PermURLs for the form
-	
+
 	db, err := sql.Open(PDO_Prefix, GoBotDSN)
 	checkErr(err)
 
 	// query for in-world objects that are Bot Controllers
 	rows, err := db.Query("SELECT Name, Location, Position, PermURL FROM Positions WHERE ObjectType ='Bot Controller' ORDER BY Name")
 	checkErr(err)
-	
+
 	defer rows.Close()
- 	
+
 	var name, location, position, permURL, MasterBotControllers, regionName, coords = "", "", "", "", "", "", ""
 	var xyz []string
 
@@ -601,15 +601,15 @@ func backofficeControllerCommands(w http.ResponseWriter, r *http.Request) {
 		regionName = location[:strings.Index(location, "(")-1]
 		coords = strings.Trim(position, "() \t\n\r")
 		xyz = strings.Split(coords, ",")
-		
+
 		MasterBotControllers += fmt.Sprintf("\t\t\t\t\t\t\t\t\t\t\t<option value=\"%s\">%s [%s (%s,%s,%s)]</option>\n", permURL, name, regionName, xyz[0], xyz[1], xyz[2])
 	}
 
 	rows, err = db.Query("SELECT Name, OwnerKey FROM Agents ORDER BY Name")
 	checkErr(err)
-	
+
 	// defer rows.Close()
- 	
+
 	var ownerKey, AgentNames = "", "" // we're reusing 'name' from above
 
 	// find all Names and OwnerKeys and create select options for each of them
@@ -618,7 +618,7 @@ func backofficeControllerCommands(w http.ResponseWriter, r *http.Request) {
 		checkErr(err)
 		AgentNames += "\t\t\t\t\t\t\t\t\t\t\t<option value=\"" + ownerKey + "\">" + name + " (" + ownerKey + ")</option>\n"
 	}
-	
+
 	db.Close()
 
 	tplParams := templateParameters{ "Title": "Gobot Administrator Panel - Bot Controller Commands",
@@ -629,7 +629,7 @@ func backofficeControllerCommands(w http.ResponseWriter, r *http.Request) {
 	}
 	err = GobotTemplates.gobotRenderer(w, r, "controller-commands", tplParams)
 	checkErr(err)
-	return
+	// return
 }
 
 // backofficeControllerCommandsExec gets the user-selected params from the backofficeControllerCommands form and sends them to the user, giving feedback.
@@ -638,9 +638,9 @@ func backofficeControllerCommandsExec(w http.ResponseWriter, r *http.Request) {
 	checkSession(w, r)
 	err := r.ParseForm()
 	checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Extracting parameters failed: %s\n", err)
-	
+
 	var content = ""
-	
+
 	// test: just gather the values from the form, to make sure it works properly
 	for key, values := range r.Form {   // range over map
 		for _, value := range values {    // range over []string
@@ -648,23 +648,23 @@ func backofficeControllerCommandsExec(w http.ResponseWriter, r *http.Request) {
   		}
 	}
 	content += "<p></p><h3>In-world results:</h3>"
-	
+
 	// prepare the call to the in-world Bot Controller
 	//  HTTP request as per http://moazzam-khan.com/blog/golang-make-http-requests/
     body := []byte("npc=" + r.Form.Get("NPC") + "&" +
     	"command=" + r.Form.Get("command") + "&" +
     	r.Form.Get("param1") + "=" + r.Form.Get("data1") + "&" +
     	r.Form.Get("param2") + "=" + r.Form.Get("data2"))
-    
+
     Log.Debugf("Sending to agent %s via Bot Controller %s ... %s\n", r.Form.Get("NPC"),
     	r.Form.Get("PermURL"), body)
-    
+
     rs, err := http.Post(r.Form.Get("PermURL"), "application/x-www-form-urlencoded", bytes.NewBuffer(body))
     // Code to process response (written in Get request snippet) goes here
     checkErr(err)
 
 	defer rs.Body.Close()
-	
+
 	rsBody, err := ioutil.ReadAll(rs.Body)
 	if (err != nil) {
 		errMsg := fmt.Sprintf("Error response from in-world object: %s", err)
@@ -674,7 +674,7 @@ func backofficeControllerCommandsExec(w http.ResponseWriter, r *http.Request) {
 	    Log.Debugf("Reply from in-world object %s\n", rsBody)
 		content += "<p class=\"text-success\">" + string(rsBody) + "</p>"
 	}
-	
+
 	tplParams := templateParameters{ "Title": "Gobot Administrator Panel - Controller Commands Exec Result",
 		"Preamble": template.HTML("<p>Results coming from in-world object:</p>"),
 		"Content": template.HTML(content),
@@ -684,7 +684,7 @@ func backofficeControllerCommandsExec(w http.ResponseWriter, r *http.Request) {
 	}
 	err = GobotTemplates.gobotRenderer(w, r, "main", tplParams)
 	checkErr(err)
-	return
+	// return
 }
 
 // backofficeLSLRegisterObject creates a LSL script for registering cubes, using the defaults set by the user.
@@ -707,7 +707,7 @@ func backofficeLSLRegisterObject(w http.ResponseWriter, r *http.Request) {
 	}
 	err := GobotTemplates.gobotRenderer(w, r, "main", tplParams)
 	checkErr(err)
-	return
+	// return
 }
 
 // backofficeLSLBotController creates a LSL script for the Master Bot Controller.
@@ -727,7 +727,7 @@ func backofficeLSLBotController(w http.ResponseWriter, r *http.Request) {
 	}
 	err := GobotTemplates.gobotRenderer(w, r, "main", tplParams)
 	checkErr(err)
-	return
+	// return
 }
 
 // backofficeLSLAgentScripts creates 3 scripts to be placed inside a transparent box attached to the agent's avatar.
@@ -747,5 +747,5 @@ func backofficeLSLAgentScripts(w http.ResponseWriter, r *http.Request) {
 	}
 	err := GobotTemplates.gobotRenderer(w, r, "main", tplParams)
 	checkErr(err)
-	return
+	// return
 }

@@ -26,21 +26,21 @@ func updateInventory(w http.ResponseWriter, r *http.Request) {
 	// get all parameters in array
 	err := r.ParseForm()
 	checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Extracting parameters failed:", err)
-	
+
 	if r.Form.Get("signature") != "" && r.Header.Get("X-Secondlife-Object-Key") != "" {
 		signature := GetMD5Hash(r.Header.Get("X-Secondlife-Object-Key") + r.Form.Get("timestamp") + ":" + LSLSignaturePIN)
-						
+
 		if signature != r.Form.Get("signature") {
 			logErrHTTP(w, http.StatusForbidden, funcName() + ": Signature does not match - hack attempt?")
 			return
 		}
-		
+
 		// open database connection and see if we can update the inventory for this object
 		db, err := sql.Open(PDO_Prefix, GoBotDSN)
 		checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Connect failed: %s\n", err)
-		
-		defer db.Close()		
-		
+
+		defer db.Close()
+
 		stmt, err := db.Prepare("REPLACE INTO Inventory (`UUID`, `Name`, `Type`, `Permissions`, `LastUpdate`) VALUES (?,?,?,?,?)");
 		checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Replace prepare failed:", err)
 
@@ -57,7 +57,7 @@ func updateInventory(w http.ResponseWriter, r *http.Request) {
 
 		//_, err := res.RowsAffected()
 		//checkErr(err)
-		
+
 		w.WriteHeader(http.StatusOK)
 		w.Header().Set("Content-type", "text/plain; charset=utf-8")
 		fmt.Fprintf(w, "%s successfully updated!", r.Header.Get("X-Secondlife-Object-Key"))
@@ -66,10 +66,10 @@ func updateInventory(w http.ResponseWriter, r *http.Request) {
 		logErrHTTP(w, http.StatusForbidden, funcName() + ": Signature not found")
 		return
 	}
-	
+
 	/*
 	fmt.Fprintf(w, "Root URL is: %s\n", updateInventory()) // send data to client side
-	
+
     r.ParseForm()  // parse arguments, you have to call this by yourself
     Log.Debug(r.Form)  // print form information in server side
     Log.Debug("header connection: ", r.Header.Get("Connection"))
@@ -92,17 +92,17 @@ func updateInventory(w http.ResponseWriter, r *http.Request) {
 }
 
 // updateSensor updates the Obstacles database with an additional object found by the sensors.
-func updateSensor(w http.ResponseWriter, r *http.Request) {	
+func updateSensor(w http.ResponseWriter, r *http.Request) {
 	if r.Header.Get("X-Secondlife-Object-Key") != "" {
 		err := r.ParseForm()
 		checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Extracting parameters failed:", err)
-		
+
 		// open database connection and see if we can update the inventory for this object
 		db, err := sql.Open(PDO_Prefix, GoBotDSN)
 		checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Connect failed:", err)
-		
+
 		defer db.Close()
-		
+
 		stmt, err := db.Prepare("REPLACE INTO Obstacles (`UUID`, `Name`, `BotKey`, `BotName`, `Type`, `Origin`, `Position`, `Rotation`, `Velocity`, `Phantom`, `Prims`, `BBHi`, `BBLo`, `LastUpdate`) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
 		checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Replace prepare failed:", err)
 
@@ -111,8 +111,8 @@ func updateSensor(w http.ResponseWriter, r *http.Request) {
 		_, err = stmt.Exec(
 			r.Form.Get("key"),
 			r.Form.Get("name"),
-			r.Header.Get("X-Secondlife-Object-Key"), 
-			r.Header.Get("X-Secondlife-Object-Name"), 
+			r.Header.Get("X-Secondlife-Object-Key"),
+			r.Header.Get("X-Secondlife-Object-Name"),
 			r.Form.Get("type"),
 			r.Form.Get("origin"),
 			strings.Trim(r.Form.Get("pos"), "<>()"),
@@ -128,21 +128,21 @@ func updateSensor(w http.ResponseWriter, r *http.Request) {
 
 		//_, err := res.RowsAffected()
 		//checkErr(err)
-		
+
 		w.WriteHeader(http.StatusOK)
 		w.Header().Set("Content-type", "text/plain; charset=utf-8")
-		
+
 		reply := r.Header.Get("X-Secondlife-Owner-Name") + " sent us:\n" +
 			"Key: " + r.Form.Get("key") + " Name: " + r.Form.Get("name")+ "\n" +
 			"Position: " + r.Form.Get("pos") + " Rotation: " + r.Form.Get("rot") + "\n" +
 			"Type: " + r.Form.Get("type") + "\n" + "Origin: " + r.Form.Get("origin") + "\n" +
-			"Velocity: " + r.Form.Get("vel") + 
-			" Phantom: " + r.Form.Get("phantom") + 
+			"Velocity: " + r.Form.Get("vel") +
+			" Phantom: " + r.Form.Get("phantom") +
 			" Prims: " + r.Form.Get("prims") + "\n" +
-			"BB high: " + r.Form.Get("bbhi") + 
+			"BB high: " + r.Form.Get("bbhi") +
 			" BB low: " + r.Form.Get("bblo") + "\n" +
 			"Timestamp: " + r.Form.Get("timestamp")
-		
+
 		fmt.Fprint(w, reply)
 		return
 	} else {
@@ -153,7 +153,7 @@ func updateSensor(w http.ResponseWriter, r *http.Request) {
 
 // registerPosition saves a HTTP URL for a single object, making it persistent.
 // POST parameters:
-//  permURL: a permanent URL from llHTTPServer 
+//  permURL: a permanent URL from llHTTPServer
 //  signature: to make spoofing harder
 //  timestamp: in-world timestamp retrieved with llGetTimestamp()
 func registerPosition(w http.ResponseWriter, r *http.Request) {
@@ -161,20 +161,20 @@ func registerPosition(w http.ResponseWriter, r *http.Request) {
 	err := r.ParseForm()
 	checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Extracting parameters failed:", err)
 	// Log.Debug("Received: ", r) // we know this works well (20170725)
-	
+
 	if r.Header.Get("X-Secondlife-Object-Key") == "" {
 		// Log.Debugf("Got '%s'\n", r.Header["X-Secondlife-Object-Key"])
-		logErrHTTP(w, http.StatusForbidden, funcName() + ": Not called from within the virtual world.") 
-		return		
+		logErrHTTP(w, http.StatusForbidden, funcName() + ": Not called from within the virtual world.")
+		return
 	}
-	
+
 	if r.Form.Get("signature") != "" {
 		// if we don't have the permURL to store, registering this object is pointless
 		if r.Form["permURL"] == nil {
-			logErrHTTP(w, http.StatusForbidden, funcName() + ": No PermURL specified") 
+			logErrHTTP(w, http.StatusForbidden, funcName() + ": No PermURL specified")
 			return
 		}
-		
+
 		signature := GetMD5Hash(r.Header.Get("X-Secondlife-Object-Key") + r.Form.Get("timestamp") + ":" +  LSLSignaturePIN)
 		/* Log.Debugf("%s: Calculating signature and comparing with what we got: Object Key: '%s' Timestamp: '%s' PIN: '%s' LSL signature: '%s' Our signature: %s\n",
 			funcName(),
@@ -182,23 +182,23 @@ func registerPosition(w http.ResponseWriter, r *http.Request) {
 			r.Form.Get("timestamp"),
 			LSLSignaturePIN,
 			r.Form.Get("signature"),
-			signature)	*/	
+			signature)	*/
 		if signature != r.Form.Get("signature") {
-			logErrHTTP(w, http.StatusServiceUnavailable, funcName() + ": Signature does not match - hack attempt?") 
+			logErrHTTP(w, http.StatusServiceUnavailable, funcName() + ": Signature does not match - hack attempt?")
 			return
 		}
-		
+
 		// open database connection and see if we can update the inventory for this object
 		db, err := sql.Open(PDO_Prefix, GoBotDSN)
 		checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Connect failed:", err)
-		
+
 		defer db.Close()
-		
+
 		stmt, err := db.Prepare("REPLACE INTO Positions (`UUID`, `Name`, `PermURL`, `Location`, `Position`, `Rotation`, `Velocity`, `OwnerKey`, `OwnerName`, `ObjectType`, `ObjectClass`, `RateEnergy`, `RateMoney`, `RateHappiness`, `LastUpdate`) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
 		checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Replace prepare failed: %s\n", err)
 
 		defer stmt.Close()
-		
+
 		_, err = stmt.Exec(
 			r.Header.Get("X-Secondlife-Object-Key"),
 			r.Header.Get("X-Secondlife-Object-Name"),
@@ -220,21 +220,21 @@ func registerPosition(w http.ResponseWriter, r *http.Request) {
 
 		//_, err := res.RowsAffected()
 		//checkErr(err)
-		
+
 		w.WriteHeader(http.StatusOK)
 		w.Header().Set("Content-type", "text/plain; charset=utf-8")
 		fmt.Fprintf(w, "'%s' successfully updated!", r.Header.Get("X-Secondlife-Object-Name"))
 		// Log.Debugf("These are the headers I got: %v\nAnd these are the parameters %v\n", r.Header, r.Form)
 		return
 	} else {
-		logErrHTTP(w, http.StatusForbidden, funcName() + ": Signature not found") 
+		logErrHTTP(w, http.StatusForbidden, funcName() + ": Signature not found")
 		return
 	}
 }
 
 // registerAgent saves a HTTP URL for a single agent, making it persistent.
 // POST parameters:
-//  permURL: a permanent URL from llHTTPServer 
+//  permURL: a permanent URL from llHTTPServer
 //  signature: to make spoofing harder
 //  timestamp: in-world timestamp retrieved with llGetTimestamp()
 //  request: currently only delete (to remove entry from database when the bot dies)
@@ -242,29 +242,29 @@ func registerAgent(w http.ResponseWriter, r *http.Request) {
 	// get all parameters in array
 	err := r.ParseForm()
 	checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Extracting parameters failed:", err)
-	
+
 	if r.Header.Get("X-Secondlife-Object-Key") == "" {
 		// Log.Debugf("Got '%s'\n", r.Header["X-Secondlife-Object-Key"])
 		logErrHTTP(w, http.StatusForbidden, funcName() + ": Only in-world requests allowed.")
-		return		
-	}
-	
-	if r.Form.Get("signature") == "" {
-		logErrHTTP(w, http.StatusForbidden, funcName() + ": Signature not found") 
 		return
 	}
-	
+
+	if r.Form.Get("signature") == "" {
+		logErrHTTP(w, http.StatusForbidden, funcName() + ": Signature not found")
+		return
+	}
+
 	signature := GetMD5Hash(r.Header.Get("X-Secondlife-Object-Key") + r.Form.Get("timestamp") + ":" + LSLSignaturePIN)
-						
+
 	if signature != r.Form.Get("signature") {
 		logErrHTTP(w, http.StatusForbidden, funcName() + ": Signature does not match - hack attempt?")
 		return
 	}
-	
+
 	// open database connection and see if we can update the inventory for this object
 	db, err := sql.Open(PDO_Prefix, GoBotDSN)
 	checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Connect failed:", err)
-	
+
 	defer db.Close()
 
 	if r.Form.Get("permURL") != "" { // bot registration
@@ -303,18 +303,18 @@ func registerAgent(w http.ResponseWriter, r *http.Request) {
 				r.Form.Get("happiness") + ", class=" +
 				r.Form.Get("class") + ", subtype=" +
 				r.Form.Get("subtype") + "."
-		
+
 		fmt.Fprint(w, replyText)
 		// log.Printf(replyText) // debug
-	} else if r.Form.Get("request") == "delete" { // other requests, currently only deletion		
+	} else if r.Form.Get("request") == "delete" { // other requests, currently only deletion
 		stmt, err := db.Prepare("DELETE FROM Agents WHERE UUID=?")
 		checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Delete agent prepare failed:", err)
 
 		defer stmt.Close()
-		
+
 		_, err = stmt.Exec(r.Form.Get("npc"))
 		checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Delete agent exec failed:", err)
-		
+
 		w.WriteHeader(http.StatusOK)
 		w.Header().Set("Content-type", "text/plain; charset=utf-8")
 		fmt.Fprintf(w, "'%s' successfully deleted.", r.Form.Get("npc"))
@@ -326,8 +326,8 @@ func registerAgent(w http.ResponseWriter, r *http.Request) {
 //	This basically gives the lists of options (e.g. energy, happiness; classes of NPCs, etc.) so
 //	that we don't need to hardcode them
 func configureCube(w http.ResponseWriter, r *http.Request) {
-	logErrHTTP(w, http.StatusNotImplemented, funcName() + ": configureCube not implemented") 
-	return
+	logErrHTTP(w, http.StatusNotImplemented, funcName() + ": configureCube not implemented")
+	// return
 }
 
 // processCube is called when an agent sits on the cube; it will update the agent's money/energy/happiness.
@@ -336,41 +336,41 @@ func configureCube(w http.ResponseWriter, r *http.Request) {
 func processCube(w http.ResponseWriter, r *http.Request) {
 	err := r.ParseForm()
 	checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Extracting parameters failed:", err)
-	
+
 	if r.Header.Get("X-Secondlife-Object-Key") == "" {
 		logErrHTTP(w, http.StatusForbidden, funcName() + ": Only in-world requests allowed.")
-		return		
-	}
-	
-	if r.Form.Get("signature") == "" {
-		logErrHTTP(w, http.StatusForbidden, funcName() + ": Signature not found") 
 		return
 	}
-	
+
+	if r.Form.Get("signature") == "" {
+		logErrHTTP(w, http.StatusForbidden, funcName() + ": Signature not found")
+		return
+	}
+
 	signature := GetMD5Hash(r.Header.Get("X-Secondlife-Object-Key") + r.Form.Get("timestamp") + ":" + LSLSignaturePIN)
-						
+
 	if signature != r.Form.Get("signature") {
 		logErrHTTP(w, http.StatusForbidden, funcName() + ": Signature does not match - hack attempt?")
 		return
 	}
-	
+
 	if r.Form.Get("avatar") == NullUUID { // happens when standing up, we return without giving errors
 		w.WriteHeader(http.StatusOK)
 		w.Header().Set("Content-type", "text/plain; charset=utf-8")
 		fmt.Fprintf(w, "Got an avatar/NPC standing up")
 		sendMessageToBrowser("status", "success", "Got an avatar/NPC standing up", "")
-		return		
+		return
 	}
-	
+
 	// all checks fine, now let's get the agent data from the database:
 	// allegedly, we get avatar=[UUID] — all the rest ought to be on the database (20170807)
 	db, err := sql.Open(PDO_Prefix, GoBotDSN)
 	checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Connect failed:", err)
-	
+
 	defer db.Close()
-	
+
 	Log.Debug("processCube called, avatar UUID is", r.Form.Get("avatar"), "cube UUID is", r.Header.Get("X-Secondlife-Object-Key"))
-	
+
 	var agent AgentType
 	err = db.QueryRow("SELECT * FROM Agents WHERE OwnerKey=?", r.Form.Get("avatar")).Scan(
 		&agent.UUID,
@@ -425,7 +425,7 @@ func processCube(w http.ResponseWriter, r *http.Request) {
 	checkErr(err)
 	energyCube, err := strconv.ParseFloat(*cube.RateEnergy.Ptr(), 64)
 	checkErr(err)
-	energyAgent += energyCube	
+	energyAgent += energyCube
 	// in theory, this should now go to the engine, to see if it's enough or not; we'll see what happens (20170808)
 	// We now call the agent and tell him about the new values:
 	rsBody, err := callURL(*agent.PermURL.Ptr(), fmt.Sprintf("command=setEnergy&float=%f", energyAgent))
@@ -439,7 +439,7 @@ func processCube(w http.ResponseWriter, r *http.Request) {
 	checkErr(err)
 	moneyCube, err := strconv.ParseFloat(*cube.RateMoney.Ptr(), 64)
 	checkErr(err)
-	moneyAgent += moneyCube	
+	moneyAgent += moneyCube
 	rsBody, err = callURL(*agent.PermURL.Ptr(), fmt.Sprintf("command=setMoney&float=%f", moneyAgent))
     if (err != nil) {
 	    sendMessageToBrowser("status", "error", fmt.Sprintf("Agent '%s' could not be updated in-world with new money settings; in-world reply was: '%s'", *agent.Name.Ptr(), rsBody), "")
@@ -451,7 +451,7 @@ func processCube(w http.ResponseWriter, r *http.Request) {
 	checkErr(err)
 	happinessCube, err := strconv.ParseFloat(*cube.RateHappiness.Ptr(), 64)
 	checkErr(err)
-	happinessAgent += happinessCube	
+	happinessAgent += happinessCube
 	rsBody, err = callURL(*agent.PermURL.Ptr(), fmt.Sprintf("command=setHappiness&float=%f", happinessAgent))
     if (err != nil) {
 	    sendMessageToBrowser("status", "error", fmt.Sprintf("Agent '%s' could not be updated in-world with new happiness settings; in-world reply was: '%s'", *agent.Name.Ptr(), rsBody), "")
@@ -465,13 +465,13 @@ func processCube(w http.ResponseWriter, r *http.Request) {
 	} else {
 		Log.Debug("Result from making", *agent.Name.Ptr(), "stand up:", rsBody)
 	}
-	
+
 	// the next step is to update the database with the new values
 	stmt, err := db.Prepare("UPDATE Agents SET `Energy`=?, `Money`=?, `Happiness`=? WHERE UUID=?")
 	checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Update prepare failed:", err)
     if (err != nil) {
 	    sendMessageToBrowser("status", "error", fmt.Sprintf("Agent '%s' could not be updated in database with new energy/money/happiness settings; database reply was: '%v'", *agent.Name.Ptr(), err), "")
-	}	
+	}
 
 	defer stmt.Close()
 
@@ -479,13 +479,13 @@ func processCube(w http.ResponseWriter, r *http.Request) {
 	checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Replace exec failed:", err)
     if (err != nil) {
 	    sendMessageToBrowser("status", "error", fmt.Sprintf("Agent '%s' could not be updated in database with new energy/money/happiness settings; database reply was: '%v'", *agent.Name.Ptr(), err), "")
-	}	
-	
+	}
+
 	Log.Debug("Agent", *agent.Name.Ptr(), "updated database with new energy:", energyAgent, "money:", moneyAgent, "happiness:", happinessAgent)
-	
+
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-type", "text/plain; charset=utf-8")
 	fmt.Fprintf(w, "'%s' successfully updated.", *agent.Name.Ptr())
 	sendMessageToBrowser("status", "success", fmt.Sprintf("'%s' successfully updated.", *agent.Name.Ptr()), "")
-	return
+	// return
 }

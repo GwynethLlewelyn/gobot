@@ -19,7 +19,7 @@ func checkErrHTTP(w http.ResponseWriter, httpStatus int, errorMessage string, er
 	if err != nil {
 		http.Error(w, fmt.Sprintf(errorMessage, err), httpStatus)
 		pc, file, line, ok := runtime.Caller(1)
-		Log.Error("(", http.StatusText(httpStatus), ") ", filepath.Base(file), ":", line, ":", pc, ok, " - error:", errorMessage, err)	
+		Log.Error("(", http.StatusText(httpStatus), ") ", filepath.Base(file), ":", line, ":", pc, ok, " - error:", errorMessage, err)
 	}
 }
 
@@ -33,7 +33,7 @@ func checkErrPanicHTTP(w http.ResponseWriter, httpStatus int, errorMessage strin
 }
 
 // logErrHTTP assumes that the error message was already composed and writes it to HTTP and logs it.
-//  this is mostly to avoid code duplication and make sure that all entries are written similarly 
+//  this is mostly to avoid code duplication and make sure that all entries are written similarly
 func logErrHTTP(w http.ResponseWriter, httpStatus int, errorMessage string) {
 	http.Error(w, errorMessage, httpStatus)
 	Log.Error("(" + http.StatusText(httpStatus) + ") " + errorMessage)
@@ -119,7 +119,7 @@ func uiObjects(w http.ResponseWriter, r *http.Request) {
 		//if (err == nil) { Log.Debugf("Wrote %d bytes to interface\n", n) } else { checkErr(err) }
 		checkErr(err)
 	}
-	return
+	// return
 }
 
 // uiObjectsUpdate receives a JSON representation of one row (from the agGrid) in order to update our database.
@@ -131,14 +131,14 @@ func uiObjectsUpdate(w http.ResponseWriter, r *http.Request) {
     err = json.Unmarshal(body, &obj)
     checkErrPanic(err)
     // Log.Debug("\nJSON decoded body is >>", obj, "<<")
-    
+
     // update database
     // open database connection and see if we can update the inventory for this object
 	db, err := sql.Open(PDO_Prefix, GoBotDSN)
 	checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Connect failed:", err)
-	
+
 	defer db.Close()
-	
+
 	stmt, err := db.Prepare("REPLACE INTO Obstacles (`UUID`, `Name`, `BotKey`, `BotName`, `Type`, `Position`, `Rotation`, `Velocity`, `LastUpdate`, `Origin`, `Phantom`, `Prims`, `BBHi`, `BBLo`) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)")
 	checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Replace prepare failed:", err)
 
@@ -151,7 +151,7 @@ func uiObjectsUpdate(w http.ResponseWriter, r *http.Request) {
 	// w.Header().Set("Content-type", "text/plain; charset=utf-8")
 	// fmt.Fprintln(w, obj, "successfully updated.")
 	// Log.Debug(obj, "successfully updated.")
-	return
+	// return
 }
 
 // uiObjectsRemove receives a list of UUIDs to remove from the Obstacles table.
@@ -159,13 +159,13 @@ func uiObjectsRemove(w http.ResponseWriter, r *http.Request) {
 	body, err := ioutil.ReadAll(r.Body)
 	checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Cannot read body of HTTP Request:", err)
 	// Log.Debug("\nObjects body is >>", string(body), "<<")
-	    
+
     // open database connection and see if we can remove the object UUIDs we got
 	db, err := sql.Open(PDO_Prefix, GoBotDSN)
 	checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Connect failed:", err)
-	
+
 	defer db.Close()
-	
+
 	_, err = db.Exec(fmt.Sprintf("DELETE FROM Obstacles WHERE UUID IN (%s)", string(body)))
 	checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Objects remove failed:", err)
 
@@ -231,7 +231,7 @@ func uiAgents(w http.ResponseWriter, r *http.Request) {
 			&Agent.BestPath,
 			&Agent.SecondBestPath,
 			&Agent.CurrentTarget,
-		)		
+		)
 		rowArr = append(rowArr, Agent)
 	}
 	checkErr(err)
@@ -243,7 +243,7 @@ func uiAgents(w http.ResponseWriter, r *http.Request) {
 		_, err := fmt.Fprintf(w, "%s", data)
 		checkErr(err)
 	}
-	return
+	// return
 }
 
 // uiAgentsUpdate receives a JSON representation of one row (from the agGrid) in order to update our database.
@@ -253,12 +253,12 @@ func uiAgentsUpdate(w http.ResponseWriter, r *http.Request) {
 	var ag AgentType
     err = json.Unmarshal(body, &ag)
     checkErrPanic(err)
-    
+
     db, err := sql.Open(PDO_Prefix, GoBotDSN)
 	checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Connect failed:", err)
-	
+
 	defer db.Close()
-	
+
 	stmt, err := db.Prepare("REPLACE INTO Agents (`UUID`, `Name`, `OwnerName`, `OwnerKey`, `Location`, `Position`, `Rotation`, `Velocity`, `Energy`, `Money`, `Happiness`, `Class`, `SubType`, `PermURL`, `LastUpdate`, `BestPath`, `SecondBestPath`, `CurrentTarget`) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)")
 	checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Replace prepare failed:", err)
 
@@ -269,7 +269,7 @@ func uiAgentsUpdate(w http.ResponseWriter, r *http.Request) {
 		ag.LastUpdate, ag.BestPath, ag.SecondBestPath, ag.CurrentTarget)
 	checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Replace exec failed:", err)
 
-	return
+	// return
 }
 
 // uiAgentsRemove receives a list of UUIDs to remove from the Agents table.
@@ -277,12 +277,12 @@ func uiAgentsRemove(w http.ResponseWriter, r *http.Request) {
 	body, err := ioutil.ReadAll(r.Body)
     checkErrPanic(err)
 	// Log.Debug("\nAgents Body is >>", string(body), "<<")
-	    
+
 	db, err := sql.Open(PDO_Prefix, GoBotDSN)
 	checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Connect failed:", err)
-	
+
 	defer db.Close()
-	
+
 	_, err = db.Exec(fmt.Sprintf("DELETE FROM Agents WHERE UUID IN (%s)", string(body)))
 	checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Agents remove failed:", err)
 
@@ -344,7 +344,7 @@ func uiPositions(w http.ResponseWriter, r *http.Request) {
 			&Position.RateEnergy,
 			&Position.RateMoney,
 			&Position.RateHappiness,
-		)		
+		)
 		rowArr = append(rowArr, Position)
 	}
 	checkErr(err)
@@ -356,7 +356,7 @@ func uiPositions(w http.ResponseWriter, r *http.Request) {
 		_, err := fmt.Fprintf(w, "%s", data)
 		checkErr(err)
 	}
-	return
+	// return
 }
 
 // uiPositionsUpdate receives a JSON representation of one row (from the agGrid) in order to update our database.
@@ -366,12 +366,12 @@ func uiPositionsUpdate(w http.ResponseWriter, r *http.Request) {
 	var pos PositionType
     err = json.Unmarshal(body, &pos)
     checkErrPanic(err)
-    
+
 	db, err := sql.Open(PDO_Prefix, GoBotDSN)
 	checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Connect failed:", err)
 
 	defer db.Close()
-	
+
 	stmt, err := db.Prepare("REPLACE INTO Positions (`PermURL`, `UUID`, `Name`, `OwnerName`, `Location`, `Position`, `Rotation`, `Velocity`, `LastUpdate`, `OwnerKey`, `ObjectType`, `ObjectClass`, `RateEnergy`, `RateMoney`, `RateHappiness`) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)")
 	checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Replace prepare failed:", err)
 
@@ -382,7 +382,7 @@ func uiPositionsUpdate(w http.ResponseWriter, r *http.Request) {
 		pos.RateEnergy, pos.RateMoney, pos.RateHappiness)
 	checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Replace exec failed:", err)
 
-	return
+	// return
 }
 
 // uiPositionsRemove receives a list of UUIDs to remove from the Positions table.
@@ -390,12 +390,12 @@ func uiPositionsRemove(w http.ResponseWriter, r *http.Request) {
 	body, err := ioutil.ReadAll(r.Body)
     checkErrPanic(err)
 	// Log.Debug("\nPositions Body is >>", string(body), "<<")
-	    
+
 	db, err := sql.Open(PDO_Prefix, GoBotDSN)
 	checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Connect failed:", err)
-	
+
 	defer db.Close()
-	
+
 	_, err = db.Exec(fmt.Sprintf("DELETE FROM Positions WHERE UUID IN (%s)", string(body)))
 	checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Positions remove failed:", err)
 
@@ -434,7 +434,7 @@ func uiInventory(w http.ResponseWriter, r *http.Request) {
 			&Inventory.Type,
 			&Inventory.LastUpdate,
 			&Inventory.Permissions,
-		)		
+		)
 		rowArr = append(rowArr, Inventory)
 	}
 	checkErr(err)
@@ -446,7 +446,7 @@ func uiInventory(w http.ResponseWriter, r *http.Request) {
 		_, err := fmt.Fprintf(w, "%s", data)
 		checkErr(err)
 	}
-	return
+	// return
 }
 
 // uiInventoryUpdate receives a JSON representation of one row (from the agGrid) in order to update our database.
@@ -456,12 +456,12 @@ func uiInventoryUpdate(w http.ResponseWriter, r *http.Request) {
 	var inv inventoryType
     err = json.Unmarshal(body, &inv)
     checkErrPanic(err)
-    
+
     db, err := sql.Open(PDO_Prefix, GoBotDSN)
 	checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Connect failed:", err)
-	
+
 	defer db.Close()
-	
+
 	stmt, err := db.Prepare("REPLACE INTO Inventory (`UUID`, `Name`, `Type`, `LastUpdate`, `Permissions`) VALUES (?,?,?,?,?)")
 	checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Replace prepare failed:", err)
 
@@ -470,7 +470,7 @@ func uiInventoryUpdate(w http.ResponseWriter, r *http.Request) {
 	_, err = stmt.Exec(inv.UUID, inv.Name, inv.Type, inv.LastUpdate, inv.Permissions)
 	checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Replace exec failed:", err)
 
-	return
+	// return
 }
 
 // uiInventoryRemove receives a list of UUIDs to remove from the Inventory table.
@@ -478,12 +478,12 @@ func uiInventoryRemove(w http.ResponseWriter, r *http.Request) {
 	body, err := ioutil.ReadAll(r.Body)
     checkErrPanic(err)
 	// Log.Debug("\nInventory Body is >>", string(body), "<<")
-	    
+
 	db, err := sql.Open(PDO_Prefix, GoBotDSN)
 	checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Connect failed:", err)
-	
+
 	defer db.Close()
-	
+
 	_, err = db.Exec(fmt.Sprintf("DELETE FROM Inventory WHERE UUID IN (%s)", string(body)))
 	checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Inventory remove failed:", err)
 
@@ -512,12 +512,12 @@ func uiUserManagement(w http.ResponseWriter, r *http.Request) {
 	// query
 	rows, err := db.Query("SELECT * FROM Users")
 	checkErrPanic(err)
-	
+
 	for rows.Next() {
 		err = rows.Scan(
 			&UserManagement.Email,
 			&UserManagement.Password,
-		)		
+		)
 		rowArr = append(rowArr, UserManagement)
 	}
 	checkErr(err)
@@ -529,7 +529,7 @@ func uiUserManagement(w http.ResponseWriter, r *http.Request) {
 		_, err := fmt.Fprintf(w, "%s", data)
 		checkErr(err)
 	}
-	return
+	// return
 }
 
 // uiUserManagementUpdate receives a JSON representation of one row (from the agGrid) in order to update our database.
@@ -539,12 +539,12 @@ func uiUserManagementUpdate(w http.ResponseWriter, r *http.Request) {
 	var user userManagementType
     err = json.Unmarshal(body, &user)
     checkErrPanic(err)
-    
+
     db, err := sql.Open(PDO_Prefix, GoBotDSN)
 	checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Connect failed:", err)
-	
+
 	defer db.Close()
-	
+
 	stmt, err := db.Prepare("REPLACE INTO Users (`Email`, `Password`) VALUES (?,?)")
 	checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Replace prepare failed:", err)
 
@@ -553,7 +553,7 @@ func uiUserManagementUpdate(w http.ResponseWriter, r *http.Request) {
 	_, err = stmt.Exec(user.Email, user.Password)
 	checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Replace exec failed:", err)
 
-	return
+	// return
 }
 
 // uiUserManagementRemove receives a list of UUIDs to remove from the UserManagement table.
@@ -561,12 +561,12 @@ func uiUserManagementRemove(w http.ResponseWriter, r *http.Request) {
 	body, err := ioutil.ReadAll(r.Body)
     checkErrPanic(err)
 	// Log.Debug("\nInventory Body is >>", string(body), "<<")
-	    
+
 	db, err := sql.Open(PDO_Prefix, GoBotDSN)
 	checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Connect failed:", err)
-	
+
 	defer db.Close()
-	
+
 	_, err = db.Exec(fmt.Sprintf("DELETE FROM Users WHERE Email IN (%s)", string(body)))
 	checkErrPanicHTTP(w, http.StatusServiceUnavailable, funcName() + ": Users remove failed:", err)
 

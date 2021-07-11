@@ -73,7 +73,7 @@ type chromosomeType struct {
 
 // popType represents each population as a list of points (= chromosomes) indicating a possible path; it also includes the fitness for this particular path.
 type popType struct {
-	fitness float64
+	Fitness float64
 	chromosomes []chromosomeType
 }
 
@@ -207,7 +207,7 @@ func backofficeEngine(w http.ResponseWriter, r *http.Request) {
 		err = rows.Scan(&name, &uuidAgent, &location, &position)
 		checkErr(err)
 		regionName, xyz = convertLocPos(location, position)
-		agentNames += fmt.Sprintf("\t\t\t\t\t\t\t\t\t\t\t\t\t<option value=\"%s\">%s	(%s) [%s (%s,%s,%s)]</option>\n", uuidAgent, name, uuidAgent, regionName, xyz)
+		agentNames += fmt.Sprintf("\t\t\t\t\t\t\t\t\t\t\t\t\t<option value=\"%s\">%s	(%s) [%s (%s,%s,%s)]</option>\n", uuidAgent, name, uuidAgent, regionName, xyz) // not obvious for the Go linter, but xyz is an array of 3 elements (gwyneth 20210711)
 	}
 
 	rows.Close() // closing after deferring to close is probably not good, but I'll try it anyway (20170723)
@@ -536,6 +536,7 @@ func engine() {
 					&Position.RateMoney,
 					&Position.RateHappiness,
 				)
+				checkErr(err)
 				Position.Coords_xyz = strings.Split(strings.Trim(*Position.Position.Ptr(), "() \t\n\r"), ",")
 
 				// check if we got a Master Bot Controller!
@@ -575,6 +576,7 @@ func engine() {
 					&Object.BBHi,
 					&Object.BBLo,
 				)
+				checkErr(err)
 				Object.Coords_xyz = strings.Split(strings.Trim(*Object.Position.Ptr(), "() \t\n\r"), ",")
 
 				Obstacles = append(Obstacles, Object)
@@ -754,7 +756,7 @@ func engine() {
 			checkErr(err)
 			*/
 			time_start := time.Now()
-			
+
 			// Genetic algorithm for movement
 			// generate 50 strings (= individuals in the population) with 28 random points (= 1 chromosome) at curpos ± 10m
 
@@ -806,7 +808,7 @@ func engine() {
 			// Now generate from scratch the remaining population
 
 			for i := start_pop; i < POPULATION_SIZE; i++ {
-				population[i].fitness = 0.0
+				population[i].Fitness = 0.0
 
 				for y := 0; y < CHROMOSOMES; y++ {
 					// Ismail & Sheta recommend to use the distance between points as part of the fitness
@@ -1046,7 +1048,7 @@ func engine() {
 					// and we'll also use the overall distance to the attractor
 					//population[i]["fitness"] += population[i][$y]["distance"];
 				} // end for y
-				population[i].fitness = W1 * fitnessW1 + W2 * fitnessW2 + W3 * fitnessW3
+				population[i].Fitness = W1 * fitnessW1 + W2 * fitnessW2 + W3 * fitnessW3
 			} // end for i
 
 			// note that the most critical point is the first: it's the one the 'bot will try to walk to. But we need
@@ -1065,7 +1067,7 @@ func engine() {
 
 			// order by fitness
 			sort.Slice(population, func(a, b int) bool {
-					return population[a].fitness < population[b].fitness
+					return population[a].Fitness < population[b].Fitness
 				})
 
 			// TODO(gwyneth): to comment out later (20170727)
@@ -1400,12 +1402,12 @@ func engine() {
 				 time.Sleep(1000 * time.Millisecond)
 				 */
 					// if we're set to run only once then stop, change atomic values accordingly
-			if OneStep.Load().(bool) == true {
+			if OneStep.Load().(bool) {
 				OneStep.Store(false)
 				EngineRunning.Store(false)
 				sendMessageToBrowser("htmlControl", "enable", "", "startEngine")
 				sendMessageToBrowser("htmlControl", "enable", "", "oneStep")
-				sendMessageToBrowser("htmlControl", "disable", "", "stopEngine")		
+				sendMessageToBrowser("htmlControl", "disable", "", "stopEngine")
 			}
 		} else {
 			// stop everything!!!
@@ -1431,7 +1433,7 @@ func engine() {
 func sendMessageToBrowser(msgType string, msgSubType string, msgText string, msgId string) {
 	text, err := html2text.FromString(msgText, html2text.Options{PrettyTables: true}) // prettify eventual HTML inside msgText
 	checkErr(err)
-	if webSocketActive.Load() != nil && webSocketActive.Load().(bool) == true { // no point in sending if nobody is there to receive
+	if webSocketActive.Load() != nil && webSocketActive.Load().(bool) { // no point in sending if nobody is there to receive
 		var msgToSend WsMessageType
 
 		msgToSend.New(msgType, msgSubType, msgText, msgId)
@@ -1460,7 +1462,7 @@ func sendMessageToBrowser(msgType string, msgSubType string, msgText string, msg
 					}
 				} else {
 					Log.Debug("(connected via WebSocket)", msgType, "-", msgSubType, "-", text, "-", msgId)
-				} 
+				}
 			// 'common' messages have the nil string subtype, so we ignore these and don't log them
 			//	we might have a Debug facility in the future which allows for more verbosity!
 			case <-time.After(time.Second * 10):
@@ -1501,7 +1503,7 @@ func callURL(url string, encodedRequest string) (string, error) {
 	// Log.Debugf("%s: URL: %s Encoded Request: %s\n", funcName(), url, encodedRequest)
 
 	rs, err := http.Post(url, "application/x-www-form-urlencoded", bytes.NewBuffer(body))
-	
+
 	if err != nil {		errMsg := fmt.Sprintf("HTTP call to %s failed; error was: '%v'", url, err)
 		Log.Error(errMsg)
 		return errMsg, err
@@ -1511,7 +1513,7 @@ func callURL(url string, encodedRequest string) (string, error) {
 	rsBody, err := ioutil.ReadAll(rs.Body)
 	// Check for errors; if errors found, then send the error message back to the caller
 	if err != nil {
-		errMsg := fmt.Sprintf("Error response from in-world object: '%v'", err)
+		errMsg := fmt.Sprintf("error response from in-world object: '%v'", err)
 		Log.Error(errMsg)
 		return errMsg, err
 	} else {
@@ -1533,7 +1535,7 @@ func showPopulation(popul []popType, popCaption string) {
 	outputBuffer := "<div class='table-responsive'><table class='table table-striped table-bordered table-hover'><caption>" + popCaption + "</caption><thead><tr><th>Pop #</th><th>Fitness</th><th>Chromossomes</th></tr></thead><tbody>\n"
 
 	for p, pop := range popul {
-		outputBuffer += fmt.Sprintf("<tr><td>%v</td><td>%.4f</td>", p, pop.fitness)
+		outputBuffer += fmt.Sprintf("<tr><td>%v</td><td>%.4f</td>", p, pop.Fitness)
 		for _, chr := range pop.chromosomes {
 			outputBuffer += fmt.Sprintf("<td>(%v, %v, %v)<br />Distance: %.4f<br />Obstacle: %.4f<br />Angle: %.4f<br />Smoothness %.4f</td>",
 				chr.x, chr.y, chr.z, chr.distance, chr.obstacle, chr.angle, chr.smoothness)
