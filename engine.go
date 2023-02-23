@@ -695,12 +695,12 @@ func engine() {
 			sendMessageToBrowser("status", "", outputBuffer, "")
 			sendMessageToBrowser("status", "info", fmt.Sprintf("Nearest %s cube to agent %s: '%s' (distance: %.4f m)<br />", whatCubeTypeNext, *Agent.Name.Ptr(), *nearestCube.Name.Ptr(), smallestDistanceToCube), "")
 
-			/* Idea for the GA
+			/* Idea for the GA:
 
 			1. Start with a 20x20 matrix (based loosely on Cosío and Castañeda) around the bot, which contain sensor data (we just sense up to 10 m around the bot). This might need adjustment (i.e. smaller size).
-			This represents the space of possible solutions
-			Active cube will determine attraction point (see later)
-			Chromosomes: randomly generated points (inside the 20x20 matrix) that the robot has to travel. Start perhaps with 50 with a length of 28 (Castañeda use 7 for 10x10 matrix). Points are bounded within the 20x20 matrix
+			- This represents the space of possible solutions
+			- Active cube will determine attraction point (see later)
+			- Chromosomes: randomly generated points (inside the 20x20 matrix) that the robot has to travel. Start perhaps with 50 with a length of 28 (Castañeda use 7 for 10x10 matrix). Points are bounded within the 20x20 matrix
 			Now evaluate each chromosome with fitness function:
 			- for each point: see if it's "too near" to an obstacle (potential collision)
 				- ray casts are more precise, so give it a highest weight (not implemented yet)
@@ -736,9 +736,9 @@ func engine() {
 			var destCube PositionType
 
 			// BUG(gwyneth): Somehow, the code below will just be valid once! (20170728) - this needs more testing, I think
-			//  it was a clear somewhere at the end of the iteration, but we got to check it. Also, the submit button for
-			//  changing cube/agent does not go away and the visual feedback is weird (20170806).
-			//  Still working on it, it somehow works sometimes, but it's hard to debug because the GA does so many things (20170813).
+			// it was a `clear` somewhere at the end of the iteration, but we got to check it. Also, the submit button for
+			// changing cube/agent does not go away and the visual feedback is weird (20170806).
+			// Still working on it, it somehow works sometimes, but it's hard to debug because the GA does so many things (20170813).
 			Log.Info("User-set destination cube for", *Agent.Name.Ptr(), ":", userDestCube.Load().(string), "(NullUUID means no destination manually set)")
 			if userDestCube.Load().(string) != NullUUID {
 				destCube = Cubes[userDestCube.Load().(string)]

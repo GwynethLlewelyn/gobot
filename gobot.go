@@ -24,11 +24,11 @@ import (
 
 var (
 	// Default configurations, hopefully exported to other files and packages
-	// we probably should have a struct for this (or even several)
+	// we probably should have a struct for this (or even several).
 	Host, GoBotDSN, URLPathPrefix, PDO_Prefix, PathToStaticFiles,
 	ServerPort, FrontEnd, MapURL, LSLSignaturePIN string
 	logFileName string = "log/gobot.log"
-	logMaxSize, logMaxBackups, logMaxAge int // configuration for the lumberjack rotating logger
+	logMaxSize, logMaxBackups, logMaxAge int // configuration for the lumberjack rotating logger.
 	logCompress bool	// compress old log files?
 	logSeverityStderr, logSeverityFile, logSeveritySyslog logging.Level // more configuration for the go-logging logger
 	ShowPopulation bool = true
@@ -45,17 +45,17 @@ type templateParameters map[string]interface{}
 // It's a separate function because we want to be able to do a killall -HUP gobot to force the configuration to be read again.
 // Also, if the configuration file changes, this ought to read it back in again without the need of a HUP signal (20170811).
 func loadConfiguration() {
-	fmt.Print("Reading Gobot configuration:")	// note that we might not have go-logging active as yet, so we use fmt
-	// Open our config file and extract relevant data from there
-	err := viper.ReadInConfig() // Find and read the config file
+	fmt.Print("Reading Gobot configuration:")	// note that we might not have go-logging active as yet, so we use fmt.
+	// Open our config file and extract relevant data from there.
+	err := viper.ReadInConfig() // Find and read the config file.
 	if err != nil {
 		fmt.Println("Error reading config file:", err)
 		return	// we might still get away with this!
 	}
-	// Without these set, we cannot do anything
+	// Without these set, we cannot do anything.
 	viper.SetDefault("gobot.EngineRunning", true) // try to set this as quickly as possible, or the engine WILL run!
 	EngineRunning.Store(viper.GetBool("gobot.EngineRunning")); fmt.Print(".")
-	viper.SetDefault("gobot.Host", "localhost") // to prevent bombing out with panics
+	viper.SetDefault("gobot.Host", "localhost") // to prevent bombing out with panics.
 	Host = viper.GetString("gobot.Host"); fmt.Print(".")
 	viper.SetDefault("gobot.URLPathPrefix", "/go")
 	URLPathPrefix = viper.GetString("gobot.URLPathPrefix"); fmt.Print(".")
@@ -66,18 +66,18 @@ func loadConfiguration() {
 	path, err := expandPath(viper.GetString("gobot.PathToStaticFiles")); fmt.Print(".")
 	if err != nil {
 		fmt.Println("Error expanding path:", err)
-		path = ""	// we might get away with this as well
+		path = ""	// we might get away with this as well.
 	}
 	PathToStaticFiles = path
 	viper.SetDefault("gobot.ServerPort", ":3000")
 	ServerPort = viper.GetString("gobot.ServerPort"); fmt.Print(".")
 	FrontEnd = viper.GetString("gobot.FrontEnd"); fmt.Print(".")
 	MapURL = viper.GetString("opensim.MapURL"); fmt.Print(".")
-	viper.SetDefault("gobot.LSLSignaturePIN", "0000") // better than no signature at all
+	viper.SetDefault("gobot.LSLSignaturePIN", "0000") // better than no signature at all.
 	LSLSignaturePIN = viper.GetString("opensim.LSLSignaturePIN"); fmt.Print(".")
 	viper.SetDefault("gobot.ShowPopulation", true) // try to set this as quickly as possible, or the engine WILL run!
 	ShowPopulation = viper.GetBool("gobot.ShowPopulation"); fmt.Print(".")
-	// logging options
+	// logging options.
 	viper.SetDefault("log.FileName", "log/gobot.log")
 	logFileName = viper.GetString("log.FileName"); fmt.Print(".")
 	viper.SetDefault("log.Format", `%{color}%{time:2006/01/02 15:04:05.0} %{shortfile} - %{shortfunc} ▶ %{level:.4s}%{color:reset} %{message}`)
@@ -104,7 +104,7 @@ func loadConfiguration() {
 			logSeverityStderr = logging.INFO
     	case "DEBUG":
 			logSeverityStderr = logging.DEBUG
-		// default case is handled directly by viper
+		// default case is handled directly by viper.
 	}
 	fmt.Print(".")
 	viper.SetDefault("log.SeverityFile", logging.DEBUG)
@@ -151,7 +151,7 @@ func loadConfiguration() {
 	}
 	// Setup the go-logging Logger. (20170812) We have three loggers: one to stderr, one to a logfile, one to syslog for critical stuff (20170813).
 	// Update; it's a bad idea to log to both Stderr and Syslog, when gobot might be running from systemd (where stderr is fed to stdout).
-	//  Also, stderr-piped-to-syslog will get messed up if we use fancy colours (?). So for now we'll just log to stderr and a file (20200429)
+	//  Also, stderr-piped-to-syslog will get messed up if we use fancy colours (?). So for now we'll just log to stderr and a file (20200429).
 	backendStderr	:= logging.NewLogBackend(os.Stderr, "", 0)
 	backendFile		:= logging.NewLogBackend(rotatingLogger, "", 0)
 	// backendSyslog,_	:= logging.NewSyslogBackend("") // obsoleted, see comment above
