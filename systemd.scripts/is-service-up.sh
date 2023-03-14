@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Usage: 
+# Usage:
 # `is-service-up.sh [service name] [sleeping time in seconds] [grep search string to check]
 # where only $1 is mandatory, the rest optional
 # e. g. `is-service-up.sh some.service 60 ' active'`
@@ -30,7 +30,7 @@ fi
 # to /dev/null
 function is_service_active {
 #	echo "Inside function call, launching command"
-	/usr/bin/systemctl --quiet is-active $serviceName | /usr/bin/systemctl --quiet is-enabled $serviceName > /dev/null 2>&1
+	/usr/bin/systemctl --quiet is-active $serviceName || /usr/bin/systemctl --quiet is-enabled $serviceName > /dev/null 2>&1
 #	/usr/bin/systemctl status $serviceName | /usr/bin/grep $searchString > /dev/null 2>&1
 	local retvalue=$?
 #	echo "Inside function call, result was: "$retvalue
@@ -52,7 +52,7 @@ function is_service_active {
 is_service_active
 until [ $? -eq 0 ]
 do
-#	echo "Got $?" 
+#	echo "Got $?"
 	sleep $sleepTime
 	is_service_active
 done
