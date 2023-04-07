@@ -201,7 +201,7 @@ func backofficeMain(w http.ResponseWriter, r *http.Request) {
 	// First, get Agents (there are not many)
 	var (
 		Agent AgentType // this is defined on ui.go, ugh
-		markersOutput string = ""
+		markersOutput string	// default is empty string. (gwyneth 20230407)
 		xyz []string
 		//position string
 		coords string
