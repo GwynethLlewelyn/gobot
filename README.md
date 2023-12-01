@@ -12,7 +12,7 @@ For now, all you need to know is that this works only on [OpenSimulator](http://
 
 ## Server-Side Configuration
 
-- Install `gobot` as any other Go application (`go get github.com/GwynethLlewelyn/gobot` should do the trick)
+- Install `gobot` as any other Go application (`go install github.com/GwynethLlewelyn/gobot` should do the trick)
 - Create a database in MySQL using `database/schema.sql` ([see below](#notes) why SQLite is not recommended any more)
 - Create a new user in MySQL with an email address and a MD5-hashed password (something like `insert into Users (Email, Password) Values ('valid@email.address', '4405c5984441a1b86bec717dc063ca46');`), you'll need at least one user to login to the backoffice; use `echo "password"|md5sum` or an online MD5 generator to get a valid password hash; afterwards, you can add more users manually
 - Copy `config.toml.sample` to `config.toml` and change it — remember the installation path and you should also set an URL to grab a map tile from your OpenSimulator environment) as well as your own 4-digit PIN for `LSLSignaturePIN`
