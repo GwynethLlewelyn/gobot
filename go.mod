@@ -1,7 +1,6 @@
 module github.com/GwynethLlewelyn/gobot
 
 go 1.22.0
-
 toolchain go1.23.4
 
 require (
@@ -13,7 +12,7 @@ require (
 	github.com/jaytaylor/html2text v0.0.0-20230321000545-74c2419ad056
 	github.com/op/go-logging v0.0.0-20160315200505-970db520ece7
 	github.com/spf13/viper v1.19.0
-	golang.org/x/net v0.35.0
+	golang.org/x/net v0.36.0
 	gopkg.in/guregu/null.v3 v3.5.0
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1
 )
