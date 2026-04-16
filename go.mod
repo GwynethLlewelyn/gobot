@@ -1,7 +1,7 @@
 module github.com/GwynethLlewelyn/gobot
 
-go 1.22.0
-toolchain go1.24.1
+go 1.25.0
+toolchain go1.25.0
 
 require (
 	github.com/Pallinder/go-randomdata v1.2.0
@@ -18,7 +18,7 @@ require (
 )
 
 require (
-	filippo.io/edwards25519 v1.1.0 // indirect
+	filippo.io/edwards25519 v1.1.1 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/magiconair/properties v1.8.9 // indirect
 	github.com/mattn/go-runewidth v0.0.16 // indirect
