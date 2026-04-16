@@ -108,3 +108,5 @@ The current version also allows the simulation to run just one step, and then st
 This is currently copyrighted until I finish my PhD, then you can copy it at will. If you wish to use my code **now**, then please ask me before! Thank you!
 
 All code included from `hcl` (HashiCorp Configuration Language) as well as from `mysql` is released under a Mozilla Public License 2.0 ([MPT-2.0](https://www.mozilla.org/en-US/MPL/2.0/)); the latter is used to open a communication channel with the MySQL database.
+
+The original code from `golang.org/x/text` has portions released under a Creative Commons CC-BY-SA license (1.0 or [superior](https://creativecommons.org/licenses/by-sa/3.0/deed.en)).
